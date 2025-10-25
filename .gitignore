@@ -1,0 +1,93 @@
+*.iml
+.gradle
+/local.properties
+/.idea/caches
+/.idea/libraries
+/.idea/modules.xml
+/.idea/workspace.xml
+/.idea/navEditor.xml
+/.idea/assetWizardSettings.xml
+.DS_Store
+/build
+/captures
+.externalNativeBuild
+.cxx
+local.properties
+
+### Android / Java Project ###
+
+# Local/IDE stuff
+.idea/
+**/.idea/
+**/*.iml
+.gradle/
+**/.gradle/
+local.properties
+**/local.properties
+
+# Build outputs & intermediates
+build/
+**/build/
+**/outputs/
+**/intermediates/
+**/generated/
+**/captures/
+**/.externalNativeBuild/
+**/.cxx/
+
+# Compiled / generated classes
+**/*.class
+**/*.dex
+
+# Artifacts
+**/*.apk
+**/*.aab
+**/*.ap_
+
+# Log files
+*.log
+
+# Keystore files
+*.jks
+*.keystore
+
+# Temporary or OS-specific files
+*.tmp
+*.bak
+.DS_Store
+Thumbs.db
+
+# Lint / analysis outputs
+lint/intermediates/
+lint/generated/
+lint/outputs/
+lint/tmp/
+
+# Gradle cache & wrapper files
+.gradle/
+.gradle-cache/
+.gradle-build/
+
+# Local configuration
+gradle-app.setting
+gradle.properties
+
+# Firebase / Google Services (if used)
+google-services.json
+
+# Optional: ignore local assets (e.g. test PDFs, audio, etc.)
+app/src/main/assets/**/*.pdf
+app/src/main/assets/**/*.mp3
+app/src/main/assets/**/*.wav
+
+# ========================================
+# Keep important project files tracked
+# ========================================
+!app/src/
+!gradlew
+!gradlew.bat
+!build.gradle
+!settings.gradle
+!README.md
+!LICENSE
+
