@@ -9,6 +9,7 @@ import android.widget.GridLayout;
 
 import androidx.activity.EdgeToEdge;
 import androidx.activity.OnBackPressedCallback;
+import androidx.annotation.IntDef;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
@@ -28,6 +29,7 @@ import java.util.List;
 
 public class MainActivity extends AppCompatActivity {
 
+    private static final int PICK_PDF_REQUEST = 1001;
     private List<Book> list;
     private GridLayout pdfGrid;
 
@@ -41,6 +43,9 @@ public class MainActivity extends AppCompatActivity {
         //load books
         list = BookStorage.loadBooks(this);
         pdfGrid = findViewById(R.id.pdfGrid);
+
+        refreshGrid();
+
         getOnBackPressedDispatcher().addCallback(this, new OnBackPressedCallback(true) {
             @Override
             public void handleOnBackPressed() {
@@ -53,9 +58,15 @@ public class MainActivity extends AppCompatActivity {
 
     public void addBook(View v){
         Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
-        intent.setType("application/pdf");
         intent.addCategory(Intent.CATEGORY_OPENABLE);
-        startActivityForResult(intent,1001);
+        intent.setType("application/pdf");
+
+        intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+        intent.addFlags(Intent.FLAG_GRANT_WRITE_URI_PERMISSION);
+        intent.addFlags(Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION);
+        intent.addFlags(Intent.FLAG_GRANT_PREFIX_URI_PERMISSION);
+
+        startActivityForResult(intent, PICK_PDF_REQUEST);
     }
 
     public void openSettings(View v){
@@ -66,23 +77,30 @@ public class MainActivity extends AppCompatActivity {
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
 
-        if (requestCode == 1001 && resultCode == RESULT_OK && data != null) {
+        if (requestCode == PICK_PDF_REQUEST && resultCode == RESULT_OK && data != null) {
             Uri uri = data.getData();
+            if (uri == null) return;
 
-            // Persist permission so we can read it later
-            getContentResolver().takePersistableUriPermission(
-                    uri, Intent.FLAG_GRANT_READ_URI_PERMISSION
-            );
+            // persist permission
+            final int takeFlags = data.getFlags() &
+                    (Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_GRANT_WRITE_URI_PERMISSION);
+            try {
+                getContentResolver().takePersistableUriPermission(uri, takeFlags);
+            } catch (SecurityException e) {
+                Log.w("PDF", "Could not persist URI permission: " + e.getMessage());
+            }
 
-            list.add(getPdf(uri));
-            refreshGrid();
-            /*
-            Intent readerI = new Intent(this, ReaderActivity.class);
-            readerI.putExtra("uri",uri);
-            startActivity(readerI);
-             */
+            try {
+                Book b = getPdf(uri);
+                list.add(b);
+                BookStorage.saveBooks(this, list);
+                refreshGrid();
+            } catch (Exception e) {
+                Log.e("PDF", "Failed to load selected PDF: " + e.getMessage());
+            }
         }
     }
+
 
 
     @Override
@@ -106,9 +124,11 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void refreshGrid(){
+        Log.d("GRID", "Refreshing grid with " + list.size() + " books");
         pdfGrid.removeAllViews();
         for(Book b : list){
-            ItemView item = new ItemView(this,null,b);
+            Log.d("GRID", "Adding book: " + b.getTitle() + " | URI=" + b.getUri());
+            ItemView item = new ItemView(this, null, b);
             pdfGrid.addView(item);
         }
     }

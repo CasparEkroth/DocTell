@@ -5,32 +5,28 @@ import android.graphics.Bitmap;
 import android.graphics.pdf.PdfRenderer;
 import android.net.Uri;
 import android.os.ParcelFileDescriptor;
+import android.util.Log;
+
+import com.tom_roush.pdfbox.pdmodel.PDDocument;
+import com.tom_roush.pdfbox.rendering.PDFRenderer;
 
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.io.InputStream;
 import java.util.concurrent.locks.Condition;
 
 public class PdfPreviewHelper {
 
-    public static Bitmap renderFirstPageFromUri(Context context, Uri uri) throws IOException {
-        ParcelFileDescriptor fileDescriptor = context.getContentResolver().openFileDescriptor(uri, "r");
+    public static Bitmap renderFirstPageFromUri(Context ctx, Uri uri) {
+        try (InputStream in = ctx.getContentResolver().openInputStream(uri);
+             PDDocument doc = PDDocument.load(in)) {
 
-        if(fileDescriptor == null){
-            throw new IOException("Cannot open file descriptor for URI");
+            PDFRenderer renderer = new PDFRenderer(doc);
+            return renderer.renderImageWithDPI(0, 72);
+        } catch (Exception e) {
+            Log.e("PdfPreviewHelper", "Failed to render preview for " + uri + ": " + e.getMessage());
+            return null; // never crash here
         }
-        PdfRenderer renderer = new PdfRenderer(fileDescriptor);
-        PdfRenderer.Page page = renderer.openPage(0);
-
-        int width = (int)(page.getWidth() * 0.5);
-        int height = (int)(page.getHeight() * 0.5);
-
-        Bitmap bitmap = Bitmap.createBitmap(width,height,Bitmap.Config.ARGB_8888);
-        page.render(bitmap, null,null,PdfRenderer.Page.RENDER_MODE_FOR_DISPLAY);
-
-        page.close();
-        renderer.close();
-        fileDescriptor.close();
-
-        return bitmap;
     }
+
 }

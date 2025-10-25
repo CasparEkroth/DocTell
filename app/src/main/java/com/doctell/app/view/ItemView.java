@@ -5,6 +5,7 @@ import android.content.Context;
 import android.graphics.Bitmap;
 import android.net.Uri;
 import android.util.AttributeSet;
+import android.util.Log;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
@@ -18,27 +19,31 @@ import java.io.IOException;
 @SuppressLint("ViewConstructor")
 public class ItemView extends LinearLayout {
 
-    private ImageView icon;
-    private TextView title;
+    private ImageView imageView;
+    private TextView titleView;
 
     public ItemView(Context context, AttributeSet attrs, Book book) {
         super(context, attrs);
-        init(context, book);
-    }
-
-    private void init(Context context, Book book){
         inflate(context, R.layout.item_view, this);
-        icon = findViewById(R.id.pdfPreviewImage);
-        title = findViewById(R.id.title);
-        setTitle(book.getTitle());
-        setPdfPreview(context, book.getBitmap());
+
+        imageView = findViewById(R.id.pdfPreviewImage);
+        titleView = findViewById(R.id.title);
+
+        if (book.getBitmap() != null) {
+            imageView.setImageBitmap(book.getBitmap());
+        } else {
+            imageView.setImageResource(android.R.drawable.ic_menu_report_image);
+        }
+
+        titleView.setText(book.getTitle() != null ? book.getTitle() : "Unknown");
+        setOnClickListener(v -> Log.d("ItemView", "Clicked: " + book.getUri()));
     }
 
     public void setTitle(String text) {
-        title.setText(text);
+        titleView.setText(text);
     }
 
-    public void setPdfPreview(Context context, Bitmap bitmap) {
-        icon.setImageBitmap(bitmap);
+    public void setImageView(Context context, Bitmap bitmap) {
+        imageView.setImageBitmap(bitmap);
     }
 }
