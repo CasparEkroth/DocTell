@@ -2,4 +2,5 @@
     <string name="app_name">DocTell</string>
     <string name="add_book">Add Book</string>
     <string name="menu">Menu</string>
+    <string name="topLabel">DocTell</string>
 </resources>

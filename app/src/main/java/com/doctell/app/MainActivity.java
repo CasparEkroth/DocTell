@@ -5,6 +5,7 @@ import android.net.Uri;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
+import android.widget.GridLayout;
 
 import androidx.activity.EdgeToEdge;
 import androidx.activity.OnBackPressedCallback;
@@ -15,6 +16,8 @@ import androidx.core.view.WindowInsetsCompat;
 
 import com.doctell.app.model.Book;
 import com.doctell.app.model.BookStorage;
+import com.doctell.app.model.PdfPreviewHelper;
+import com.doctell.app.view.ItemView;
 import com.tom_roush.pdfbox.pdmodel.PDDocument;
 import com.tom_roush.pdfbox.pdmodel.PDDocumentInformation;
 
@@ -26,6 +29,7 @@ import java.util.List;
 public class MainActivity extends AppCompatActivity {
 
     private List<Book> list;
+    private GridLayout pdfGrid;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -36,7 +40,7 @@ public class MainActivity extends AppCompatActivity {
         com.tom_roush.pdfbox.android.PDFBoxResourceLoader.init(getApplicationContext());
         //load books
         list = BookStorage.loadBooks(this);
-
+        pdfGrid = findViewById(R.id.pdfGrid);
         getOnBackPressedDispatcher().addCallback(this, new OnBackPressedCallback(true) {
             @Override
             public void handleOnBackPressed() {
@@ -71,6 +75,7 @@ public class MainActivity extends AppCompatActivity {
             );
 
             list.add(getPdf(uri));
+            refreshGrid();
             /*
             Intent readerI = new Intent(this, ReaderActivity.class);
             readerI.putExtra("uri",uri);
@@ -79,6 +84,12 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        BookStorage.saveBooks(this, list);
+    }
     private Book getPdf(Uri uri){
         try(InputStream in = getContentResolver().openInputStream(uri)) {
             PDDocument document = PDDocument.load(in);
@@ -86,10 +97,19 @@ public class MainActivity extends AppCompatActivity {
             String s = info.getTitle();
             document.close();
 
-            return new Book(uri,s,1,1);
+            return new Book(uri,s,1,1,
+                    PdfPreviewHelper.renderFirstPageFromUri(this,uri));
 
         } catch (IOException e) {
             throw new RuntimeException(e);
+        }
+    }
+
+    private void refreshGrid(){
+        pdfGrid.removeAllViews();
+        for(Book b : list){
+            ItemView item = new ItemView(this,null,b);
+            pdfGrid.addView(item);
         }
     }
 
