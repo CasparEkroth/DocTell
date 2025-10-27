@@ -12,11 +12,15 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.DocTell">
         <activity
+            android:name=".ReaderActivity"
+            android:exported="false"
+            android:parentActivityName=".MainActivity"/>
+        <activity
             android:name=".MainActivity"
-            android:launchMode="singleTop"
             android:configChanges="orientation|screenSize"
+            android:exported="true"
             android:grantUriPermissions="true"
-            android:exported="true">
+            android:launchMode="singleTop">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 

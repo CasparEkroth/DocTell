@@ -9,6 +9,7 @@ import android.util.Log;
 
 import com.tom_roush.pdfbox.pdmodel.PDDocument;
 import com.tom_roush.pdfbox.rendering.PDFRenderer;
+import com.tom_roush.pdfbox.text.PDFTextStripper;
 
 import java.io.FileNotFoundException;
 import java.io.IOException;
@@ -28,5 +29,25 @@ public class PdfPreviewHelper {
             return null; // never crash here
         }
     }
+
+    public static String extractText(Context context, Uri uri, int pageIndex) {
+        try (InputStream in = context.getContentResolver().openInputStream(uri);
+             PDDocument document = PDDocument.load(in)) {
+
+            if (pageIndex < 0 || pageIndex >= document.getNumberOfPages())
+                return "";
+
+            PDFTextStripper stripper = new PDFTextStripper();
+            stripper.setStartPage(pageIndex + 1);
+            stripper.setEndPage(pageIndex + 1);
+
+            String text = stripper.getText(document);
+            return text != null ? text : "";
+
+        } catch (Exception e) {
+            return "";
+        }
+    }
+
 
 }

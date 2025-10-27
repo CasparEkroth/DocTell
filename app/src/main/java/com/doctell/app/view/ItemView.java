@@ -2,6 +2,7 @@ package com.doctell.app.view;
 
 import android.annotation.SuppressLint;
 import android.content.Context;
+import android.content.Intent;
 import android.graphics.Bitmap;
 import android.net.Uri;
 import android.util.AttributeSet;
@@ -11,6 +12,7 @@ import android.widget.LinearLayout;
 import android.widget.TextView;
 
 import com.doctell.app.R;
+import com.doctell.app.ReaderActivity;
 import com.doctell.app.model.Book;
 import com.doctell.app.model.PdfPreviewHelper;
 
@@ -29,6 +31,10 @@ public class ItemView extends LinearLayout {
         imageView = findViewById(R.id.pdfPreviewImage);
         titleView = findViewById(R.id.title);
 
+        setClickable(true);
+        setFocusable(true);
+        setBackgroundResource(android.R.drawable.list_selector_background);
+
         if (book.getBitmap() != null) {
             imageView.setImageBitmap(book.getBitmap());
         } else {
@@ -36,7 +42,20 @@ public class ItemView extends LinearLayout {
         }
 
         titleView.setText(book.getTitle() != null ? book.getTitle() : "Unknown");
-        setOnClickListener(v -> Log.d("ItemView", "Clicked: " + book.getUri()));
+
+        OnClickListener openReader = v -> {
+            Log.d("ItemView", "onClick -> opening ReaderActivity");
+            Intent i = new Intent(getContext(), ReaderActivity.class);
+            i.putExtra("uri", book.getUri().toString());
+
+            if (!(getContext() instanceof android.app.Activity)) {
+                i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            }
+            getContext().startActivity(i);
+        };
+
+        setOnClickListener(openReader);
+        imageView.setOnClickListener(openReader);
     }
 
     public void setTitle(String text) {

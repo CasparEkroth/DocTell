@@ -9,21 +9,23 @@
     tools:context=".MainActivity">
 
     <!-- Settings (Hamburger) Button -->
+
+    <!-- Central Container for Books -->
+
     <com.google.android.material.floatingactionbutton.FloatingActionButton
         android:id="@+id/btnMenu"
         android:layout_width="60dp"
         android:layout_height="54dp"
         android:layout_marginStart="16dp"
-        android:layout_marginTop="28dp"
+        android:layout_marginTop="40dp"
         android:background="?attr/selectableItemBackgroundBorderless"
         android:contentDescription="@string/menu"
+        android:onClick="openSettings"
         android:padding="12dp"
         android:src="@drawable/ic_settings"
-        android:onClick="openSettings"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent" />
 
-    <!-- Central Container for Books -->
     <FrameLayout
         android:id="@+id/bookContainer"
         android:layout_width="match_parent"
@@ -54,17 +56,19 @@
 
 
     <!-- Add Button -->
+
     <com.google.android.material.floatingactionbutton.FloatingActionButton
         android:id="@+id/btnAdd"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginBottom="24dp"
+        android:layout_marginBottom="36dp"
         android:contentDescription="@string/add_book"
-        android:src="@drawable/ic_add"
         android:onClick="addBook"
+        android:src="@drawable/ic_add"
         app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="0.498"
+        app:layout_constraintStart_toStartOf="parent"
         app:tint="@android:color/white"
         tools:ignore="MissingConstraints" />
 
@@ -79,6 +83,6 @@
         app:layout_constraintHorizontal_bias="0.352"
         app:layout_constraintStart_toEndOf="@+id/btnMenu"
         app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintVertical_bias="0.724" />
+        app:layout_constraintVertical_bias="0.571" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>
