@@ -30,6 +30,19 @@ public class PdfPreviewHelper {
         }
     }
 
+    public static Bitmap renderPage(int page, PDDocument pdf){
+        try {
+            PDFRenderer renderer = new PDFRenderer(pdf);
+
+            float scale = 2.0f; // 1.0 = screen resolution, higher = sharper
+            return renderer.renderImage(page,scale);
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            return null;
+        }
+    }
+
     public static String extractText(Context context, Uri uri, int pageIndex) {
         try (InputStream in = context.getContentResolver().openInputStream(uri);
              PDDocument document = PDDocument.load(in)) {

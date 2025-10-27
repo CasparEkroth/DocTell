@@ -4,15 +4,16 @@
     android:layout_height="match_parent">
 
     <!-- PDF Page -->
+
+    <!-- Loading spinner -->
     <ImageView
         android:id="@+id/pdfImage"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:adjustViewBounds="true"
-        android:scaleType="fitCenter"
-        android:background="#000000" />
+        android:background="#000000"
+        android:scaleType="fitCenter" />
 
-    <!-- Loading spinner -->
     <ProgressBar
         android:id="@+id/loadingBar"
         android:layout_width="48dp"
@@ -25,10 +26,11 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_gravity="bottom"
+        android:background="#AA000000"
+        android:gravity="center"
         android:orientation="horizontal"
         android:padding="16dp"
-        android:gravity="center"
-        android:background="#AA000000">
+        android:layout_marginBottom="30dp">
 
         <Button
             android:id="@+id/btnPrev"
@@ -40,9 +42,9 @@
             android:id="@+id/pageIndicator"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
+            android:padding="16dp"
             android:text="1/1"
-            android:textColor="#FFFFFF"
-            android:padding="16dp" />
+            android:textColor="#FFFFFF" />
 
         <Button
             android:id="@+id/btnNext"

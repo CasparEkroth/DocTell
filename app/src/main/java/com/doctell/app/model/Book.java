@@ -7,15 +7,15 @@ public class Book {
     private Uri uri;
     private Bitmap bitmap;
     private String title;
-    private int currentPage;
+    private int lastPage;
     private int sentence;
 
-    public Book(Uri uri, String title,int currentPage,int sentence, Bitmap bitmap){
+    public Book(Uri uri, String title,int lastPage,int sentence, Bitmap bitmap){
         if(uri == null) throw new IllegalArgumentException("uri can´t be null ");
         this.uri = uri;
         this.title = title;
         this.sentence = sentence;
-        this.currentPage = currentPage;
+        this.lastPage = lastPage;
         this.bitmap = bitmap;
     }
 
@@ -31,11 +31,9 @@ public class Book {
 
     public void setTitle(String title) {this.title = title;}
 
-    public int getCurrentPage() {return currentPage;}
+    public int getLastPage() { return lastPage; }
+    public void setLastPage(int page) { this.lastPage = page; }
 
-    public void setCurrentPage(int currentPage) {
-        this.currentPage = currentPage;
-    }
 
     public int getSentence() {
         return sentence;

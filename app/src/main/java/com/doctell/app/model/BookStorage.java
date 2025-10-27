@@ -19,6 +19,7 @@ public class BookStorage {
     private static final String PREFS_NAME = "MyAppPrefs";
     private static final String KEY_BOOK_LIST = "book_list";
 
+    public static List<Book> booksCache = new ArrayList<>();
     public static void saveBooks(Context ctx, List<Book> list) {
         SharedPreferences pref = ctx.getSharedPreferences("books", Context.MODE_PRIVATE);
         SharedPreferences.Editor editor = pref.edit();
@@ -54,7 +55,30 @@ public class BookStorage {
             }
         }
 
+        booksCache.clear();
+        booksCache.addAll(list);
+
         return list;
+    }
+
+    public static boolean updateBook(Book book, Context ctx){
+        List<Book> list = loadBooks(ctx);
+        for (Book b : list) {
+            if (b.getUri().equals(book.getUri())){
+                b.setBitmap(book.getBitmap());
+                b.setLastPage(book.getLastPage());
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public static Book findBookByUri(Context ctx, Uri uri) {
+        List<Book> list = loadBooks(ctx);
+        for (Book b : list) {
+            if (b.getUri().equals(uri)) return b;
+        }
+        return null;
     }
 
 }

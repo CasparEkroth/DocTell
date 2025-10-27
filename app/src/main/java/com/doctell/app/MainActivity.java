@@ -42,6 +42,7 @@ public class MainActivity extends AppCompatActivity {
         com.tom_roush.pdfbox.android.PDFBoxResourceLoader.init(getApplicationContext());
         //load books
         list = BookStorage.loadBooks(this);
+        BookStorage.booksCache = list;
         pdfGrid = findViewById(R.id.pdfGrid);
 
         refreshGrid();
@@ -93,6 +94,7 @@ public class MainActivity extends AppCompatActivity {
             try {
                 Book b = getPdf(uri);
                 list.add(b);
+                BookStorage.booksCache = list;
                 BookStorage.saveBooks(this, list);
                 refreshGrid();
             } catch (Exception e) {
