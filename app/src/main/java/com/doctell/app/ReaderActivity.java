@@ -103,9 +103,11 @@ public class ReaderActivity extends AppCompatActivity {
         pdfImage.setImageBitmap(bmp);
 
         pageIndicator.setText((page + 1) + " / " + totalPages);
+
         currentBook.setLastPage(currentPage);
+        currentBook.setSentence(0);
         BookStorage.updateBook(currentBook,this);
-        BookStorage.saveBooks(this, BookStorage.booksCache);
+
 
         loadingBar.setVisibility(ProgressBar.GONE);
 
@@ -191,4 +193,5 @@ public class ReaderActivity extends AppCompatActivity {
             return false;
         }
     }
+
 }

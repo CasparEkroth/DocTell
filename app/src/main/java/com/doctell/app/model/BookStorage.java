@@ -6,11 +6,9 @@ import android.net.Uri;
 import android.util.Log;
 
 import com.google.gson.Gson;
-import com.google.gson.reflect.TypeToken;
 
 import java.io.FileNotFoundException;
 import java.io.IOException;
-import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
@@ -20,34 +18,48 @@ public class BookStorage {
     private static final String KEY_BOOK_LIST = "book_list";
 
     public static List<Book> booksCache = new ArrayList<>();
-    public static void saveBooks(Context ctx, List<Book> list) {
+    private static void saveBooks(Context ctx, List<Book> list) {
         SharedPreferences pref = ctx.getSharedPreferences("books", Context.MODE_PRIVATE);
         SharedPreferences.Editor editor = pref.edit();
+
         editor.putInt("size", list.size());
         for (int i = 0; i < list.size(); i++) {
             Book b = list.get(i);
             editor.putString("uri_" + i, b.getUri().toString());
             editor.putString("title_" + i, b.getTitle());
+            editor.putInt("lastPage_" + i, b.getLastPage());
+            editor.putInt("sentence_" + i, b.getSentence());
         }
         editor.apply();
     }
 
+
     public static List<Book> loadBooks(Context ctx) {
-        List<Book> list = new ArrayList<>();
         SharedPreferences pref = ctx.getSharedPreferences("books", Context.MODE_PRIVATE);
         int size = pref.getInt("size", 0);
 
+        List<Book> list = new ArrayList<>(size);
         for (int i = 0; i < size; i++) {
             String uriString = pref.getString("uri_" + i, null);
             String title = pref.getString("title_" + i, null);
             if (uriString == null) continue;
 
             Uri uri = Uri.parse(uriString);
+
             try {
-                // verify permission before adding
                 Objects.requireNonNull(ctx.getContentResolver().openInputStream(uri)).close();
-                list.add(new Book(uri, title, 1, 1,
-                        PdfPreviewHelper.renderFirstPageFromUri(ctx, uri)));
+
+                int lastPage = pref.getInt("lastPage_" + i, 0);// default 0
+                int sentence = pref.getInt("sentence_" + i, 0);
+
+                Book b = new Book(
+                        uri,
+                        title,
+                        lastPage,
+                        sentence,
+                        PdfPreviewHelper.renderFirstPageFromUri(ctx, uri)
+                );
+                list.add(b);
             } catch (SecurityException | FileNotFoundException e) {
                 Log.w("BookStorage", "Skipping invalid or revoked URI: " + uri);
             } catch (IOException e) {
@@ -57,21 +69,24 @@ public class BookStorage {
 
         booksCache.clear();
         booksCache.addAll(list);
-
         return list;
     }
 
-    public static boolean updateBook(Book book, Context ctx){
-        List<Book> list = loadBooks(ctx);
-        for (Book b : list) {
-            if (b.getUri().equals(book.getUri())){
-                b.setBitmap(book.getBitmap());
-                b.setLastPage(book.getLastPage());
+
+    public static boolean updateBook(Book updated, Context ctx) {
+        for (int i = 0; i < booksCache.size(); i++) {
+            Book b = booksCache.get(i);
+            if (b.getUri().equals(updated.getUri())) {
+                b.setLastPage(updated.getLastPage());
+                b.setSentence(updated.getSentence());
+                // persist current cache
+                saveBooks(ctx, booksCache);
                 return true;
             }
         }
         return false;
     }
+
 
     public static Book findBookByUri(Context ctx, Uri uri) {
         List<Book> list = loadBooks(ctx);

@@ -9,11 +9,7 @@ import android.widget.GridLayout;
 
 import androidx.activity.EdgeToEdge;
 import androidx.activity.OnBackPressedCallback;
-import androidx.annotation.IntDef;
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.core.graphics.Insets;
-import androidx.core.view.ViewCompat;
-import androidx.core.view.WindowInsetsCompat;
 
 import com.doctell.app.model.Book;
 import com.doctell.app.model.BookStorage;
@@ -22,15 +18,12 @@ import com.doctell.app.view.ItemView;
 import com.tom_roush.pdfbox.pdmodel.PDDocument;
 import com.tom_roush.pdfbox.pdmodel.PDDocumentInformation;
 
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
-import java.util.List;
 
 public class MainActivity extends AppCompatActivity {
 
     private static final int PICK_PDF_REQUEST = 1001;
-    private List<Book> list;
     private GridLayout pdfGrid;
 
     @Override
@@ -41,8 +34,8 @@ public class MainActivity extends AppCompatActivity {
         //init pdfbox
         com.tom_roush.pdfbox.android.PDFBoxResourceLoader.init(getApplicationContext());
         //load books
-        list = BookStorage.loadBooks(this);
-        BookStorage.booksCache = list;
+        BookStorage.booksCache = BookStorage.loadBooks(this);
+
         pdfGrid = findViewById(R.id.pdfGrid);
 
         refreshGrid();
@@ -50,7 +43,7 @@ public class MainActivity extends AppCompatActivity {
         getOnBackPressedDispatcher().addCallback(this, new OnBackPressedCallback(true) {
             @Override
             public void handleOnBackPressed() {
-                BookStorage.saveBooks(MainActivity.this, list);
+                //BookStorage.updateBook(MainActivity.this, BookStorage.booksCache);
                 Log.d("SAVE", "Books saved on back press");
                 finish();
             }
@@ -93,9 +86,8 @@ public class MainActivity extends AppCompatActivity {
 
             try {
                 Book b = getPdf(uri);
-                list.add(b);
-                BookStorage.booksCache = list;
-                BookStorage.saveBooks(this, list);
+                BookStorage.booksCache.add(b);
+                BookStorage.updateBook(b,this);
                 refreshGrid();
             } catch (Exception e) {
                 Log.e("PDF", "Failed to load selected PDF: " + e.getMessage());
@@ -104,12 +96,13 @@ public class MainActivity extends AppCompatActivity {
     }
 
 
-
     @Override
-    protected void onPause() {
-        super.onPause();
-        BookStorage.saveBooks(this, list);
+    protected void onResume() {
+        super.onResume();
+        BookStorage.loadBooks(this);
+        refreshGrid();
     }
+
     private Book getPdf(Uri uri){
         try(InputStream in = getContentResolver().openInputStream(uri)) {
             PDDocument document = PDDocument.load(in);
@@ -126,9 +119,9 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void refreshGrid(){
-        Log.d("GRID", "Refreshing grid with " + list.size() + " books");
+        Log.d("GRID", "Refreshing grid with " + BookStorage.booksCache.size() + " books");
         pdfGrid.removeAllViews();
-        for(Book b : list){
+        for(Book b : BookStorage.booksCache){
             Log.d("GRID", "Adding book: " + b.getTitle() + " | URI=" + b.getUri());
             ItemView item = new ItemView(this, null, b);
             pdfGrid.addView(item);
