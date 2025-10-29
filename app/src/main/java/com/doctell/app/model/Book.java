@@ -43,4 +43,16 @@ public class Book {
         this.sentence = sentence;
     }
 
+    @Override public boolean equals(Object o) {
+        if (this == o) return true;
+        if (!(o instanceof Book)) return false;
+        Book other = (Book) o;
+        return this.getUri() != null && this.getUri().equals(other.getUri());
+    }
+
+    @Override public int hashCode() {
+        return getUri() != null ? getUri().hashCode() : 0;
+    }
+
+
 }

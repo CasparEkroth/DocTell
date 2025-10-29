@@ -86,9 +86,12 @@ public class MainActivity extends AppCompatActivity {
 
             try {
                 Book b = getPdf(uri);
-                BookStorage.booksCache.add(b);
-                BookStorage.updateBook(b,this);
-                refreshGrid();
+                if(BookStorage.findBookByUri(this,uri) == null){
+                    BookStorage.booksCache.add(b);
+                    BookStorage.updateBook(b,this);
+                    refreshGrid();
+                }
+
             } catch (Exception e) {
                 Log.e("PDF", "Failed to load selected PDF: " + e.getMessage());
             }

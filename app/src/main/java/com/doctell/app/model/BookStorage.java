@@ -87,6 +87,17 @@ public class BookStorage {
         return false;
     }
 
+    public static boolean delete(Context ctx, Book target) {
+        for (int i = 0; i < booksCache.size(); i++) {
+            Book b = booksCache.get(i);
+            if (b.equals(target)) {
+                booksCache.remove(i);
+                saveBooks(ctx, booksCache);
+                return true;
+            }
+        }
+        return false;
+    }
 
     public static Book findBookByUri(Context ctx, Uri uri) {
         List<Book> list = loadBooks(ctx);
