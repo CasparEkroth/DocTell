@@ -14,6 +14,9 @@ import android.view.LayoutInflater;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.inputmethod.InputMethodManager;
+import android.widget.Button;
+import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.PopupWindow;
@@ -86,7 +89,10 @@ public class ItemView extends LinearLayout {
 
             content.findViewById(R.id.btnClose).setOnClickListener(b -> popup.dismiss());
 
-            content.findViewById(R.id.btnOpen).setOnClickListener(b -> openPdf(book));
+            content.findViewById(R.id.btnOpen).setOnClickListener(b -> {
+                openPdf(book);
+                popup.dismiss();
+            });
 
             content.findViewById(R.id.btnDelete).setOnClickListener(b -> {
                 boolean removed = BookStorage.delete(ctx,book);
@@ -99,9 +105,47 @@ public class ItemView extends LinearLayout {
                 }
             });
 
-            content.findViewById(R.id.btnRename).setOnClickListener( b ->{
-                // to comme
+            content.findViewById(R.id.btnRename).setOnClickListener(b -> {
+                // close the actions popup
+                popup.dismiss();
+                View editContent = inflater.inflate(R.layout.activity_rename, null, false);
+                final PopupWindow renamePopup = new PopupWindow(
+                        editContent,
+                        ViewGroup.LayoutParams.WRAP_CONTENT,
+                        ViewGroup.LayoutParams.WRAP_CONTENT,
+                        true
+                );
+                renamePopup.setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
+                renamePopup.setOutsideTouchable(true);
+
+                // wire fields
+                EditText etName = editContent.findViewById(R.id.etName);
+                Button btnCancel = editContent.findViewById(R.id.btnCancel);
+                Button btnSave = editContent.findViewById(R.id.btnSave);
+
+                String cur = book.getTitle() != null ? book.getTitle() : "";
+                etName.setText(cur);
+                etName.setSelection(cur.length());
+
+                btnCancel.setOnClickListener(v2 -> renamePopup.dismiss());
+                btnSave.setOnClickListener(v2 -> {
+                    String newTitle = etName.getText().toString().trim();
+                    if (newTitle.isEmpty()) {
+                        etName.setError("Enter a title");
+                        return;
+                    }
+                    book.setTitle(newTitle);
+                    BookStorage.updateBook(book, getContext());
+                    setTitle(newTitle);
+
+                    renamePopup.dismiss();
+                });
+
+                renamePopup.showAtLocation(this, Gravity.CENTER, 0, 0);
+
+
             });
+
 
             popup.showAtLocation(v, Gravity.CENTER, 0, 0);
             return true;
