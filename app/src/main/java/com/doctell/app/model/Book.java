@@ -5,40 +5,44 @@ import android.net.Uri;
 
 public class Book {
     private Uri uri;
-    private Bitmap bitmap;
     private String title;
     private int lastPage;
     private int sentence;
+    private String localPath;
+    private String thumbnailPath;
 
-    public Book(Uri uri, String title,int lastPage,int sentence, Bitmap bitmap){
+    public Book(Uri uri, String title,int lastPage,int sentence, String thumbnailPath, String localPath){
         if(uri == null) throw new IllegalArgumentException("uri can´t be null ");
         this.uri = uri;
         this.title = title;
         this.sentence = sentence;
         this.lastPage = lastPage;
-        this.bitmap = bitmap;
+        this.thumbnailPath = thumbnailPath;
+        this.localPath = localPath;
     }
 
     public Uri getUri() {return uri;}
 
     public void setUri(Uri uri) {this.uri = uri;}
 
-    public Bitmap getBitmap(){return bitmap;}
+    public String getThumbnailPath() {
+        return thumbnailPath;
+    }
 
-    public void setBitmap(Bitmap bitmap){this.bitmap = bitmap;}
+    public void setThumbnailPath(String thumbnailPath) {
+        this.thumbnailPath = thumbnailPath;
+    }
+
+    public String getLocalPath() { return localPath; }
+    public void setLocalPath(String p) { this.localPath = p; }
 
     public String getTitle() {return title;}
-
     public void setTitle(String title) {this.title = title;}
-
     public int getLastPage() { return lastPage; }
     public void setLastPage(int page) { this.lastPage = page; }
-
-
     public int getSentence() {
         return sentence;
     }
-
     public void setSentence(int sentence) {
         this.sentence = sentence;
     }

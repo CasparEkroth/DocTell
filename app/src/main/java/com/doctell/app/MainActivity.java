@@ -1,11 +1,18 @@
 package com.doctell.app;
 
 import android.content.Intent;
+import android.graphics.Bitmap;
+import android.graphics.pdf.PdfRenderer;
 import android.net.Uri;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
+import android.os.ParcelFileDescriptor;
+import android.util.DisplayMetrics;
 import android.util.Log;
 import android.view.View;
 import android.widget.GridLayout;
+import android.widget.Toast;
 
 import androidx.activity.EdgeToEdge;
 import androidx.activity.OnBackPressedCallback;
@@ -15,16 +22,21 @@ import com.doctell.app.model.Book;
 import com.doctell.app.model.BookStorage;
 import com.doctell.app.model.PdfPreviewHelper;
 import com.doctell.app.view.ItemView;
+import com.tom_roush.pdfbox.io.MemoryUsageSetting;
 import com.tom_roush.pdfbox.pdmodel.PDDocument;
 import com.tom_roush.pdfbox.pdmodel.PDDocumentInformation;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 public class MainActivity extends AppCompatActivity {
 
     private static final int PICK_PDF_REQUEST = 1001;
     private GridLayout pdfGrid;
+    private final ExecutorService exec = Executors.newSingleThreadExecutor();
+    private final Handler main = new Handler(Looper.getMainLooper());
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -35,18 +47,12 @@ public class MainActivity extends AppCompatActivity {
         com.tom_roush.pdfbox.android.PDFBoxResourceLoader.init(getApplicationContext());
         //load books
         BookStorage.booksCache = BookStorage.loadBooks(this);
-
         pdfGrid = findViewById(R.id.pdfGrid);
 
         refreshGrid();
 
         getOnBackPressedDispatcher().addCallback(this, new OnBackPressedCallback(true) {
-            @Override
-            public void handleOnBackPressed() {
-                //BookStorage.updateBook(MainActivity.this, BookStorage.booksCache);
-                Log.d("SAVE", "Books saved on back press");
-                finish();
-            }
+            @Override public void handleOnBackPressed() {finish();}
         });
     }
 
@@ -64,7 +70,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     public void openSettings(View v){
-
+        // coming
     }
 
     @Override
@@ -83,18 +89,32 @@ public class MainActivity extends AppCompatActivity {
             } catch (SecurityException e) {
                 Log.w("PDF", "Could not persist URI permission: " + e.getMessage());
             }
+            
+            exec.execute(() -> {
+                try {
+                    String title = safeTitleFromPdfOrName(uri);
+                    String localPath = PdfPreviewHelper.ensureLocalCopy(this,uri);
+                    int screenW = getResources().getDisplayMetrics().widthPixels;
+                    int thumbW = Math.min(screenW / 2, 480);
 
-            try {
-                Book b = getPdf(uri);
-                if(BookStorage.findBookByUri(this,uri) == null){
-                    BookStorage.booksCache.add(b);
-                    BookStorage.updateBook(b,this);
-                    refreshGrid();
+                    String thumbPath = PdfPreviewHelper.ensureThumb(this, uri, thumbW);
+
+                    Book b = new Book(uri, title, 0, 0, thumbPath,localPath);
+                    if (BookStorage.findBookByUri(this, uri) == null) {
+                        BookStorage.booksCache.add(b);
+                        BookStorage.updateBook(b, this);
+                    }
+                    main.post(this::refreshGrid);
+
+                } catch (Exception e) {
+                    Log.e("PDF", "Import failed", e);
+                    // show a toast on main
+                    main.post(() -> {
+                        // findViewById(R.id.importOverlay).setVisibility(View.GONE);
+                        Toast.makeText(this, "Import failed: " + e.getMessage(), Toast.LENGTH_LONG).show();
+                    });
                 }
-
-            } catch (Exception e) {
-                Log.e("PDF", "Failed to load selected PDF: " + e.getMessage());
-            }
+            });
         }
     }
 
@@ -106,19 +126,20 @@ public class MainActivity extends AppCompatActivity {
         refreshGrid();
     }
 
-    private Book getPdf(Uri uri){
-        try(InputStream in = getContentResolver().openInputStream(uri)) {
-            PDDocument document = PDDocument.load(in);
-            PDDocumentInformation info = document.getDocumentInformation();
-            String s = info.getTitle();
-            document.close();
+    private String safeTitleFromPdfOrName(Uri uri) {
+        try (InputStream in = getContentResolver().openInputStream(uri);
+             PDDocument doc = PDDocument.load(in, MemoryUsageSetting.setupTempFileOnly())) {
 
-            return new Book(uri,s,1,1,
-                    PdfPreviewHelper.renderFirstPageFromUri(this,uri));
-
+            PDDocumentInformation info = doc.getDocumentInformation();
+            if (info != null) {
+                String t = info.getTitle();
+                if (t != null && !t.trim().isEmpty()) return t.trim();
+            }
         } catch (IOException e) {
-            throw new RuntimeException(e);
+            Log.w("PDF", "Could not read title from PDF metadata: " + e.getMessage());
         }
+
+        return "Untitled";
     }
 
     private void refreshGrid(){
@@ -129,6 +150,13 @@ public class MainActivity extends AppCompatActivity {
             ItemView item = new ItemView(this, null, b);
             pdfGrid.addView(item);
         }
+    }
+
+    @Override
+    protected void onDestroy() {
+        try {
+        } catch (Exception ignored) {}
+        super.onDestroy();
     }
 
 }

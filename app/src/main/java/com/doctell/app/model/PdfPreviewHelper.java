@@ -1,65 +1,116 @@
 package com.doctell.app.model;
 
+
 import android.content.Context;
 import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.graphics.pdf.PdfRenderer;
 import android.net.Uri;
 import android.os.ParcelFileDescriptor;
+import android.util.DisplayMetrics;
 import android.util.Log;
 
 import com.tom_roush.pdfbox.pdmodel.PDDocument;
 import com.tom_roush.pdfbox.rendering.PDFRenderer;
 import com.tom_roush.pdfbox.text.PDFTextStripper;
 
-import java.io.FileNotFoundException;
+import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.util.concurrent.locks.Condition;
+import java.io.OutputStream;
+import java.security.MessageDigest;
 
 public class PdfPreviewHelper {
 
-    public static Bitmap renderFirstPageFromUri(Context ctx, Uri uri) {
-        try (InputStream in = ctx.getContentResolver().openInputStream(uri);
-             PDDocument doc = PDDocument.load(in)) {
+    public static Bitmap renderOnePage(PdfRenderer renderer, int index, DisplayMetrics dm, int targetWidthPx){
+        try(PdfRenderer.Page page = renderer.openPage(index)){
+            if(targetWidthPx <= 0){
+                targetWidthPx = Math.min(dm.widthPixels,1200);
+            }
+            int w = targetWidthPx;
+            int h = (int) (w * (float)page.getHeight() / page.getWidth());
 
-            PDFRenderer renderer = new PDFRenderer(doc);
-            return renderer.renderImageWithDPI(0, 72);
-        } catch (Exception e) {
-            Log.e("PdfPreviewHelper", "Failed to render preview for " + uri + ": " + e.getMessage());
-            return null; // never crash here
+            Bitmap bmp = Bitmap.createBitmap(w,h,Bitmap.Config.ARGB_8888);
+            page.render(bmp,null,null,PdfRenderer.Page.RENDER_MODE_FOR_DISPLAY);
+            return bmp;
         }
     }
 
-    public static Bitmap renderPage(int page, PDDocument pdf){
+    public static String extractOnePageText(PDDocument doc, int index) throws IOException{
+        PDFTextStripper stripper = new PDFTextStripper();
+        int base = index + 1;
+        stripper.setStartPage(base);
+        stripper.setEndPage(base);
+        stripper.setSortByPosition(true);
+
+        String text = stripper.getText(doc);
+        return text != null ? text.trim() : "";
+    }
+
+    public static String thumbPathFor(Context ctx, Uri uri) {
+        File dir = new File(ctx.getCacheDir(), "thumbs");
+        if (!dir.exists()) dir.mkdirs();
+        String name = sha1(uri.toString()) + ".png";
+        return new File(dir, name).getAbsolutePath();
+    }
+
+    public static String ensureThumb(Context ctx, Uri uri, int targetWidthPx) throws IOException {
+        String path = thumbPathFor(ctx, uri);
+        File f = new File(path);
+        if (f.exists() && f.length() > 0) return path;
+
+        try (ParcelFileDescriptor pfd = ctx.getContentResolver().openFileDescriptor(uri, "r");
+             PdfRenderer renderer = new PdfRenderer(pfd);
+             PdfRenderer.Page page = renderer.openPage(0)) {
+
+            int w = Math.max(160, Math.min(targetWidthPx, 480));
+            int h = (int) (w * (float) page.getHeight() / page.getWidth());
+            Bitmap bmp = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888);
+            page.render(bmp, null, null, PdfRenderer.Page.RENDER_MODE_FOR_DISPLAY);
+
+            try (FileOutputStream out = new FileOutputStream(f)) {
+                bmp.compress(Bitmap.CompressFormat.PNG, 100, out);
+            }
+            bmp.recycle();
+        }
+        return path;
+    }
+
+    public static Bitmap loadThumbBitmap(String path) {
+        if (path == null) return null;
+        BitmapFactory.Options opts = new BitmapFactory.Options();
+        opts.inPreferredConfig = Bitmap.Config.RGB_565;
+        opts.inDither = true;
+        return BitmapFactory.decodeFile(path, opts);
+    }
+
+    private static String sha1(String s) {
         try {
-            PDFRenderer renderer = new PDFRenderer(pdf);
-
-            float scale = 2.0f; // 1.0 = screen resolution, higher = sharper
-            return renderer.renderImage(page,scale);
-
+            MessageDigest md = MessageDigest.getInstance("SHA-1");
+            byte[] b = md.digest(s.getBytes("UTF-8"));
+            StringBuilder sb = new StringBuilder();
+            for (byte x : b) sb.append(String.format("%02x", x));
+            return sb.toString();
         } catch (Exception e) {
-            e.printStackTrace();
-            return null;
+            return Integer.toHexString(s.hashCode());
         }
     }
 
-    public static String extractText(Context context, Uri uri, int pageIndex) {
-        try (InputStream in = context.getContentResolver().openInputStream(uri);
-             PDDocument document = PDDocument.load(in)) {
+    public static String ensureLocalCopy(Context ctx, Uri uri) throws IOException {
+        File dir = new File(ctx.getFilesDir(), "docs");
+        if (!dir.exists()) dir.mkdirs();
+        String name = sha1(uri.toString()) + ".pdf";
+        File out = new File(dir, name);
+        if (out.exists() && out.length() > 0) return out.getAbsolutePath();
 
-            if (pageIndex < 0 || pageIndex >= document.getNumberOfPages())
-                return "";
-
-            PDFTextStripper stripper = new PDFTextStripper();
-            stripper.setStartPage(pageIndex + 1);
-            stripper.setEndPage(pageIndex + 1);
-
-            String text = stripper.getText(document);
-            return text != null ? text : "";
-
-        } catch (Exception e) {
-            return "";
+        try (InputStream in = ctx.getContentResolver().openInputStream(uri);
+             OutputStream os = new FileOutputStream(out)) {
+            byte[] buf = new byte[8192];
+            int n;
+            while ((n = in.read(buf)) != -1) os.write(buf, 0, n);
         }
+        return out.getAbsolutePath();
     }
 
 

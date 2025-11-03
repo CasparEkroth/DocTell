@@ -3,12 +3,17 @@ package com.doctell.app;
 import android.annotation.SuppressLint;
 import android.content.Intent;
 import android.graphics.Bitmap;
+import android.graphics.pdf.PdfRenderer;
 import android.net.Uri;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
+import android.os.ParcelFileDescriptor;
 import android.speech.tts.TextToSpeech;
 import android.util.Log;
 import android.view.GestureDetector;
 import android.view.MotionEvent;
+import android.view.View;
 import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.ProgressBar;
@@ -16,15 +21,22 @@ import android.widget.TextView;
 
 import androidx.appcompat.app.AppCompatActivity;
 import android.speech.tts.UtteranceProgressListener;
+import android.widget.Toast;
 
 import com.doctell.app.model.Book;
 import com.doctell.app.model.BookStorage;
 import com.doctell.app.model.PdfPreviewHelper;
+import com.tom_roush.pdfbox.io.MemoryUsageSetting;
 import com.tom_roush.pdfbox.pdmodel.PDDocument;
 import com.tom_roush.pdfbox.text.PDFTextStripper;
 
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.IOException;
 import java.io.InputStream;
 import java.util.Locale;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 public class ReaderActivity extends AppCompatActivity {
 
@@ -33,13 +45,17 @@ public class ReaderActivity extends AppCompatActivity {
     private Button btnNext, btnPrev, btnTTS;
     private TextView pageIndicator;
 
-    private PDDocument pdf;
+    private ExecutorService exec;
+    private Handler main;
+    private ParcelFileDescriptor pfd;
     private int currentPage = 0;
     private int totalPages;
     private TextToSpeech tts;
     private boolean isSpeaking = false;
     private Book currentBook;
-    private GestureDetector gestureDetector;
+    private PdfRenderer renderer;
+    private String bookLocalPath;
+    private UtteranceProgressListener autoTts;
 
     @SuppressLint("ClickableViewAccessibility")
     @Override
@@ -53,36 +69,96 @@ public class ReaderActivity extends AppCompatActivity {
         btnNext = findViewById(R.id.btnNext);
         btnTTS = findViewById(R.id.btnTTS);
         pageIndicator = findViewById(R.id.pageIndicator);
+        loadingBar   = findViewById(R.id.loadingBar);
+
+
+        exec = Executors.newSingleThreadExecutor();
+        main = new Handler(Looper.getMainLooper());
+
 
         // Load Book from MainActivity
         String uriString = getIntent().getStringExtra("uri");
         Uri uri = Uri.parse(uriString);
         currentBook = BookStorage.findBookByUri(this, uri);
+        assert currentBook != null;
+        bookLocalPath = currentBook.getLocalPath();
+        try {
+            ParcelFileDescriptor pfd = getContentResolver().openFileDescriptor(uri,"r");
+            assert pfd != null;
+            renderer = new PdfRenderer(pfd);
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
 
-        loadPdf(uri);
+        //loadPdf(uri);
+
+        autoTts = new UtteranceProgressListener() {
+            @Override
+            public void onStart(String utteranceId) {
+                // TTS started
+            }
+
+            @Override
+            public void onDone(String utteranceId) {
+                runOnUiThread(() -> {
+                    // Auto-next page when finished
+                    if (isSpeaking) {
+                        showNextPage();
+                    }
+                });
+            }
+            @Override
+            public void onError(String utteranceId) {
+                Log.e("TTS", "Error speaking!");
+            }
+        };
 
         btnNext.setOnClickListener(v -> showNextPage());
         btnPrev.setOnClickListener(v -> showPrevPage());
 
         btnTTS.setOnClickListener(v -> toggleTTS());
 
-        gestureDetector = new GestureDetector(this, new SwipeGestureListener());
-        pdfImage.setOnTouchListener((v, event) -> gestureDetector.onTouchEvent(event));
+        showLoading(true);
+        openRendererAsync();
+
     }
 
-    private void loadPdf(Uri uri) {
-        try {
-            InputStream is = getContentResolver().openInputStream(uri);
-            pdf = PDDocument.load(is);
-            totalPages = pdf.getNumberOfPages();
+    private void openRendererAsync(){
+        exec.execute(() ->{
+            try {
+                File file = new File(bookLocalPath);
+                pfd = ParcelFileDescriptor.open(file, ParcelFileDescriptor.MODE_READ_ONLY);
+                renderer = new PdfRenderer(pfd);
+                currentPage = currentBook.getLastPage();
+                if (currentPage >= totalPages) currentPage = Math.max(0, totalPages - 1);
 
-            currentPage = currentBook.getLastPage();
-            showPage(currentPage);
+                Bitmap bmp = PdfPreviewHelper.renderOnePage(
+                        renderer,
+                        currentPage,
+                        getResources().getDisplayMetrics(),
+                        pdfImage.getWidth()
+                );
 
-            setupTTS();
-        } catch (Exception e) {
-            Log.e("PDF", "Failed to open", e);
-        }
+                main.post(() -> {
+                    pdfImage.setImageBitmap(bmp);
+                    //updatePageLabel();
+                    showLoading(false);
+                    showPage(currentPage);
+                    setupTTS();
+                });
+
+            } catch (IOException e) {
+                main.post(() -> {
+                    showLoading(false);
+                    Toast.makeText(this, "Failed to open PDF", Toast.LENGTH_LONG).show();
+                    finish();
+                });
+            }
+        });
+    }
+
+    private void showLoading(boolean on) {
+        if (loadingBar != null) loadingBar.setVisibility(on ? View.VISIBLE : View.GONE);
     }
 
     private void showNextPage() {
@@ -99,7 +175,12 @@ public class ReaderActivity extends AppCompatActivity {
 
         loadingBar.setVisibility(ProgressBar.VISIBLE);
 
-        Bitmap bmp = PdfPreviewHelper.renderPage(currentPage, pdf);
+        Bitmap bmp = PdfPreviewHelper.renderOnePage(
+                renderer,
+                currentPage,
+                pdfImage.getResources().getDisplayMetrics(),
+                pdfImage.getWidth());
+
         pdfImage.setImageBitmap(bmp);
 
         pageIndicator.setText((page + 1) + " / " + totalPages);
@@ -133,41 +214,39 @@ public class ReaderActivity extends AppCompatActivity {
     }
 
     private void speakPage() {
-        try {
-            PDFTextStripper stripper = new PDFTextStripper();
-            stripper.setStartPage(currentPage + 1);
-            stripper.setEndPage(currentPage + 1);
+        showLoading(true);
+        exec.execute(() -> {
+            try(PDDocument doc = PDDocument.load(new File(bookLocalPath), MemoryUsageSetting.setupTempFileOnly())) {
+                PDFTextStripper stripper = new PDFTextStripper();
+                stripper.setStartPage(currentPage + 1);
+                stripper.setEndPage(currentPage + 1);
 
-            String text = stripper.getText(pdf);
-            isSpeaking = true;
-            btnTTS.setText("Pause");
+                String text = stripper.getText(doc);
+                main.post(() -> {
+                    showLoading(false);
+                    if (text == null || text.trim().isEmpty()) {
+                        Toast.makeText(this, "No searchable text on this page (scan?).", Toast.LENGTH_SHORT).show();
+                        // Here you could fall back to OCR on the current bitmap if you like.
+                    } else {
+                        isSpeaking = true;
+                        btnTTS.setText("Pause");
+                        tts.speak(text, TextToSpeech.QUEUE_FLUSH, null, "TTS_PAGE");
+                        tts.setOnUtteranceProgressListener(autoTts);
+                        Toast.makeText(this, "Text extracted (" + Math.min(text.length(), 60) + " chars…)", Toast.LENGTH_SHORT).show();
+                    }
+                });
 
-            tts.speak(text, TextToSpeech.QUEUE_FLUSH, null, "TTS_PAGE");
+            } catch (Exception e) { e.printStackTrace(); }
+        });
 
-            tts.setOnUtteranceProgressListener(new UtteranceProgressListener() {
-                @Override
-                public void onStart(String utteranceId) {
-                    // TTS started
-                }
-
-                @Override
-                public void onDone(String utteranceId) {
-                    runOnUiThread(() -> {
-                        // Auto-next page when finished
-                        if (isSpeaking) {
-                            showNextPage();
-                        }
-                    });
-                }
-
-                @Override
-                public void onError(String utteranceId) {
-                    Log.e("TTS", "Error speaking!");
-                }
-            });
+    }
 
 
-        } catch (Exception e) { e.printStackTrace(); }
+    private void closeRenderer() {
+        try { if (renderer != null) renderer.close(); } catch (Exception ignored) {}
+        try { if (pfd != null) pfd.close(); } catch (Exception ignored) {}
+        renderer = null;
+        pfd = null;
     }
 
     @Override
@@ -176,22 +255,11 @@ public class ReaderActivity extends AppCompatActivity {
             tts.stop();
             tts.shutdown();
         }
-        try { pdf.close(); } catch (Exception ignored) {}
+        try {
+           closeRenderer();
+        } catch (Exception ignored) {}
+        if (exec != null) exec.shutdownNow();
         super.onDestroy();
-    }
-
-    private class SwipeGestureListener extends GestureDetector.SimpleOnGestureListener {
-        private static final int SWIPE_THRESHOLD = 100;
-        @Override
-        public boolean onFling(MotionEvent e1, MotionEvent e2, float vx, float vy) {
-            float diffX = e2.getX() - e1.getX();
-            if (Math.abs(diffX) > SWIPE_THRESHOLD) {
-                if (diffX < 0) showNextPage();
-                else showPrevPage();
-                return true;
-            }
-            return false;
-        }
     }
 
 }

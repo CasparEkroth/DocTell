@@ -29,6 +29,9 @@ public class BookStorage {
             editor.putString("title_" + i, b.getTitle());
             editor.putInt("lastPage_" + i, b.getLastPage());
             editor.putInt("sentence_" + i, b.getSentence());
+
+            editor.putString("thumb_" + i, b.getThumbnailPath());
+            editor.putString("local_" + i, b.getLocalPath());
         }
         editor.apply();
     }
@@ -51,13 +54,15 @@ public class BookStorage {
 
                 int lastPage = pref.getInt("lastPage_" + i, 0);// default 0
                 int sentence = pref.getInt("sentence_" + i, 0);
-
+                String thumbPath = pref.getString("thumb_" + i, null);
+                String localPath = pref.getString("local_" + i, null);
                 Book b = new Book(
                         uri,
                         title,
                         lastPage,
                         sentence,
-                        PdfPreviewHelper.renderFirstPageFromUri(ctx, uri)
+                        thumbPath,
+                        localPath
                 );
                 list.add(b);
             } catch (SecurityException | FileNotFoundException e) {
@@ -79,7 +84,13 @@ public class BookStorage {
             if (b.getUri().equals(updated.getUri())) {
                 b.setLastPage(updated.getLastPage());
                 b.setSentence(updated.getSentence());
-                // persist current cache
+                if (updated.getThumbnailPath() != null) {
+                    b.setThumbnailPath(updated.getThumbnailPath());
+                }
+                if (updated.getLocalPath() != null && !updated.getLocalPath().isEmpty()) {
+                    b.setLocalPath(updated.getLocalPath());
+                }
+
                 saveBooks(ctx, booksCache);
                 return true;
             }
