@@ -56,6 +56,7 @@ public class BookStorage {
                 int sentence = pref.getInt("sentence_" + i, 0);
                 String thumbPath = pref.getString("thumb_" + i, null);
                 String localPath = pref.getString("local_" + i, null);
+
                 Book b = new Book(
                         uri,
                         title,
@@ -64,6 +65,7 @@ public class BookStorage {
                         thumbPath,
                         localPath
                 );
+
                 list.add(b);
             } catch (SecurityException | FileNotFoundException e) {
                 Log.w("BookStorage", "Skipping invalid or revoked URI: " + uri);

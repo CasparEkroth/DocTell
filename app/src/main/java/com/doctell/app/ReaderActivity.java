@@ -129,19 +129,19 @@ public class ReaderActivity extends AppCompatActivity {
                 File file = new File(bookLocalPath);
                 pfd = ParcelFileDescriptor.open(file, ParcelFileDescriptor.MODE_READ_ONLY);
                 renderer = new PdfRenderer(pfd);
+                totalPages = renderer.getPageCount();
                 currentPage = currentBook.getLastPage();
                 if (currentPage >= totalPages) currentPage = Math.max(0, totalPages - 1);
-
+                Log.d("TEST","length of pdf " + String.valueOf(renderer.getPageCount()));
                 Bitmap bmp = PdfPreviewHelper.renderOnePage(
                         renderer,
                         currentPage,
                         getResources().getDisplayMetrics(),
                         pdfImage.getWidth()
                 );
-
+                //app:com.doctell.app
                 main.post(() -> {
                     pdfImage.setImageBitmap(bmp);
-                    //updatePageLabel();
                     showLoading(false);
                     showPage(currentPage);
                     setupTTS();
@@ -157,7 +157,7 @@ public class ReaderActivity extends AppCompatActivity {
         });
     }
 
-    private void showLoading(boolean on) {
+    private void showLoading(boolean on) {// fix xml
         if (loadingBar != null) loadingBar.setVisibility(on ? View.VISIBLE : View.GONE);
     }
 
