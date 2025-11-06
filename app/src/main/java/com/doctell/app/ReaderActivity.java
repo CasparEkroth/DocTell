@@ -1,7 +1,6 @@
 package com.doctell.app;
 
 import android.annotation.SuppressLint;
-import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.pdf.PdfRenderer;
 import android.net.Uri;
@@ -11,8 +10,6 @@ import android.os.Looper;
 import android.os.ParcelFileDescriptor;
 import android.speech.tts.TextToSpeech;
 import android.util.Log;
-import android.view.GestureDetector;
-import android.view.MotionEvent;
 import android.view.View;
 import android.widget.Button;
 import android.widget.ImageView;
@@ -31,9 +28,7 @@ import com.tom_roush.pdfbox.pdmodel.PDDocument;
 import com.tom_roush.pdfbox.text.PDFTextStripper;
 
 import java.io.File;
-import java.io.FileNotFoundException;
 import java.io.IOException;
-import java.io.InputStream;
 import java.util.Locale;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -90,7 +85,6 @@ public class ReaderActivity extends AppCompatActivity {
             throw new RuntimeException(e);
         }
 
-        //loadPdf(uri);
 
         autoTts = new UtteranceProgressListener() {
             @Override
@@ -132,14 +126,13 @@ public class ReaderActivity extends AppCompatActivity {
                 totalPages = renderer.getPageCount();
                 currentPage = currentBook.getLastPage();
                 if (currentPage >= totalPages) currentPage = Math.max(0, totalPages - 1);
-                Log.d("TEST","length of pdf " + String.valueOf(renderer.getPageCount()));
                 Bitmap bmp = PdfPreviewHelper.renderOnePage(
                         renderer,
                         currentPage,
                         getResources().getDisplayMetrics(),
                         pdfImage.getWidth()
                 );
-                //app:com.doctell.app
+
                 main.post(() -> {
                     pdfImage.setImageBitmap(bmp);
                     showLoading(false);
