@@ -6,7 +6,6 @@ import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.Color;
 import android.graphics.drawable.ColorDrawable;
-import android.net.Uri;
 import android.util.AttributeSet;
 import android.util.Log;
 import android.view.Gravity;
@@ -14,7 +13,6 @@ import android.view.LayoutInflater;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
-import android.view.inputmethod.InputMethodManager;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ImageView;
@@ -22,14 +20,12 @@ import android.widget.LinearLayout;
 import android.widget.PopupWindow;
 import android.widget.TextView;
 
-import com.doctell.app.MainActivity;
 import com.doctell.app.R;
 import com.doctell.app.ReaderActivity;
 import com.doctell.app.model.Book;
 import com.doctell.app.model.BookStorage;
 import com.doctell.app.model.PdfPreviewHelper;
 
-import java.io.IOException;
 
 @SuppressLint("ViewConstructor")
 public class ItemView extends LinearLayout {
@@ -50,10 +46,13 @@ public class ItemView extends LinearLayout {
 
         setBackgroundResource(android.R.drawable.list_selector_background);
 
-        if (book.getBitmap() != null) {
-            imageView.setImageBitmap(book.getBitmap());
+        Bitmap bmp = PdfPreviewHelper.loadThumbBitmap(book.getThumbnailPath());
+
+        if (bmp != null) {
+            imageView.setImageBitmap(bmp);
         } else {
             imageView.setImageResource(android.R.drawable.ic_menu_report_image);
+            // maybe add my own
         }
 
         titleView.setText(book.getTitle() != null ? book.getTitle() : "Unknown");
