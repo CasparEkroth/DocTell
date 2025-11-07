@@ -4,6 +4,8 @@ package com.doctell.app.model;
 import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.graphics.Matrix;
+import android.graphics.Rect;
 import android.graphics.pdf.PdfRenderer;
 import android.net.Uri;
 import android.os.ParcelFileDescriptor;
@@ -28,11 +30,19 @@ public class PdfPreviewHelper {
             if(targetWidthPx <= 0){
                 targetWidthPx = Math.min(dm.widthPixels,1200);
             }
-            int w = targetWidthPx;
-            int h = (int) (w * (float)page.getHeight() / page.getWidth());
+            int bmpW = targetWidthPx;
+            int bmpH = Math.round(bmpW * page.getHeight() / (float) page.getWidth());
+            Bitmap bmp = Bitmap.createBitmap(bmpW, bmpH, Bitmap.Config.ARGB_8888);
+            bmp.eraseColor(0xFFFFFFFF);
 
-            Bitmap bmp = Bitmap.createBitmap(w,h,Bitmap.Config.ARGB_8888);
-            page.render(bmp,null,null,PdfRenderer.Page.RENDER_MODE_FOR_DISPLAY);
+            Matrix m = new Matrix();
+            float sx = bmpW / (float) page.getWidth();
+            float sy = bmpH / (float) page.getHeight();
+            m.setScale(sx, sy);
+
+            Rect dest = new Rect(0, 0, bmpW, bmpH);
+
+            page.render(bmp, dest, m, PdfRenderer.Page.RENDER_MODE_FOR_DISPLAY);
             return bmp;
         }
     }
