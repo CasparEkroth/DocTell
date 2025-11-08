@@ -70,7 +70,9 @@ public class MainActivity extends AppCompatActivity {
     }
 
     public void openSettings(View v){
-        // coming
+        Intent intent = new Intent(this, SettingsActivity.class);
+        // set values??
+        startActivity(intent);
     }
 
     @Override

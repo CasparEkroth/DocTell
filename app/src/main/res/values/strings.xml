@@ -3,4 +3,14 @@
     <string name="add_book">Add Book</string>
     <string name="menu">Menu</string>
     <string name="topLabel">DocTell</string>
+
+
+    <!-- Settings -->
+    <string name="pref_cat_language_voice">Language &amp; Voice</string>
+    <string name="pref_lang_title">Language</string>
+    <string name="pref_lang_summary">Choose the app’s TTS language</string>
+
+    <string name="pref_tts_speed_title">TTS speed</string>
+    <string name="pref_tts_speed_summary">Voice Speed</string>
+
 </resources>
