@@ -1,6 +1,5 @@
 package com.doctell.app.model;
 
-
 import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
@@ -10,12 +9,8 @@ import android.graphics.pdf.PdfRenderer;
 import android.net.Uri;
 import android.os.ParcelFileDescriptor;
 import android.util.DisplayMetrics;
-import android.util.Log;
-
 import com.tom_roush.pdfbox.pdmodel.PDDocument;
-import com.tom_roush.pdfbox.rendering.PDFRenderer;
 import com.tom_roush.pdfbox.text.PDFTextStripper;
-
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -24,6 +19,17 @@ import java.io.OutputStream;
 import java.security.MessageDigest;
 
 public class PdfPreviewHelper {
+
+    private static final PDFTextStripper stripper = createStripper();
+
+    private static PDFTextStripper createStripper() {
+        try {
+            PDFTextStripper s = new PDFTextStripper();
+            s.setSortByPosition(true);
+            s.setAddMoreFormatting(true);
+            return s;
+        } catch (IOException e) { throw new RuntimeException(e); }
+    }
 
     public static Bitmap renderOnePage(PdfRenderer renderer, int index, DisplayMetrics dm, int targetWidthPx){
         try(PdfRenderer.Page page = renderer.openPage(index)){
@@ -47,15 +53,15 @@ public class PdfPreviewHelper {
         }
     }
 
-    public static String extractOnePageText(PDDocument doc, int index) throws IOException{
-        PDFTextStripper stripper = new PDFTextStripper();
-        int base = index + 1;
-        stripper.setStartPage(base);
-        stripper.setEndPage(base);
-        stripper.setSortByPosition(true);
-
-        String text = stripper.getText(doc);
-        return text != null ? text.trim() : "";
+    public static String extractOnePageText(PDDocument doc, int index){
+        try{
+            stripper.setStartPage(index + 1);
+            stripper.setEndPage(index + 1);
+            String text = stripper.getText(doc);
+            return text != null ? text.trim() : "";
+        } catch (IOException e) {
+            return "";
+        }
     }
 
     public static String thumbPathFor(Context ctx, Uri uri) {

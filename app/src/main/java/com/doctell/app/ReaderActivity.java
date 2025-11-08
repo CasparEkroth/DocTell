@@ -210,16 +210,12 @@ public class ReaderActivity extends AppCompatActivity {
         showLoading(true);
         exec.execute(() -> {
             try(PDDocument doc = PDDocument.load(new File(bookLocalPath), MemoryUsageSetting.setupTempFileOnly())) {
-                PDFTextStripper stripper = new PDFTextStripper();
-                stripper.setStartPage(currentPage + 1);
-                stripper.setEndPage(currentPage + 1);
 
-                String text = stripper.getText(doc);
+                String text = PdfPreviewHelper.extractOnePageText(doc,currentPage);
                 main.post(() -> {
                     showLoading(false);
                     if (text == null || text.trim().isEmpty()) {
                         Toast.makeText(this, "No searchable text on this page (scan?).", Toast.LENGTH_SHORT).show();
-                        // Here you could fall back to OCR on the current bitmap if you like.
                     } else {
                         isSpeaking = true;
                         btnTTS.setText("Pause");
@@ -228,7 +224,6 @@ public class ReaderActivity extends AppCompatActivity {
                         Toast.makeText(this, "Text extracted (" + Math.min(text.length(), 60) + " chars…)", Toast.LENGTH_SHORT).show();
                     }
                 });
-
             } catch (Exception e) { e.printStackTrace(); }
         });
 
