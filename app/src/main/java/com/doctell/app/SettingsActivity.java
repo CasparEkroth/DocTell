@@ -39,7 +39,7 @@ public class SettingsActivity extends AppCompatActivity {
                 String displayName = parent.getItemAtPosition(position).toString();
                 String[] values = getResources().getStringArray(R.array.pref_lang_values);
                 String langCode = values[position];
-                ttsM.setLang(langCode);
+                ttsM.setLanguageByCode(langCode);
 
             }
 
