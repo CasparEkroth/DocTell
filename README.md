@@ -20,4 +20,8 @@
 Your files stay on your device. Speech is generated locally by the system TTS engine.
 
 ## License
-MIT © 2025 Caspar Ekroth — see [LICENSE](./LICENSE).
+The source code of DocTell is released under the [CC BY-NC 4.0 License](./LICENSE).  
+You are free to use or modify the code for personal and educational purposes.  
+Commercial use, redistribution on app stores, or selling modified versions is **not permitted**.  
+
+For commercial inquiries, contact: casparekroth.dev@gmail.com
