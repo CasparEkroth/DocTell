@@ -23,6 +23,7 @@ import android.widget.Toast;
 import com.doctell.app.model.Book;
 import com.doctell.app.model.BookStorage;
 import com.doctell.app.model.PdfPreviewHelper;
+import com.doctell.app.model.TTSModel;
 import com.tom_roush.pdfbox.io.MemoryUsageSetting;
 import com.tom_roush.pdfbox.pdmodel.PDDocument;
 import com.tom_roush.pdfbox.text.PDFTextStripper;
@@ -45,12 +46,11 @@ public class ReaderActivity extends AppCompatActivity {
     private ParcelFileDescriptor pfd;
     private int currentPage = 0;
     private int totalPages;
-    private TextToSpeech tts;
-    private boolean isSpeaking = false;
     private Book currentBook;
     private PdfRenderer renderer;
     private String bookLocalPath;
-    private UtteranceProgressListener autoTts;
+    private com.doctell.app.model.TTSModel ttsM;
+    private boolean isSpeaking = false;
 
     @SuppressLint("ClickableViewAccessibility")
     @Override
@@ -70,7 +70,6 @@ public class ReaderActivity extends AppCompatActivity {
         exec = Executors.newSingleThreadExecutor();
         main = new Handler(Looper.getMainLooper());
 
-
         // Load Book from MainActivity
         String uriString = getIntent().getStringExtra("uri");
         Uri uri = Uri.parse(uriString);
@@ -85,27 +84,17 @@ public class ReaderActivity extends AppCompatActivity {
             throw new RuntimeException(e);
         }
 
-
-        autoTts = new UtteranceProgressListener() {
+        ttsM = TTSModel.get(getApplicationContext());
+        ttsM.setExternalListener(new UtteranceProgressListener(){
             @Override
-            public void onStart(String utteranceId) {
-                // TTS started
-            }
-
-            @Override
-            public void onDone(String utteranceId) {
-                runOnUiThread(() -> {
-                    // Auto-next page when finished
-                    if (isSpeaking) {
-                        showNextPage();
-                    }
-                });
-            }
+            public void onDone(String utteranceId) {}
             @Override
             public void onError(String utteranceId) {
-                Log.e("TTS", "Error speaking!");
+                runOnUiThread(()-> {if(isSpeaking)showNextPage();});
             }
-        };
+            @Override
+            public void onStart(String utteranceId) {}
+        });
 
         btnNext.setOnClickListener(v -> showNextPage());
         btnPrev.setOnClickListener(v -> showPrevPage());
@@ -137,7 +126,6 @@ public class ReaderActivity extends AppCompatActivity {
                     pdfImage.setImageBitmap(bmp);
                     showLoading(false);
                     showPage(currentPage);
-                    setupTTS();
                 });
 
             } catch (IOException e) {
@@ -188,19 +176,11 @@ public class ReaderActivity extends AppCompatActivity {
         if (isSpeaking) speakPage();
     }
 
-    private void setupTTS() {
-        tts = new TextToSpeech(this, status -> {
-            if(status == TextToSpeech.SUCCESS) {
-                tts.setLanguage(Locale.US);
-            }
-        });
-    }
-
     private void toggleTTS() {
         if (!isSpeaking) {
             speakPage();
         } else {
-            tts.stop();
+            ttsM.stop();
             isSpeaking = false;
             btnTTS.setText("Play");
         }
@@ -219,9 +199,14 @@ public class ReaderActivity extends AppCompatActivity {
                     } else {
                         isSpeaking = true;
                         btnTTS.setText("Pause");
-                        tts.speak(text, TextToSpeech.QUEUE_FLUSH, null, "TTS_PAGE");
-                        tts.setOnUtteranceProgressListener(autoTts);
-                        Toast.makeText(this, "Text extracted (" + Math.min(text.length(), 60) + " chars…)", Toast.LENGTH_SHORT).show();
+                        String id = ttsM.speak(text, true);
+                        if (id == null) {
+                            Toast.makeText(this, "TTS engine not ready", Toast.LENGTH_SHORT).show();
+                            isSpeaking = false;
+                            btnTTS.setText("Play");
+                        } else {
+                            Toast.makeText(this, "Text extracted (" + Math.min(text.length(), 60) + " chars…)", Toast.LENGTH_SHORT).show();
+                        }
                     }
                 });
             } catch (Exception e) { e.printStackTrace(); }
@@ -239,9 +224,8 @@ public class ReaderActivity extends AppCompatActivity {
 
     @Override
     protected void onDestroy() {
-        if (tts != null) {
-            tts.stop();
-            tts.shutdown();
+        if (ttsM != null) {
+            ttsM.stop();
         }
         try {
            closeRenderer();

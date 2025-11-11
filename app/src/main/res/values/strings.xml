@@ -13,4 +13,6 @@
     <string name="pref_tts_speed_title">TTS speed</string>
     <string name="pref_tts_speed_summary">Voice Speed</string>
 
+    <!-- ReaderActivity -->
+
 </resources>

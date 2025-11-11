@@ -131,10 +131,3 @@ public class TTSModel {
         }
     }
 }
-
-/*
-        getSharedPreferences("doctell_prefs", MODE_PRIVATE)
-                .edit()
-                .putString("pref_lang", langCode)
-                .apply();
- */
