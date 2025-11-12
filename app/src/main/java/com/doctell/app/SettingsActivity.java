@@ -2,6 +2,7 @@ package com.doctell.app;
 
 import android.annotation.SuppressLint;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.View;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
@@ -38,7 +39,7 @@ public class SettingsActivity extends AppCompatActivity {
         spLang.setAdapter(adapter);
 
         String[] values = getResources().getStringArray(R.array.pref_lang_values);
-        String saved = getSharedPreferences("doctell_prefs", MODE_PRIVATE).getString("pref_lang","en");
+        String saved = ttsM.getLanguage();
         setSpLangText(values,saved);
 
         spLang.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
@@ -71,7 +72,11 @@ public class SettingsActivity extends AppCompatActivity {
 
     private void setSpLangText(String[] values, String value){
         for (int i = 0; i < values.length; i++) {
-            if(values[i].equals(value)) spLang.setSelection(i); break;
+            //Log.d("TEST12", "index " + i + " " + values[i] +" comp " + value);
+            if(values[i].equals(value)){
+                spLang.setSelection(i); break;
+            }
+
         }
     }
 

@@ -52,8 +52,9 @@ public class TTSModel {
 
             // Apply saved language & rate
             SharedPreferences p = app.getSharedPreferences("doctell_prefs", Context.MODE_PRIVATE);
-            String lang = p.getString("pref_lang", "en");
+            String lang = p.getString("pref_lang", "eng");
             float rate = p.getFloat("pref_tts_speed", 1.0f);
+
             setLanguageByCode(lang);
             setRate(rate);
 
@@ -85,22 +86,38 @@ public class TTSModel {
         this.externalListener = l;
     }
 
+    private String convertLang(Locale locale) {
+        if (locale == null){
+            return "eng";
+        }
+        String lang = locale.getLanguage();
+        if (lang == null || lang.isEmpty()){
+            return "eng";
+        }
+        return lang;
+    }
+
+    public String getLanguage(){
+        Locale lang = tts.getLanguage();
+        if(lang == null)lang = Locale.US;
+        //Log.d("TEST11", String.format("lang = " + lang.getLanguage()));
+        return convertLang(lang);
+    }
+
     public void setLanguageByCode(String code) {
+        app.getSharedPreferences("doctell_prefs", Context.MODE_PRIVATE)
+                .edit().putString("pref_lang", code).apply();
+
         if (tts == null) return;
         Locale loc;
         switch (code) {
-            case "sv": loc = new Locale("sv"); break;
-            case "es": loc = new Locale("es"); break;
-            default:   loc = Locale.US; // "en"
+            case "swe": loc = new Locale("swe"); break;
+            case "spa": loc = new Locale("spa"); break;
+            default:   loc = new Locale("eng"); // "eng"
         }
         int r = tts.setLanguage(loc);
         Log.d("TTSModel", "setLanguage " + loc + " => " + r);
-
-        // persist
-        app.getSharedPreferences("doctell_prefs", Context.MODE_PRIVATE)
-                .edit().putString("pref_lang", code).apply();
     }
-
     public void setRate(float rate) {
         if (tts == null) return;
         float clamped = Math.max(0.5f, Math.min(2.0f, rate));
