@@ -182,7 +182,7 @@ public class ReaderActivity extends AppCompatActivity {
         } else {
             ttsM.stop();
             isSpeaking = false;
-            btnTTS.setText("Play");
+            btnTTS.setText(getString(R.string.pref_play));
         }
     }
 
@@ -198,12 +198,12 @@ public class ReaderActivity extends AppCompatActivity {
                         Toast.makeText(this, "No searchable text on this page (scan?).", Toast.LENGTH_SHORT).show();
                     } else {
                         isSpeaking = true;
-                        btnTTS.setText("Pause");
+                        btnTTS.setText(getString(R.string.pref_pause));
                         String id = ttsM.speak(text, true);
                         if (id == null) {
                             Toast.makeText(this, "TTS engine not ready", Toast.LENGTH_SHORT).show();
                             isSpeaking = false;
-                            btnTTS.setText("Play");
+                            btnTTS.setText(getString(R.string.pref_play));
                         } else {
                             Toast.makeText(this, "Text extracted (" + Math.min(text.length(), 60) + " chars…)", Toast.LENGTH_SHORT).show();
                         }

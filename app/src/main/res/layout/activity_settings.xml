@@ -27,7 +27,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="24dp"
-            android:text="TTS speed (0.5×–2.0×)"
+            android:text="@string/pref_tts_speed_title"
             android:textStyle="bold"
             android:textSize="16sp" />
 
