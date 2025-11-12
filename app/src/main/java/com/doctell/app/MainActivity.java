@@ -1,14 +1,10 @@
 package com.doctell.app;
 
 import android.content.Intent;
-import android.graphics.Bitmap;
-import android.graphics.pdf.PdfRenderer;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
-import android.os.ParcelFileDescriptor;
-import android.util.DisplayMetrics;
 import android.util.Log;
 import android.view.View;
 import android.widget.GridLayout;
@@ -70,7 +66,9 @@ public class MainActivity extends AppCompatActivity {
     }
 
     public void openSettings(View v){
-        // coming
+        Intent intent = new Intent(this, SettingsActivity.class);
+        // set values??
+        startActivity(intent);
     }
 
     @Override
