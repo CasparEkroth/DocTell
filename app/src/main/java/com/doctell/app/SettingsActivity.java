@@ -9,7 +9,6 @@ import android.widget.SeekBar;
 import android.widget.Spinner;
 import android.widget.TextView;
 
-import androidx.activity.EdgeToEdge;
 import androidx.appcompat.app.AppCompatActivity;
 
 import com.doctell.app.model.TTSModel;
@@ -40,14 +39,13 @@ public class SettingsActivity extends AppCompatActivity {
 
         String[] values = getResources().getStringArray(R.array.pref_lang_values);
         String saved = getSharedPreferences("doctell_prefs", MODE_PRIVATE).getString("pref_lang","en");
-        for (int i = 0; i < values.length; i++) {
-            if(values[i].equals(saved)) spLang.setSelection(i); break;
-        }
+        setSpLangText(values,saved);
 
         spLang.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
             @Override
             public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
                 ttsM.setLanguageByCode(values[position]);
+                setSpLangText(values,values[position]);
             }
             @Override
             public void onNothingSelected(AdapterView<?> parent) {}
@@ -70,4 +68,11 @@ public class SettingsActivity extends AppCompatActivity {
             public void onStopTrackingTouch(SeekBar seekBar) {}
         });
     }
+
+    private void setSpLangText(String[] values, String value){
+        for (int i = 0; i < values.length; i++) {
+            if(values[i].equals(value)) spLang.setSelection(i); break;
+        }
+    }
+
 }
