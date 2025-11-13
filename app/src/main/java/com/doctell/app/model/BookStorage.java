@@ -14,8 +14,7 @@ import java.util.List;
 import java.util.Objects;
 
 public class BookStorage {
-    private static final String PREFS_NAME = "MyAppPrefs";
-    private static final String KEY_BOOK_LIST = "book_list";
+
 
     public static List<Book> booksCache = new ArrayList<>();
     private static void saveBooks(Context ctx, List<Book> list) {

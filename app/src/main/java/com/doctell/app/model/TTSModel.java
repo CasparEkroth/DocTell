@@ -51,8 +51,8 @@ public class TTSModel {
                     .build());
 
             // Apply saved language & rate
-            SharedPreferences p = app.getSharedPreferences("doctell_prefs", Context.MODE_PRIVATE);
-            String lang = p.getString("pref_lang", "eng");
+            SharedPreferences p = app.getSharedPreferences(Prefs.DOCTELL_PREFS.toString(), Context.MODE_PRIVATE);
+            String lang = p.getString(Prefs.LANG.toString(), "eng");
             Log.d("TEST13", "loaded " + lang);
 
             float rate = p.getFloat("pref_tts_speed", 1.0f);
@@ -107,8 +107,8 @@ public class TTSModel {
     }
 
     public void setLanguageByCode(String code) {
-        app.getSharedPreferences("doctell_prefs", Context.MODE_PRIVATE)
-                .edit().putString("pref_lang", code).apply();
+        app.getSharedPreferences(Prefs.DOCTELL_PREFS.toString(), Context.MODE_PRIVATE)
+                .edit().putString(Prefs.LANG.toString(), code).apply();
         Log.d("TEST13", "saved " + code);
         if (tts == null) return;
         Locale loc;
@@ -124,8 +124,8 @@ public class TTSModel {
         if (tts == null) return;
         float clamped = Math.max(0.5f, Math.min(2.0f, rate));
         tts.setSpeechRate(clamped);
-        app.getSharedPreferences("doctell_prefs", Context.MODE_PRIVATE)
-                .edit().putFloat("pref_tts_speed", clamped).apply();
+        app.getSharedPreferences(Prefs.DOCTELL_PREFS.toString(), Context.MODE_PRIVATE)
+                .edit().putFloat(Prefs.TTS_SPEED.toString(), clamped).apply();
     }
 
     public String speak(String text, boolean flush) {
