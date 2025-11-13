@@ -21,6 +21,8 @@ public class SettingsActivity extends AppCompatActivity {
     private TextView txtRateValue;
     private TTSModel ttsM;
 
+    private int initIndex = 0;
+
     @SuppressLint("DefaultLocale")
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -40,13 +42,16 @@ public class SettingsActivity extends AppCompatActivity {
 
         String[] values = getResources().getStringArray(R.array.pref_lang_values);
         String saved = ttsM.getLanguage();
+        //Log.d("TEST13", "the saved value is " + saved);
         setSpLangText(values,saved);
 
         spLang.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
             @Override
             public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
+                if(position == initIndex)return;
                 ttsM.setLanguageByCode(values[position]);
                 setSpLangText(values,values[position]);
+                initIndex = position;
             }
             @Override
             public void onNothingSelected(AdapterView<?> parent) {}
@@ -72,9 +77,11 @@ public class SettingsActivity extends AppCompatActivity {
 
     private void setSpLangText(String[] values, String value){
         for (int i = 0; i < values.length; i++) {
-            //Log.d("TEST12", "index " + i + " " + values[i] +" comp " + value);
+            //Log.d("TEST13", "index " + i + " " + values[i] +" comp " + value);
             if(values[i].equals(value)){
-                spLang.setSelection(i); break;
+                initIndex = i;
+                spLang.setSelection(i);
+                break;
             }
 
         }

@@ -17,6 +17,7 @@ import androidx.appcompat.app.AppCompatActivity;
 import com.doctell.app.model.Book;
 import com.doctell.app.model.BookStorage;
 import com.doctell.app.model.PdfPreviewHelper;
+import com.doctell.app.model.TTSModel;
 import com.doctell.app.view.ItemView;
 import com.tom_roush.pdfbox.io.MemoryUsageSetting;
 import com.tom_roush.pdfbox.pdmodel.PDDocument;
@@ -33,6 +34,7 @@ public class MainActivity extends AppCompatActivity {
     private GridLayout pdfGrid;
     private final ExecutorService exec = Executors.newSingleThreadExecutor();
     private final Handler main = new Handler(Looper.getMainLooper());
+    private TTSModel ttsModel;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -46,6 +48,8 @@ public class MainActivity extends AppCompatActivity {
         pdfGrid = findViewById(R.id.pdfGrid);
 
         refreshGrid();
+
+        ttsModel = TTSModel.get(getApplicationContext());
 
         getOnBackPressedDispatcher().addCallback(this, new OnBackPressedCallback(true) {
             @Override public void handleOnBackPressed() {finish();}
@@ -153,6 +157,7 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onDestroy() {
         try {
+            ttsModel.shutdown();
         } catch (Exception ignored) {}
         super.onDestroy();
     }
