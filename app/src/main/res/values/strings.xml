@@ -20,6 +20,9 @@
     <string name="pref_next">Next</string>
     <string name="pref_prev">Prev</string>
 
+    <!-- Chapters -->
+    <string name="close">close</string>
+    <string name="chapters">Chapters</string>
 
 
 </resources>

@@ -1,0 +1,26 @@
+package com.doctell.app.model;
+
+public class ChapterItem {
+    private final String title;
+    private final int pageIndex;
+    private final int level;
+
+    ChapterItem(String title, int pageIndex, int level) {
+        this.title = title;
+        this.pageIndex = pageIndex;
+        this.level = level;
+    }
+
+    public String getTitle() {
+        return title;
+    }
+
+    public int getPageIndex() {
+        return pageIndex;
+    }
+
+    public int getLevel() {
+        return level;
+    }
+}
+

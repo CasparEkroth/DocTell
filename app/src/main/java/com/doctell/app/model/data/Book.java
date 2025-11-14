@@ -1,4 +1,4 @@
-package com.doctell.app.model;
+package com.doctell.app.model.data;
 import android.net.Uri;
 
 public class Book {

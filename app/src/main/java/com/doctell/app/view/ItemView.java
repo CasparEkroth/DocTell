@@ -22,9 +22,9 @@ import android.widget.TextView;
 
 import com.doctell.app.R;
 import com.doctell.app.ReaderActivity;
-import com.doctell.app.model.Book;
-import com.doctell.app.model.BookStorage;
-import com.doctell.app.model.PdfPreviewHelper;
+import com.doctell.app.model.data.Book;
+import com.doctell.app.model.data.BookStorage;
+import com.doctell.app.model.data.PdfPreviewHelper;
 
 
 @SuppressLint("ViewConstructor")

@@ -8,8 +8,6 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.ParcelFileDescriptor;
-import android.speech.tts.TextToSpeech;
-import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 import android.widget.ImageView;
@@ -20,17 +18,15 @@ import androidx.appcompat.app.AppCompatActivity;
 import android.speech.tts.UtteranceProgressListener;
 import android.widget.Toast;
 
-import com.doctell.app.model.Book;
-import com.doctell.app.model.BookStorage;
-import com.doctell.app.model.PdfPreviewHelper;
-import com.doctell.app.model.TTSModel;
+import com.doctell.app.model.data.Book;
+import com.doctell.app.model.data.BookStorage;
+import com.doctell.app.model.data.PdfPreviewHelper;
+import com.doctell.app.model.tts.TTSModel;
 import com.tom_roush.pdfbox.io.MemoryUsageSetting;
 import com.tom_roush.pdfbox.pdmodel.PDDocument;
-import com.tom_roush.pdfbox.text.PDFTextStripper;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.Locale;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -49,7 +45,7 @@ public class ReaderActivity extends AppCompatActivity {
     private Book currentBook;
     private PdfRenderer renderer;
     private String bookLocalPath;
-    private com.doctell.app.model.TTSModel ttsM;
+    private TTSModel ttsM;
     private boolean isSpeaking = false;
 
     @SuppressLint("ClickableViewAccessibility")
