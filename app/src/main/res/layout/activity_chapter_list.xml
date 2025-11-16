@@ -62,7 +62,7 @@
             <androidx.recyclerview.widget.RecyclerView
                 android:id="@+id/rvChapters"
                 android:layout_width="match_parent"
-                android:layout_height="300dp"
+                android:layout_height="572dp"
                 android:overScrollMode="ifContentScrolls" />
 
         </LinearLayout>
