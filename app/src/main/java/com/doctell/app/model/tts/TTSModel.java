@@ -55,7 +55,7 @@ public class TTSModel {
             // Apply saved language & rate
             SharedPreferences p = app.getSharedPreferences(Prefs.DOCTELL_PREFS.toString(), Context.MODE_PRIVATE);
             String lang = p.getString(Prefs.LANG.toString(), "eng");
-            Log.d("TEST13", "loaded " + lang);
+            //Log.d("TEST13", "loaded " + lang);
 
             float rate = p.getFloat("pref_tts_speed", 1.0f);
 
@@ -111,7 +111,7 @@ public class TTSModel {
     public void setLanguageByCode(String code) {
         app.getSharedPreferences(Prefs.DOCTELL_PREFS.toString(), Context.MODE_PRIVATE)
                 .edit().putString(Prefs.LANG.toString(), code).apply();
-        Log.d("TEST13", "saved " + code);
+        //Log.d("TEST13", "saved " + code);
         if (tts == null) return;
         Locale loc;
         switch (code) {

@@ -95,10 +95,24 @@ public class ReaderActivity extends AppCompatActivity {
         ttsM = TTSModel.get(getApplicationContext());
         ttsM.setExternalListener(new UtteranceProgressListener(){
             @Override
-            public void onDone(String utteranceId) {}
+            public void onDone(String utteranceId) {
+                runOnUiThread(() -> {
+                    if(!isSpeaking)return;
+                    if(currentPage + 1 < totalPages){
+                        showNextPage();
+                        //speakPage();
+                    }else {
+                        isSpeaking = false;
+                        btnTTS.setText(getString(R.string.pref_pause));
+                    }
+                });
+            }
             @Override
             public void onError(String utteranceId) {
-                runOnUiThread(()-> {if(isSpeaking)showNextPage();});
+                runOnUiThread(()-> {
+                    isSpeaking = false;
+                    btnTTS.setText(getString(R.string.pref_play));
+                });
             }
             @Override
             public void onStart(String utteranceId) {}
