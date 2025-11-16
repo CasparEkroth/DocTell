@@ -144,13 +144,9 @@ public class ItemView extends LinearLayout {
 
 
             });
-
-
             popup.showAtLocation(v, Gravity.CENTER, 0, 0);
             return true;
         };
-
-
         setOnLongClickListener(openPopUpp);
         imageView.setOnLongClickListener(openPopUpp);
         setOnClickListener(openReader);

@@ -5,7 +5,7 @@ public class ChapterItem {
     private final int pageIndex;
     private final int level;
 
-    ChapterItem(String title, int pageIndex, int level) {
+    public ChapterItem(String title, int pageIndex, int level) {
         this.title = title;
         this.pageIndex = pageIndex;
         this.level = level;
@@ -21,6 +21,11 @@ public class ChapterItem {
 
     public int getLevel() {
         return level;
+    }
+
+    @Override
+    public String toString(){
+        return String.format(title + " " + pageIndex + " " + level);
     }
 }
 
