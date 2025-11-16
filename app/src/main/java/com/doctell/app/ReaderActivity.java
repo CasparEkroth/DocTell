@@ -1,14 +1,15 @@
 package com.doctell.app;
 
 import android.annotation.SuppressLint;
+import android.content.Intent;
 import android.graphics.Bitmap;
+import android.graphics.Insets;
 import android.graphics.pdf.PdfRenderer;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.ParcelFileDescriptor;
-import android.speech.tts.TextToSpeech;
 import android.util.Log;
 import android.view.View;
 import android.widget.Button;
@@ -16,21 +17,26 @@ import android.widget.ImageView;
 import android.widget.ProgressBar;
 import android.widget.TextView;
 
+import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 import android.speech.tts.UtteranceProgressListener;
 import android.widget.Toast;
 
-import com.doctell.app.model.Book;
-import com.doctell.app.model.BookStorage;
-import com.doctell.app.model.PdfPreviewHelper;
-import com.doctell.app.model.TTSModel;
+import com.doctell.app.model.ChapterItem;
+import com.doctell.app.model.data.Book;
+import com.doctell.app.model.data.BookStorage;
+import com.doctell.app.model.data.ChapterLoader;
+import com.doctell.app.model.data.PdfPreviewHelper;
+import com.doctell.app.model.tts.TTSModel;
 import com.tom_roush.pdfbox.io.MemoryUsageSetting;
 import com.tom_roush.pdfbox.pdmodel.PDDocument;
-import com.tom_roush.pdfbox.text.PDFTextStripper;
+import com.tom_roush.pdfbox.pdmodel.PDDocumentCatalog;
+import com.tom_roush.pdfbox.pdmodel.interactive.documentnavigation.outline.PDDocumentOutline;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.Locale;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -38,9 +44,8 @@ public class ReaderActivity extends AppCompatActivity {
 
     private ImageView pdfImage;
     private ProgressBar loadingBar;
-    private Button btnNext, btnPrev, btnTTS;
+    private Button btnNext, btnPrev, btnTTS, btnChapter;
     private TextView pageIndicator;
-
     private ExecutorService exec;
     private Handler main;
     private ParcelFileDescriptor pfd;
@@ -49,8 +54,11 @@ public class ReaderActivity extends AppCompatActivity {
     private Book currentBook;
     private PdfRenderer renderer;
     private String bookLocalPath;
-    private com.doctell.app.model.TTSModel ttsM;
+    private TTSModel ttsM;
     private boolean isSpeaking = false;
+    private static final int REQ_SELECT_CHAPTER = 1001;
+    List<ChapterItem> chapters;
+    ChapterLoader chapterLoader;
 
     @SuppressLint("ClickableViewAccessibility")
     @Override
@@ -64,8 +72,8 @@ public class ReaderActivity extends AppCompatActivity {
         btnNext = findViewById(R.id.btnNext);
         btnTTS = findViewById(R.id.btnTTS);
         pageIndicator = findViewById(R.id.pageIndicator);
-        loadingBar   = findViewById(R.id.loadingBar);
-
+        loadingBar = findViewById(R.id.loadingBar);
+        btnChapter = findViewById(R.id.chapterBtn);
 
         exec = Executors.newSingleThreadExecutor();
         main = new Handler(Looper.getMainLooper());
@@ -100,6 +108,17 @@ public class ReaderActivity extends AppCompatActivity {
         btnPrev.setOnClickListener(v -> showPrevPage());
 
         btnTTS.setOnClickListener(v -> toggleTTS());
+
+        btnChapter.setOnClickListener(v -> openChapterActivity());
+        btnChapter.setEnabled(false);
+        chapterLoader = new ChapterLoader();
+        chapters = new ArrayList<>();
+        chapterLoader.loadChaptersAsync(bookLocalPath, loadedChapters -> {
+            chapters.clear();
+            chapters.addAll(loadedChapters);
+            btnChapter.setEnabled(chapters != null);
+            Log.d("ChapterLoader", "Loaded " + chapters.size() + " chapters");
+        });
 
         showLoading(true);
         openRendererAsync();
@@ -138,7 +157,7 @@ public class ReaderActivity extends AppCompatActivity {
         });
     }
 
-    private void showLoading(boolean on) {// fix xml
+    private void showLoading(boolean on) {//TODO fix xml
         if (loadingBar != null) loadingBar.setVisibility(on ? View.VISIBLE : View.GONE);
     }
 
@@ -214,6 +233,43 @@ public class ReaderActivity extends AppCompatActivity {
 
     }
 
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+
+        if (requestCode == REQ_SELECT_CHAPTER && resultCode == RESULT_OK && data != null) {
+            int page = data.getIntExtra("selectedPage", -1);
+            if (page >= 0) {
+                showPage(page);
+            }
+        }
+    }
+
+    private void openChapterActivity() {
+
+        if(chapters == null){
+            Toast.makeText(this, "No chapters found.", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        ArrayList<String> titles = new ArrayList<>();
+        ArrayList<Integer> pages = new ArrayList<>();
+        ArrayList<Integer> levels = new ArrayList<>();
+
+        for (ChapterItem c : chapters) {
+            titles.add(c.getTitle());
+            pages.add(c.getPageIndex());
+            levels.add(c.getLevel());
+        }
+
+        Intent intent = new Intent(this, ChapterActivity.class);
+        intent.putStringArrayListExtra("chapterTitles", titles);
+        intent.putIntegerArrayListExtra("chapterPages", pages);
+        intent.putIntegerArrayListExtra("chapterLevels", levels);
+        //intent.putExtra("currentPage", currentPageIndex); // highlight
+
+        startActivityForResult(intent, REQ_SELECT_CHAPTER);
+    }
 
     private void closeRenderer() {
         try { if (renderer != null) renderer.close(); } catch (Exception ignored) {}
@@ -231,6 +287,7 @@ public class ReaderActivity extends AppCompatActivity {
            closeRenderer();
         } catch (Exception ignored) {}
         if (exec != null) exec.shutdownNow();
+        if (chapterLoader != null) chapterLoader.shutdown();
         super.onDestroy();
     }
 

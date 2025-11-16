@@ -1,4 +1,4 @@
-package com.doctell.app.model;
+package com.doctell.app.model.tts;
 
 import android.content.Context;
 import android.content.SharedPreferences;
@@ -8,6 +8,8 @@ import android.os.Looper;
 import android.speech.tts.TextToSpeech;
 import android.speech.tts.UtteranceProgressListener;
 import android.util.Log;
+
+import com.doctell.app.model.Prefs;
 
 import java.util.Locale;
 import java.util.UUID;
