@@ -5,7 +5,6 @@ import android.os.Looper;
 import android.util.Log;
 
 import com.doctell.app.model.ChapterItem;
-import com.tom_roush.pdfbox.io.MemoryUsageSetting;
 import com.tom_roush.pdfbox.pdmodel.PDDocument;
 import com.tom_roush.pdfbox.pdmodel.PDDocumentCatalog;
 import com.tom_roush.pdfbox.pdmodel.PDPage;

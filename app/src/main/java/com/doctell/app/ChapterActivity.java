@@ -7,9 +7,11 @@ import android.widget.ImageButton;
 import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.doctell.app.model.ChapterItem;
+import com.doctell.app.view.ChapterAdapter;
 import com.google.android.material.card.MaterialCardView;
 
 import java.util.ArrayList;
@@ -17,16 +19,17 @@ import java.util.List;
 
 public class ChapterActivity extends AppCompatActivity {
 
-    private List<ChapterItem> list;
 
     private MaterialCardView cardView;
     private ImageButton closeChap;
     private RecyclerView viewHolder;
+    private ChapterAdapter adapter;
+    private List<ChapterItem> chapterItems;
 
     @Override
     protected void onCreate(Bundle savedInstanceState){
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.chapter_list);
+        setContentView(R.layout.activity_chapter_list);
 
         ArrayList<String> titles = getIntent().getStringArrayListExtra("chapterTitles");
         ArrayList<Integer> pages   = getIntent().getIntegerArrayListExtra("chapterPages");
@@ -40,7 +43,7 @@ public class ChapterActivity extends AppCompatActivity {
             return;
         }
 
-        List<ChapterItem> chapterItems = new ArrayList<>();
+        chapterItems = new ArrayList<>();
         for (int i = 0; i < titles.size(); i++) {
             int pageIndex = i < pages.size() ? pages.get(i) : 0;
             int level     = i < levels.size() ? levels.get(i) : 0;
@@ -51,16 +54,20 @@ public class ChapterActivity extends AppCompatActivity {
             ));
         }
 
-        list = new ArrayList<>();
         closeChap = findViewById(R.id.btnCloseChapters);
         cardView = findViewById(R.id.cardChapters);
-        viewHolder = findViewById(R.id.rvChapters);
-
         closeChap.setOnClickListener(v -> onClose());
 
-        for(ChapterItem c : chapterItems){
-            Log.d("TEST0",c.toString());
-        }
+        viewHolder = findViewById(R.id.rvChapters);
+        viewHolder.setLayoutManager(new LinearLayoutManager(this));
+
+        adapter = new ChapterAdapter(chapterItems, ((item, pos) -> {
+
+            Toast.makeText(this, "Clicked: " + item.getTitle(), Toast.LENGTH_SHORT).show();
+        }));
+
+        viewHolder.setAdapter(adapter);
+
 
     }
 
@@ -72,18 +79,8 @@ public class ChapterActivity extends AppCompatActivity {
     }
 
     private void onClose(){
-
         finish();
     }
 
-    public void refreshChapters(){// cal when opening a book
-
-        //lode ChapterItem using PdfDocument.Bookmark
-    }
-
-    private void refreshViewHolder(){
-        //list
-        //viewHolder
-    }
 
 }
