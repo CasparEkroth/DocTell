@@ -62,8 +62,8 @@ public class ChapterActivity extends AppCompatActivity {
         viewHolder.setLayoutManager(new LinearLayoutManager(this));
 
         adapter = new ChapterAdapter(chapterItems, ((item, pos) -> {
-
-            Toast.makeText(this, "Clicked: " + item.getTitle(), Toast.LENGTH_SHORT).show();
+            //Toast.makeText(this, "Clicked: " + item.getTitle(), Toast.LENGTH_SHORT).show();
+            onChapterClicked(item);
         }));
 
         viewHolder.setAdapter(adapter);
