@@ -27,11 +27,11 @@ import com.doctell.app.model.data.Book;
 import com.doctell.app.model.data.BookStorage;
 import com.doctell.app.model.data.ChapterLoader;
 import com.doctell.app.model.data.PdfPreviewHelper;
+import com.doctell.app.model.tts.TTSBuffer;
 import com.doctell.app.model.tts.TTSModel;
+import com.doctell.app.view.HighlightOverlayView;
 import com.tom_roush.pdfbox.io.MemoryUsageSetting;
 import com.tom_roush.pdfbox.pdmodel.PDDocument;
-import com.tom_roush.pdfbox.pdmodel.PDDocumentCatalog;
-import com.tom_roush.pdfbox.pdmodel.interactive.documentnavigation.outline.PDDocumentOutline;
 
 import java.io.File;
 import java.io.IOException;
@@ -60,6 +60,9 @@ public class ReaderActivity extends AppCompatActivity {
     List<ChapterItem> chapters;
     ChapterLoader chapterLoader;
 
+    private HighlightOverlayView highlightOverlay;
+    private TTSBuffer buffer;
+
     @SuppressLint("ClickableViewAccessibility")
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -74,6 +77,9 @@ public class ReaderActivity extends AppCompatActivity {
         pageIndicator = findViewById(R.id.pageIndicator);
         loadingBar = findViewById(R.id.loadingBar);
         btnChapter = findViewById(R.id.chapterBtn);
+
+        //highlightOverlay = findViewById(R.id.highlightOverlay);
+        buffer = TTSBuffer.getInstance();
 
         exec = Executors.newSingleThreadExecutor();
         main = new Handler(Looper.getMainLooper());
@@ -98,9 +104,11 @@ public class ReaderActivity extends AppCompatActivity {
             public void onDone(String utteranceId) {
                 runOnUiThread(() -> {
                     if(!isSpeaking)return;
-                    if(currentPage + 1 < totalPages){
-                        showNextPage();
+                    if(!buffer.isEmpty()){
+                        ttsM.speak(buffer.getSenates(),true);
                         //speakPage();
+                    } else if (buffer.isEmpty() && currentPage + 1 < totalPages) {
+                        showNextPage();
                     }else {
                         isSpeaking = false;
                         btnTTS.setText(getString(R.string.pref_pause));
@@ -232,7 +240,8 @@ public class ReaderActivity extends AppCompatActivity {
                     } else {
                         isSpeaking = true;
                         btnTTS.setText(getString(R.string.pref_pause));
-                        String id = ttsM.speak(text, true);
+                        buffer.setPage(text);
+                        String id = ttsM.speak(buffer.getSenates(), true);
                         if (id == null) {
                             Toast.makeText(this, "TTS engine not ready", Toast.LENGTH_SHORT).show();
                             isSpeaking = false;

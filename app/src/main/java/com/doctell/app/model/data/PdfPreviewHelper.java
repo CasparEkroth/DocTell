@@ -5,6 +5,7 @@ import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Matrix;
 import android.graphics.Rect;
+import android.graphics.RectF;
 import android.graphics.pdf.PdfRenderer;
 import android.net.Uri;
 import android.os.ParcelFileDescriptor;
@@ -17,6 +18,8 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.security.MessageDigest;
+import java.util.ArrayList;
+import java.util.List;
 
 public class PdfPreviewHelper {
 
@@ -128,6 +131,47 @@ public class PdfPreviewHelper {
         }
         return out.getAbsolutePath();
     }
+
+    public static List<RectF> getRectsForSentence(
+            PDDocument doc,
+            int pageIndex,
+            String sentence,
+            int bitmapWidth,
+            int bitmapHeight,
+            int pageWidthPdf,
+            int pageHeightPdf
+    ) {
+        List<RectF> out = new ArrayList<>();
+        if (sentence == null || sentence.trim().isEmpty()) return out;
+
+        try {
+            PositionAwareStripper stripper = new PositionAwareStripper();
+            stripper.setStartPage(pageIndex + 1);
+            stripper.setEndPage(pageIndex + 1);
+            stripper.getText(doc); // populates words
+
+            String target = sentence.trim();
+
+            float scaleX = bitmapWidth / (float) pageWidthPdf;
+            float scaleY = bitmapHeight / (float) pageHeightPdf;
+
+            for (PositionAwareStripper.WordBox wb : stripper.getWords()) {
+                if (target.contains(wb.text.trim())) {
+                    // Convert PDF coords -> bitmap coords
+                    float left = wb.x * scaleX;
+                    float top  = wb.y * scaleY;
+                    float right = (wb.x + wb.w) * scaleX;
+                    float bottom = (wb.y + wb.h) * scaleY;
+
+                    out.add(new RectF(left, top, right, bottom));
+                }
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        return out;
+    }
+
 
 
 }

@@ -6,6 +6,7 @@
     <!-- PDF Page -->
 
     <!-- Loading spinner -->
+
     <ImageView
         android:id="@+id/pdfImage"
         android:layout_width="match_parent"
