@@ -8,6 +8,7 @@
     <!-- Loading spinner -->
     <FrameLayout
         android:id="@+id/pdfContainer"
+        android:layout_marginTop="100dp"
         android:layout_width="match_parent"
         android:layout_height="match_parent" >
 
@@ -17,7 +18,7 @@
             android:layout_height="match_parent"
             android:background="#000000"
             android:adjustViewBounds="true"
-            android:scaleType="fitCenter" />
+            android:scaleType="matrix" />
 
         <com.doctell.app.view.HighlightOverlayView
             android:id="@+id/highlightOverlay"
