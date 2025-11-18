@@ -24,4 +24,4 @@ The source code of DocTell is released under the [CC BY-NC 4.0 License](./LICENS
 You are free to use or modify the code for personal and educational purposes.  
 Commercial use, redistribution on app stores, or selling modified versions is **not permitted**.  
 
-For commercial inquiries, contact: casparekroth.dev@gmail.com
+For commercial inquiries, contact: ekrothdev@gmail.com
