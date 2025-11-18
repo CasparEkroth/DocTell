@@ -2,9 +2,12 @@ package com.doctell.app.view;
 
 import android.content.Context;
 import android.graphics.Canvas;
+import android.graphics.Matrix;
 import android.graphics.Paint;
 import android.graphics.RectF;
 import android.util.AttributeSet;
+import android.view.MotionEvent;
+import android.view.ScaleGestureDetector;
 import android.view.View;
 
 import java.util.ArrayList;
@@ -12,8 +15,10 @@ import java.util.List;
 
 public class HighlightOverlayView extends View {
 
+    private final List<RectF> baseRects = new ArrayList<>();
+    private final RectF tmpRect = new RectF();
+    private final Matrix imageMatrix = new Matrix();
     private final Paint paint;
-    private final List<RectF> rects = new ArrayList<>();
 
     public HighlightOverlayView(Context context, Paint paint) {
         super(context, null);
@@ -26,7 +31,6 @@ public class HighlightOverlayView extends View {
 
     public HighlightOverlayView(Context context, AttributeSet attrs, int defStyleAttr) {
         super(context, attrs, defStyleAttr);
-
         paint = new Paint(Paint.ANTI_ALIAS_FLAG);
         paint.setStyle(Paint.Style.FILL);
         // semi-transparent yellow
@@ -36,25 +40,34 @@ public class HighlightOverlayView extends View {
     @Override
     protected void onDraw(Canvas canvas) {
         super.onDraw(canvas);
-        for (RectF r : rects) {
-            canvas.drawRect(r, paint);
+
+        for (RectF r : baseRects) {
+            tmpRect.set(r);
+            imageMatrix.mapRect(tmpRect);
+            canvas.drawRect(tmpRect, paint);
         }
     }
 
-    public void setHighlights(List<RectF> newRects) {
-        rects.clear();
-        if (newRects != null) rects.addAll(newRects);
-        invalidate();
-    }
-
-    public void setHighlight(RectF rect) {
-        rects.clear();
-        if (rect != null) rects.add(rect);
+    public void setHighlights(List<RectF> rects) {
+        baseRects.clear();
+        if (rects != null) {
+            for (RectF r : rects) {
+                baseRects.add(new RectF(r));
+            }
+        }
         invalidate();
     }
 
     public void clearHighlights() {
-        rects.clear();
+        baseRects.clear();
         invalidate();
     }
+
+    public void setImageMatrix(Matrix matrix) {
+        if (matrix != null) {
+            this.imageMatrix.set(matrix);
+            invalidate();
+        }
+    }
+
 }

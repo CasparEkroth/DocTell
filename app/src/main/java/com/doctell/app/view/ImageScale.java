@@ -31,5 +31,5 @@ public class ImageScale {
         });
     }
     public ScaleGestureDetector getScaleDetector(){return this.scaleDetector;}
-
+    public Matrix getMatrix(){return matrix;}
 }

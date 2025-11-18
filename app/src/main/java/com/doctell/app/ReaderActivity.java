@@ -92,6 +92,7 @@ public class ReaderActivity extends AppCompatActivity {
 
         pdfImage.setOnTouchListener((view,motionEvent) -> {
             scale.onTouchEvent(motionEvent);
+            highlightOverlay.setImageMatrix(imageScale.getMatrix());
             return true;
         });
 
@@ -254,9 +255,7 @@ public class ReaderActivity extends AppCompatActivity {
                 doc, currentPage, sentence, bmpW, bmpH, pageW, pageH
         );
 
-        Matrix imageMatrix = pdfImage.getImageMatrix();
         for (RectF r : rects) {
-            imageMatrix.mapRect(r);
             r.offset(0, -r.height());
         }
 
