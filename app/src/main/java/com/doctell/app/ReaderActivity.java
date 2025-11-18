@@ -3,7 +3,7 @@ package com.doctell.app;
 import android.annotation.SuppressLint;
 import android.content.Intent;
 import android.graphics.Bitmap;
-import android.graphics.Insets;
+import android.graphics.RectF;
 import android.graphics.pdf.PdfRenderer;
 import android.net.Uri;
 import android.os.Bundle;
@@ -62,6 +62,7 @@ public class ReaderActivity extends AppCompatActivity {
 
     private HighlightOverlayView highlightOverlay;
     private TTSBuffer buffer;
+    private PDDocument doc;
 
     @SuppressLint("ClickableViewAccessibility")
     @Override
@@ -78,7 +79,7 @@ public class ReaderActivity extends AppCompatActivity {
         loadingBar = findViewById(R.id.loadingBar);
         btnChapter = findViewById(R.id.chapterBtn);
 
-        //highlightOverlay = findViewById(R.id.highlightOverlay);
+        highlightOverlay = findViewById(R.id.highlightOverlay);
         buffer = TTSBuffer.getInstance();
 
         exec = Executors.newSingleThreadExecutor();
@@ -94,6 +95,7 @@ public class ReaderActivity extends AppCompatActivity {
             ParcelFileDescriptor pfd = getContentResolver().openFileDescriptor(uri,"r");
             assert pfd != null;
             renderer = new PdfRenderer(pfd);
+            doc = PDDocument.load(new File(bookLocalPath), MemoryUsageSetting.setupTempFileOnly());
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
@@ -105,7 +107,8 @@ public class ReaderActivity extends AppCompatActivity {
                 runOnUiThread(() -> {
                     if(!isSpeaking)return;
                     if(!buffer.isEmpty()){
-                        ttsM.speak(buffer.getSenates(),true);
+                        setSentence(buffer.getSenates(),doc);
+                        //ttsM.speak(buffer.getSenates(),true);
                         //speakPage();
                     } else if (buffer.isEmpty() && currentPage + 1 < totalPages) {
                         showNextPage();
@@ -185,10 +188,14 @@ public class ReaderActivity extends AppCompatActivity {
 
     private void showNextPage() {
         showPage(currentPage + 1);
+        buffer.clear();
+        highlightOverlay.clearHighlights();
     }
 
     private void showPrevPage() {
         showPage(currentPage - 1);
+        buffer.clear();
+        highlightOverlay.clearHighlights();
     }
 
     private void showPage(int page) {
@@ -227,10 +234,23 @@ public class ReaderActivity extends AppCompatActivity {
         }
     }
 
+    private String setSentence(String sentence, PDDocument doc){
+        int bmpW = pdfImage.getWidth();
+        int bmpH = pdfImage.getHeight();
+        int pageW = renderer.openPage(currentPage).getWidth();
+        int pageH = renderer.openPage(currentPage).getHeight();
+
+        List<RectF> rects = PdfPreviewHelper.getRectsForSentence(
+                doc, currentPage, sentence, bmpW, bmpH, pageW, pageH
+        );
+        highlightOverlay.setHighlights(rects);
+        return ttsM.speak(sentence, true);
+    }
+
     private void speakPage() {
         showLoading(true);
         exec.execute(() -> {
-            try(PDDocument doc = PDDocument.load(new File(bookLocalPath), MemoryUsageSetting.setupTempFileOnly())) {
+            try {
 
                 String text = PdfPreviewHelper.extractOnePageText(doc,currentPage);
                 main.post(() -> {
@@ -241,10 +261,13 @@ public class ReaderActivity extends AppCompatActivity {
                         isSpeaking = true;
                         btnTTS.setText(getString(R.string.pref_pause));
                         buffer.setPage(text);
-                        String id = ttsM.speak(buffer.getSenates(), true);
+                        String sentence = buffer.getSenates();
+
+                        String id = setSentence(sentence,doc);
                         if (id == null) {
                             Toast.makeText(this, "TTS engine not ready", Toast.LENGTH_SHORT).show();
                             isSpeaking = false;
+                            highlightOverlay.clearHighlights();
                             btnTTS.setText(getString(R.string.pref_play));
                         } else {
                             Toast.makeText(this, "Text extracted (" + Math.min(text.length(), 60) + " chars…)", Toast.LENGTH_SHORT).show();
@@ -303,8 +326,16 @@ public class ReaderActivity extends AppCompatActivity {
 
     @Override
     protected void onDestroy() {
+        buffer.clear();
         if (ttsM != null) {
             ttsM.stop();
+        }
+        if(doc != null) {
+            try {
+                doc.close();
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
         }
         try {
            closeRenderer();

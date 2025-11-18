@@ -19,7 +19,9 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.security.MessageDigest;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 public class PdfPreviewHelper {
 
@@ -142,35 +144,166 @@ public class PdfPreviewHelper {
             int pageHeightPdf
     ) {
         List<RectF> out = new ArrayList<>();
-        if (sentence == null || sentence.trim().isEmpty()) return out;
+        if (sentence == null) return out;
+
+        String targetNorm = normalizeForFuzzy(sentence);
+        if (targetNorm.isEmpty()) return out;
 
         try {
             PositionAwareStripper stripper = new PositionAwareStripper();
             stripper.setStartPage(pageIndex + 1);
             stripper.setEndPage(pageIndex + 1);
-            stripper.getText(doc); // populates words
+            stripper.getText(doc);
 
-            String target = sentence.trim();
+            List<PositionAwareStripper.WordBox> words = stripper.getWords();
+            if (words.isEmpty()) return out;
 
             float scaleX = bitmapWidth / (float) pageWidthPdf;
             float scaleY = bitmapHeight / (float) pageHeightPdf;
 
-            for (PositionAwareStripper.WordBox wb : stripper.getWords()) {
-                if (target.contains(wb.text.trim())) {
-                    // Convert PDF coords -> bitmap coords
-                    float left = wb.x * scaleX;
-                    float top  = wb.y * scaleY;
-                    float right = (wb.x + wb.w) * scaleX;
-                    float bottom = (wb.y + wb.h) * scaleY;
+            StringBuilder pageBuilder = new StringBuilder();
+            List<Integer> wordStart = new ArrayList<>();
+            List<Integer> wordEnd = new ArrayList<>();
 
-                    out.add(new RectF(left, top, right, bottom));
+            for (PositionAwareStripper.WordBox wb : words) {
+                String normWord = normalizeForFuzzy(wb.text);
+                if (normWord.isEmpty()) continue;
+
+                int startPos = pageBuilder.length();
+                pageBuilder.append(normWord).append(' ');
+                int endPos = pageBuilder.length();
+
+                wordStart.add(startPos);
+                wordEnd.add(endPos);
+            }
+
+            String pageNorm = pageBuilder.toString().trim();
+            if (pageNorm.isEmpty()) return out;
+
+            int idx = pageNorm.indexOf(targetNorm);
+            if (idx != -1) {
+                int idxEnd = idx + targetNorm.length();
+
+                int startWord = -1, endWord = -1;
+                for (int i = 0; i < wordStart.size(); i++) {
+                    int ws = wordStart.get(i);
+                    int we = wordEnd.get(i);
+                    if (we <= idx) continue;
+                    if (ws >= idxEnd) break;
+                    if (startWord == -1) startWord = i;
+                    endWord = i;
+                }
+
+                if (startWord != -1 && endWord != -1) {
+                    for (int k = startWord; k <= endWord; k++) {
+                        PositionAwareStripper.WordBox wb = words.get(k);
+
+                        float pdfLeft   = wb.x;
+                        float pdfRight  = wb.x + wb.w;
+                        float pdfTop    = wb.y;
+                        float pdfBottom = wb.y + wb.h;
+
+                        float left   = pdfLeft   * scaleX;
+                        float right  = pdfRight  * scaleX;
+                        float top    = pdfTop    * scaleY;
+                        float bottom = pdfBottom * scaleY;
+                        out.add(new RectF(left, top, right, bottom));
+                    }
+                    return out;
                 }
             }
+
+            // 3) Fallback: fuzzy Jaccard
+            String[] targetTokens = targetNorm.split(" ");
+            int targetTokenCount = targetTokens.length;
+
+            int bestStart = -1, bestEnd = -1;
+            float bestScore = 0f;
+
+            for (int i = 0; i < words.size(); i++) {
+                StringBuilder sb = new StringBuilder();
+
+                for (int j = i; j < words.size(); j++) {
+                    sb.append(words.get(j).text).append(' ');
+                    String candNorm = normalizeForFuzzy(sb.toString());
+                    if (candNorm.isEmpty()) continue;
+
+                    int candTokens = candNorm.split(" ").length;
+
+                    // length guard
+                    if (candTokens > targetTokenCount * 1.8f) break;
+
+                    float score = jaccardSimilarity(targetNorm, candNorm);
+
+                    if (score > bestScore ||
+                            (Math.abs(score - bestScore) < 0.02f && bestStart != -1 && i < bestStart)) {
+                        bestScore = score;
+                        bestStart = i;
+                        bestEnd = j;
+                    }
+                }
+            }
+
+            final float THRESHOLD = 0.35f;
+            if (bestStart == -1 || bestEnd == -1 || bestScore < THRESHOLD) {
+                return out; // nothing convincing
+            }
+
+            for (int k = bestStart; k <= bestEnd; k++) {
+                PositionAwareStripper.WordBox wb = words.get(k);
+
+                float pdfLeft = wb.x;
+                float pdfRight = wb.x + wb.w;
+                float pdfTop = pageHeightPdf - wb.y;
+                float pdfBottom = pdfTop - wb.h;
+
+                float left = pdfLeft * scaleX;
+                float right = pdfRight * scaleX;
+                float top = pdfTop * scaleY;
+                float bottom = pdfBottom * scaleY;
+
+                out.add(new RectF(left, top, right, bottom));
+            }
+
         } catch (IOException e) {
             e.printStackTrace();
         }
+
         return out;
     }
+
+
+    private static String normalizeForFuzzy(String s) {
+        if (s == null) return "";
+        String norm = s.toLowerCase();
+        norm = norm.replaceAll("[\"',;:()\\[\\]]", " ");
+        norm = norm.replaceAll("\\s+", " ").trim();
+        return norm;
+    }
+
+    private static float jaccardSimilarity(String a, String b) {
+        if (a.isEmpty() || b.isEmpty()) return 0f;
+
+        String[] aTokens = a.split(" ");
+        String[] bTokens = b.split(" ");
+
+        Set<String> setA = new HashSet<>();
+        Set<String> setB = new HashSet<>();
+
+        for (String t : aTokens) if (!t.isEmpty()) setA.add(t);
+        for (String t : bTokens) if (!t.isEmpty()) setB.add(t);
+
+        if (setA.isEmpty() || setB.isEmpty()) return 0f;
+
+        int inter = 0;
+        for (String t : setA) if (setB.contains(t)) inter++;
+
+        int union = setA.size() + setB.size() - inter;
+        if (union == 0) return 0f;
+
+        return inter / (float) union;
+    }
+
 
 
 

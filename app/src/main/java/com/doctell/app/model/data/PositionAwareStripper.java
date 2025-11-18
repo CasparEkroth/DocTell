@@ -52,9 +52,9 @@ public class PositionAwareStripper extends PDFTextStripper {
             float h = tp.getHeightDir();
 
             minX = Math.min(minX, x);
-            minY = Math.min(minY, y - h);
+            minY = Math.min(minY, y);
             maxX = Math.max(maxX, x + w);
-            maxY = Math.max(maxY, y);
+            maxY = Math.max(maxY, y + h);
         }
 
         if (minX <= maxX && minY <= maxY) {
