@@ -43,7 +43,6 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 public class ReaderActivity extends AppCompatActivity {
-
     private ImageView pdfImage;
     private ProgressBar loadingBar;
     private Button btnNext, btnPrev, btnTTS, btnChapter;
@@ -51,8 +50,7 @@ public class ReaderActivity extends AppCompatActivity {
     private ExecutorService exec;
     private Handler main;
     private ParcelFileDescriptor pfd;
-    private int currentPage = 0;
-    private int totalPages;
+    private int currentPage = 0, totalPages;
     private Book currentBook;
     private PdfRenderer renderer;
     private String bookLocalPath;
@@ -61,7 +59,6 @@ public class ReaderActivity extends AppCompatActivity {
     private static final int REQ_SELECT_CHAPTER = 1001;
     List<ChapterItem> chapters;
     ChapterLoader chapterLoader;
-
     private HighlightOverlayView highlightOverlay;
     private TTSBuffer buffer;
     private PDDocument doc;
@@ -110,8 +107,6 @@ public class ReaderActivity extends AppCompatActivity {
                     if(!isSpeaking)return;
                     if(!buffer.isEmpty()){
                         setSentence(buffer.getSenates(),doc);
-                        //ttsM.speak(buffer.getSenates(),true);
-                        //speakPage();
                     } else if (buffer.isEmpty() && currentPage + 1 < totalPages) {
                         showNextPage();
                     }else {
@@ -133,11 +128,10 @@ public class ReaderActivity extends AppCompatActivity {
 
         btnNext.setOnClickListener(v -> showNextPage());
         btnPrev.setOnClickListener(v -> showPrevPage());
-
         btnTTS.setOnClickListener(v -> toggleTTS());
-
         btnChapter.setOnClickListener(v -> openChapterActivity());
         btnChapter.setEnabled(false);
+
         chapterLoader = new ChapterLoader();
         chapters = new ArrayList<>();
         chapterLoader.loadChaptersAsync(bookLocalPath, loadedChapters -> {
@@ -149,7 +143,6 @@ public class ReaderActivity extends AppCompatActivity {
 
         showLoading(true);
         openRendererAsync();
-
     }
 
     private void openRendererAsync(){
@@ -184,7 +177,7 @@ public class ReaderActivity extends AppCompatActivity {
         });
     }
 
-    private void showLoading(boolean on) {//TODO fix xml
+    private void showLoading(boolean on) {
         if (loadingBar != null) loadingBar.setVisibility(on ? View.VISIBLE : View.GONE);
     }
 
@@ -203,26 +196,21 @@ public class ReaderActivity extends AppCompatActivity {
     private void showPage(int page) {
         if (page < 0 || page >= totalPages) return;
         currentPage = page;
-
         loadingBar.setVisibility(ProgressBar.VISIBLE);
 
         Bitmap bmp = PdfPreviewHelper.renderOnePage(
-                renderer,
-                currentPage,
+                renderer, currentPage,
                 pdfImage.getResources().getDisplayMetrics(),
                 pdfImage.getWidth());
 
         pdfImage.setImageBitmap(bmp);
-
         pageIndicator.setText((page + 1) + " / " + totalPages);
 
         currentBook.setLastPage(currentPage);
         currentBook.setSentence(0);
         BookStorage.updateBook(currentBook,this);
 
-
         loadingBar.setVisibility(ProgressBar.GONE);
-
         if (isSpeaking) speakPage();
     }
 
@@ -267,7 +255,6 @@ public class ReaderActivity extends AppCompatActivity {
         showLoading(true);
         exec.execute(() -> {
             try {
-
                 String text = PdfPreviewHelper.extractOnePageText(doc,currentPage);
                 main.post(() -> {
                     showLoading(false);
@@ -298,22 +285,18 @@ public class ReaderActivity extends AppCompatActivity {
     @Override
     protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
-
         if (requestCode == REQ_SELECT_CHAPTER && resultCode == RESULT_OK && data != null) {
             int page = data.getIntExtra("selectedPage", -1);
-            if (page >= 0) {
+            if (page >= 0)
                 showPage(page);
-            }
         }
     }
 
     private void openChapterActivity() {
-
         if(chapters == null){
             Toast.makeText(this, "No chapters found.", Toast.LENGTH_SHORT).show();
             return;
         }
-
         ArrayList<String> titles = new ArrayList<>();
         ArrayList<Integer> pages = new ArrayList<>();
         ArrayList<Integer> levels = new ArrayList<>();
@@ -323,7 +306,6 @@ public class ReaderActivity extends AppCompatActivity {
             pages.add(c.getPageIndex());
             levels.add(c.getLevel());
         }
-
         Intent intent = new Intent(this, ChapterActivity.class);
         intent.putStringArrayListExtra("chapterTitles", titles);
         intent.putIntegerArrayListExtra("chapterPages", pages);
@@ -343,19 +325,13 @@ public class ReaderActivity extends AppCompatActivity {
     @Override
     protected void onDestroy() {
         buffer.clear();
-        if (ttsM != null) {
-            ttsM.stop();
-        }
+        if (ttsM != null) {ttsM.stop();}
         if(doc != null) {
-            try {
-                doc.close();
-            } catch (IOException e) {
+            try {doc.close();} catch (IOException e) {
                 throw new RuntimeException(e);
             }
         }
-        try {
-           closeRenderer();
-        } catch (Exception ignored) {}
+        try {closeRenderer();} catch (Exception ignored) {}
         if (exec != null) exec.shutdownNow();
         if (chapterLoader != null) chapterLoader.shutdown();
         super.onDestroy();
