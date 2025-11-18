@@ -6,13 +6,27 @@
     <!-- PDF Page -->
 
     <!-- Loading spinner -->
-    <ImageView
-        android:id="@+id/pdfImage"
+    <FrameLayout
+        android:id="@+id/pdfContainer"
         android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:adjustViewBounds="true"
-        android:background="#000000"
-        android:scaleType="fitCenter" />
+        android:layout_height="match_parent" >
+
+        <ImageView
+            android:id="@+id/pdfImage"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:background="#000000"
+            android:adjustViewBounds="true"
+            android:scaleType="fitCenter" />
+
+        <com.doctell.app.view.HighlightOverlayView
+            android:id="@+id/highlightOverlay"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:clickable="false"
+            android:focusable="false" />
+
+    </FrameLayout>
 
     <Button
         android:id="@+id/chapterBtn"

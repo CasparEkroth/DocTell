@@ -3,7 +3,9 @@ package com.doctell.app;
 import android.annotation.SuppressLint;
 import android.content.Intent;
 import android.graphics.Bitmap;
-import android.graphics.Insets;
+import android.graphics.Matrix;
+import android.graphics.RectF;
+import android.graphics.drawable.BitmapDrawable;
 import android.graphics.pdf.PdfRenderer;
 import android.net.Uri;
 import android.os.Bundle;
@@ -27,11 +29,11 @@ import com.doctell.app.model.data.Book;
 import com.doctell.app.model.data.BookStorage;
 import com.doctell.app.model.data.ChapterLoader;
 import com.doctell.app.model.data.PdfPreviewHelper;
+import com.doctell.app.model.tts.TTSBuffer;
 import com.doctell.app.model.tts.TTSModel;
+import com.doctell.app.view.HighlightOverlayView;
 import com.tom_roush.pdfbox.io.MemoryUsageSetting;
 import com.tom_roush.pdfbox.pdmodel.PDDocument;
-import com.tom_roush.pdfbox.pdmodel.PDDocumentCatalog;
-import com.tom_roush.pdfbox.pdmodel.interactive.documentnavigation.outline.PDDocumentOutline;
 
 import java.io.File;
 import java.io.IOException;
@@ -60,6 +62,10 @@ public class ReaderActivity extends AppCompatActivity {
     List<ChapterItem> chapters;
     ChapterLoader chapterLoader;
 
+    private HighlightOverlayView highlightOverlay;
+    private TTSBuffer buffer;
+    private PDDocument doc;
+
     @SuppressLint("ClickableViewAccessibility")
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -75,6 +81,9 @@ public class ReaderActivity extends AppCompatActivity {
         loadingBar = findViewById(R.id.loadingBar);
         btnChapter = findViewById(R.id.chapterBtn);
 
+        highlightOverlay = findViewById(R.id.highlightOverlay);
+        buffer = TTSBuffer.getInstance();
+
         exec = Executors.newSingleThreadExecutor();
         main = new Handler(Looper.getMainLooper());
 
@@ -88,6 +97,7 @@ public class ReaderActivity extends AppCompatActivity {
             ParcelFileDescriptor pfd = getContentResolver().openFileDescriptor(uri,"r");
             assert pfd != null;
             renderer = new PdfRenderer(pfd);
+            doc = PDDocument.load(new File(bookLocalPath), MemoryUsageSetting.setupTempFileOnly());
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
@@ -98,9 +108,12 @@ public class ReaderActivity extends AppCompatActivity {
             public void onDone(String utteranceId) {
                 runOnUiThread(() -> {
                     if(!isSpeaking)return;
-                    if(currentPage + 1 < totalPages){
-                        showNextPage();
+                    if(!buffer.isEmpty()){
+                        setSentence(buffer.getSenates(),doc);
+                        //ttsM.speak(buffer.getSenates(),true);
                         //speakPage();
+                    } else if (buffer.isEmpty() && currentPage + 1 < totalPages) {
+                        showNextPage();
                     }else {
                         isSpeaking = false;
                         btnTTS.setText(getString(R.string.pref_pause));
@@ -177,10 +190,14 @@ public class ReaderActivity extends AppCompatActivity {
 
     private void showNextPage() {
         showPage(currentPage + 1);
+        buffer.clear();
+        highlightOverlay.clearHighlights();
     }
 
     private void showPrevPage() {
         showPage(currentPage - 1);
+        buffer.clear();
+        highlightOverlay.clearHighlights();
     }
 
     private void showPage(int page) {
@@ -219,10 +236,37 @@ public class ReaderActivity extends AppCompatActivity {
         }
     }
 
+    private String setSentence(String sentence, PDDocument doc){
+        BitmapDrawable drawable = (BitmapDrawable) pdfImage.getDrawable();
+        if(drawable == null)
+            return null;
+        Bitmap bitmap = drawable.getBitmap();
+        if(bitmap == null)
+            return null;
+
+        int bmpW = bitmap.getWidth();
+        int bmpH = bitmap.getHeight();
+        int pageW = renderer.openPage(currentPage).getWidth();
+        int pageH = renderer.openPage(currentPage).getHeight();
+
+        List<RectF> rects = PdfPreviewHelper.getRectsForSentence(
+                doc, currentPage, sentence, bmpW, bmpH, pageW, pageH
+        );
+
+        Matrix imageMatrix = pdfImage.getImageMatrix();
+        for (RectF r : rects) {
+            imageMatrix.mapRect(r);
+            r.offset(0, -r.height());
+        }
+
+        highlightOverlay.setHighlights(rects);
+        return ttsM.speak(sentence, true);
+    }
+
     private void speakPage() {
         showLoading(true);
         exec.execute(() -> {
-            try(PDDocument doc = PDDocument.load(new File(bookLocalPath), MemoryUsageSetting.setupTempFileOnly())) {
+            try {
 
                 String text = PdfPreviewHelper.extractOnePageText(doc,currentPage);
                 main.post(() -> {
@@ -232,10 +276,14 @@ public class ReaderActivity extends AppCompatActivity {
                     } else {
                         isSpeaking = true;
                         btnTTS.setText(getString(R.string.pref_pause));
-                        String id = ttsM.speak(text, true);
+                        buffer.setPage(text);
+                        String sentence = buffer.getSenates();
+
+                        String id = setSentence(sentence,doc);
                         if (id == null) {
                             Toast.makeText(this, "TTS engine not ready", Toast.LENGTH_SHORT).show();
                             isSpeaking = false;
+                            highlightOverlay.clearHighlights();
                             btnTTS.setText(getString(R.string.pref_play));
                         } else {
                             Toast.makeText(this, "Text extracted (" + Math.min(text.length(), 60) + " chars…)", Toast.LENGTH_SHORT).show();
@@ -294,8 +342,16 @@ public class ReaderActivity extends AppCompatActivity {
 
     @Override
     protected void onDestroy() {
+        buffer.clear();
         if (ttsM != null) {
             ttsM.stop();
+        }
+        if(doc != null) {
+            try {
+                doc.close();
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
         }
         try {
            closeRenderer();
