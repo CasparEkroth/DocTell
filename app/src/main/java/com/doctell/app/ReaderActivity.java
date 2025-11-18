@@ -3,7 +3,9 @@ package com.doctell.app;
 import android.annotation.SuppressLint;
 import android.content.Intent;
 import android.graphics.Bitmap;
+import android.graphics.Matrix;
 import android.graphics.RectF;
+import android.graphics.drawable.BitmapDrawable;
 import android.graphics.pdf.PdfRenderer;
 import android.net.Uri;
 import android.os.Bundle;
@@ -235,14 +237,28 @@ public class ReaderActivity extends AppCompatActivity {
     }
 
     private String setSentence(String sentence, PDDocument doc){
-        int bmpW = pdfImage.getWidth();
-        int bmpH = pdfImage.getHeight();
+        BitmapDrawable drawable = (BitmapDrawable) pdfImage.getDrawable();
+        if(drawable == null)
+            return null;
+        Bitmap bitmap = drawable.getBitmap();
+        if(bitmap == null)
+            return null;
+
+        int bmpW = bitmap.getWidth();
+        int bmpH = bitmap.getHeight();
         int pageW = renderer.openPage(currentPage).getWidth();
         int pageH = renderer.openPage(currentPage).getHeight();
 
         List<RectF> rects = PdfPreviewHelper.getRectsForSentence(
                 doc, currentPage, sentence, bmpW, bmpH, pageW, pageH
         );
+
+        Matrix imageMatrix = pdfImage.getImageMatrix();
+        for (RectF r : rects) {
+            imageMatrix.mapRect(r);
+            r.offset(0, -r.height());
+        }
+
         highlightOverlay.setHighlights(rects);
         return ttsM.speak(sentence, true);
     }
