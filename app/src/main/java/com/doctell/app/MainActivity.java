@@ -8,6 +8,7 @@ import android.os.Looper;
 import android.util.Log;
 import android.view.View;
 import android.widget.GridLayout;
+import android.widget.ProgressBar;
 import android.widget.Toast;
 
 import androidx.activity.EdgeToEdge;
@@ -36,6 +37,8 @@ public class MainActivity extends AppCompatActivity {
     private final Handler main = new Handler(Looper.getMainLooper());
     private TTSModel ttsModel;
 
+    private ProgressBar loadingBar;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -46,7 +49,7 @@ public class MainActivity extends AppCompatActivity {
         //load books
         BookStorage.booksCache = BookStorage.loadBooks(this);
         pdfGrid = findViewById(R.id.pdfGrid);
-
+        loadingBar = findViewById(R.id.loadingMain);
         refreshGrid();
 
         ttsModel = TTSModel.get(getApplicationContext());
@@ -82,7 +85,7 @@ public class MainActivity extends AppCompatActivity {
         if (requestCode == PICK_PDF_REQUEST && resultCode == RESULT_OK && data != null) {
             Uri uri = data.getData();
             if (uri == null) return;
-
+            showLoading(true);
             // persist permission
             final int takeFlags = data.getFlags() &
                     (Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_GRANT_WRITE_URI_PERMISSION);
@@ -106,7 +109,10 @@ public class MainActivity extends AppCompatActivity {
                         BookStorage.booksCache.add(b);
                         BookStorage.updateBook(b, this);
                     }
-                    main.post(this::refreshGrid);
+                    main.post(() ->{
+                        this.refreshGrid();
+                        showLoading(false);
+                    });
 
                 } catch (Exception e) {
                     Log.e("PDF", "Import failed", e);
@@ -142,6 +148,10 @@ public class MainActivity extends AppCompatActivity {
         }
 
         return "Untitled";
+    }
+
+    private void showLoading(boolean on) {
+        if (loadingBar != null) loadingBar.setVisibility(on ? View.VISIBLE : View.GONE);
     }
 
     private void refreshGrid(){

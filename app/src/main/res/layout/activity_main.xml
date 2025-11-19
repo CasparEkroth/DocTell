@@ -9,9 +9,6 @@
     tools:context=".MainActivity">
 
     <!-- Settings (Hamburger) Button -->
-
-    <!-- Central Container for Books -->
-
     <com.google.android.material.floatingactionbutton.FloatingActionButton
         android:id="@+id/btnMenu"
         android:layout_width="60dp"
@@ -37,21 +34,30 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent">
 
+        <!-- Central Container for Books -->
         <ScrollView
             android:layout_width="match_parent"
             android:layout_height="match_parent"
             tools:ignore="UselessParent">
             <!-- holds item View -->
+
             <GridLayout
                 android:id="@+id/pdfGrid"
                 android:useDefaultMargins="true"
                 android:alignmentMode="alignMargins"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-
                 android:columnCount="2"
                 android:padding="8dp" />
         </ScrollView>
+
+        <ProgressBar
+            android:id="@+id/loadingMain"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:layout_gravity="center"
+            android:visibility="gone" />
+
     </FrameLayout>
 
 
