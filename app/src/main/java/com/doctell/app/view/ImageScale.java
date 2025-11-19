@@ -1,44 +1,100 @@
 package com.doctell.app.view;
 
-
 import android.content.Context;
 import android.graphics.Matrix;
 import android.view.MotionEvent;
 import android.view.ScaleGestureDetector;
 import android.widget.ImageView;
 
-import com.doctell.app.model.tts.TTSModel;
-
 public class ImageScale {
 
-    private ScaleGestureDetector scaleDetector;
+    private static final float MIN_SCALE = 1.0f;
+    private static final float MAX_SCALE = 5.0f;
+
+    private final ImageView pdfView;
     private final Matrix matrix;
-    private ImageView pdfView;
-    private float scale;
+    private final ScaleGestureDetector scaleDetector;
+
+    private float scale = 1.0f;
 
     private float lastX, lastY;
     private boolean isDragging = false;
 
-    public ImageScale(ImageView pdfView, Context cxt){
+    private final float[] mValues = new float[9];
+
+    public ImageScale(ImageView pdfView, Context ctx) {
         this.pdfView = pdfView;
-        matrix = new Matrix();
-        scale = 1.0f;
-        scaleDetector = new ScaleGestureDetector(cxt, new ScaleGestureDetector.SimpleOnScaleGestureListener() {
-            @Override
-            public boolean onScale(ScaleGestureDetector detector) {
-                scale *= detector.getScaleFactor();
-                scale = Math.max(0.5f, Math.min(scale, 5.0f));
-                matrix.setScale(scale, scale, detector.getFocusX(), detector.getFocusY());
-                pdfView.setImageMatrix(matrix);
-                return true;
-            }
-        });
+        this.matrix = new Matrix();
+
+        this.pdfView.setScaleType(ImageView.ScaleType.MATRIX);
+        this.pdfView.setImageMatrix(matrix);
+
+        this.scaleDetector = new ScaleGestureDetector(ctx,
+                new ScaleGestureDetector.SimpleOnScaleGestureListener() {
+                    @Override
+                    public boolean onScale(ScaleGestureDetector detector) {
+                        float factor = detector.getScaleFactor();
+
+                        float prevScale = scale;
+                        scale *= factor;
+                        scale = Math.max(MIN_SCALE, Math.min(scale, MAX_SCALE));
+
+                        // Adjust factor
+                        factor = scale / prevScale;
+
+                        // Apply incremental scale around fingers
+                        matrix.postScale(
+                                factor,
+                                factor,
+                                detector.getFocusX(),
+                                detector.getFocusY()
+                        );
+
+                        fixTranslation();
+                        applyMatrix();
+                        return true;
+                    }
+                });
+    }
+
+    private void applyMatrix() {
+        pdfView.setImageMatrix(matrix);
+    }
+
+    private void fixTranslation() {
+        if (pdfView.getDrawable() == null) return;
+
+        matrix.getValues(mValues);
+        float transX = mValues[Matrix.MTRANS_X];
+        float transY = mValues[Matrix.MTRANS_Y];
+        float scaleX = mValues[Matrix.MSCALE_X];
+        float scaleY = mValues[Matrix.MSCALE_Y];
+
+        float drawableWidth = pdfView.getDrawable().getIntrinsicWidth() * scaleX;
+        float drawableHeight = pdfView.getDrawable().getIntrinsicHeight() * scaleY;
+
+        float viewWidth = pdfView.getWidth();
+        float viewHeight = pdfView.getHeight();
+
+        // Allowed translation range so the image doesn't disappear
+        float minX = Math.min(0f, viewWidth - drawableWidth);
+        float maxX = 0f;
+        float minY = Math.min(0f, viewHeight - drawableHeight);
+        float maxY = 0f;
+
+        float clampedX = Math.max(minX, Math.min(transX, maxX));
+        float clampedY = Math.max(minY, Math.min(transY, maxY));
+
+        float dx = clampedX - transX;
+        float dy = clampedY - transY;
+
+        matrix.postTranslate(dx, dy);
     }
 
     public boolean onTouch(MotionEvent event) {
         scaleDetector.onTouchEvent(event);
 
-        switch (event.getActionMasked()){
+        switch (event.getActionMasked()) {
             case MotionEvent.ACTION_DOWN:
                 lastX = event.getX();
                 lastY = event.getY();
@@ -46,12 +102,14 @@ public class ImageScale {
                 break;
 
             case MotionEvent.ACTION_MOVE:
-                if (!scaleDetector.isInProgress() && isDragging) {
+                // Only pan when not scaling and zoomed in
+                if (!scaleDetector.isInProgress() && isDragging && scale > MIN_SCALE) {
                     float dx = event.getX() - lastX;
                     float dy = event.getY() - lastY;
 
                     matrix.postTranslate(dx, dy);
-                    pdfView.setImageMatrix(matrix);
+                    fixTranslation();
+                    applyMatrix();
 
                     lastX = event.getX();
                     lastY = event.getY();
@@ -63,8 +121,21 @@ public class ImageScale {
                 isDragging = false;
                 break;
         }
+
         return true;
     }
-    public ScaleGestureDetector getScaleDetector(){return this.scaleDetector;}
-    public Matrix getMatrix(){return matrix;}
+
+    public void reset() {
+        scale = 1.0f;
+        matrix.reset();
+        applyMatrix();
+    }
+
+    public ScaleGestureDetector getScaleDetector() {
+        return this.scaleDetector;
+    }
+
+    public Matrix getMatrix() {
+        return matrix;
+    }
 }
