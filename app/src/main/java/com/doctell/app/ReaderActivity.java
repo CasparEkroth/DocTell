@@ -73,7 +73,6 @@ public class ReaderActivity extends AppCompatActivity {
         setContentView(R.layout.activity_reader);
 
         pdfImage = findViewById(R.id.pdfImage);
-        loadingBar = findViewById(R.id.loadingBar);
         btnPrev = findViewById(R.id.btnPrev);
         btnNext = findViewById(R.id.btnNext);
         btnTTS = findViewById(R.id.btnTTS);
@@ -103,14 +102,6 @@ public class ReaderActivity extends AppCompatActivity {
         currentBook = BookStorage.findBookByUri(this, uri);
         assert currentBook != null;
         bookLocalPath = currentBook.getLocalPath();
-        try {
-            ParcelFileDescriptor pfd = getContentResolver().openFileDescriptor(uri,"r");
-            assert pfd != null;
-            renderer = new PdfRenderer(pfd);
-            doc = PDDocument.load(new File(bookLocalPath), MemoryUsageSetting.setupTempFileOnly());
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
 
         ttsM = TTSModel.get(getApplicationContext());
         ttsM.setExternalListener(new UtteranceProgressListener(){
@@ -154,8 +145,6 @@ public class ReaderActivity extends AppCompatActivity {
             Log.d("ChapterLoader", "Loaded " + chapters.size() + " chapters");
         });
 
-
-
         showLoading(true);
         openRendererAsync();
     }
@@ -164,6 +153,7 @@ public class ReaderActivity extends AppCompatActivity {
         exec.execute(() ->{
             try {
                 File file = new File(bookLocalPath);
+                doc = PDDocument.load(file, MemoryUsageSetting.setupTempFileOnly());
                 pfd = ParcelFileDescriptor.open(file, ParcelFileDescriptor.MODE_READ_ONLY);
                 renderer = new PdfRenderer(pfd);
                 totalPages = renderer.getPageCount();
@@ -211,7 +201,7 @@ public class ReaderActivity extends AppCompatActivity {
     private void showPage(int page) {
         if (page < 0 || page >= totalPages) return;
         currentPage = page;
-        loadingBar.setVisibility(ProgressBar.VISIBLE);
+        showLoading(true);
 
         Bitmap bmp = PdfPreviewHelper.renderOnePage(
                 renderer, currentPage,
@@ -225,7 +215,7 @@ public class ReaderActivity extends AppCompatActivity {
         currentBook.setSentence(0);
         BookStorage.updateBook(currentBook,this);
 
-        loadingBar.setVisibility(ProgressBar.GONE);
+        showLoading(false);
         if (isSpeaking) speakPage();
     }
 
