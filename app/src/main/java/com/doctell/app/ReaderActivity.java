@@ -13,6 +13,7 @@ import android.os.Handler;
 import android.os.Looper;
 import android.os.ParcelFileDescriptor;
 import android.util.Log;
+import android.view.ScaleGestureDetector;
 import android.view.View;
 import android.widget.Button;
 import android.widget.ImageView;
@@ -32,6 +33,7 @@ import com.doctell.app.model.data.PdfPreviewHelper;
 import com.doctell.app.model.tts.TTSBuffer;
 import com.doctell.app.model.tts.TTSModel;
 import com.doctell.app.view.HighlightOverlayView;
+import com.doctell.app.view.ImageScale;
 import com.tom_roush.pdfbox.io.MemoryUsageSetting;
 import com.tom_roush.pdfbox.pdmodel.PDDocument;
 
@@ -57,11 +59,12 @@ public class ReaderActivity extends AppCompatActivity {
     private TTSModel ttsM;
     private boolean isSpeaking = false;
     private static final int REQ_SELECT_CHAPTER = 1001;
-    List<ChapterItem> chapters;
-    ChapterLoader chapterLoader;
+    private List<ChapterItem> chapters;
+    private ChapterLoader chapterLoader;
     private HighlightOverlayView highlightOverlay;
     private TTSBuffer buffer;
     private PDDocument doc;
+    private ScaleGestureDetector scale;
 
     @SuppressLint("ClickableViewAccessibility")
     @Override
@@ -83,6 +86,16 @@ public class ReaderActivity extends AppCompatActivity {
 
         exec = Executors.newSingleThreadExecutor();
         main = new Handler(Looper.getMainLooper());
+
+        ImageScale imageScale = new ImageScale(pdfImage,this);
+        scale = imageScale.getScaleDetector();
+
+        pdfImage.setOnTouchListener((view,motionEvent) -> {
+            //scale.onTouchEvent(motionEvent);
+            imageScale.onTouch(motionEvent);
+            highlightOverlay.setImageMatrix(imageScale.getMatrix());
+            return true;
+        });
 
         // Load Book from MainActivity
         String uriString = getIntent().getStringExtra("uri");
@@ -140,6 +153,8 @@ public class ReaderActivity extends AppCompatActivity {
             btnChapter.setEnabled(chapters != null);
             Log.d("ChapterLoader", "Loaded " + chapters.size() + " chapters");
         });
+
+
 
         showLoading(true);
         openRendererAsync();
@@ -241,9 +256,7 @@ public class ReaderActivity extends AppCompatActivity {
                 doc, currentPage, sentence, bmpW, bmpH, pageW, pageH
         );
 
-        Matrix imageMatrix = pdfImage.getImageMatrix();
         for (RectF r : rects) {
-            imageMatrix.mapRect(r);
             r.offset(0, -r.height());
         }
 
