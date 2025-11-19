@@ -10,6 +10,8 @@ import android.graphics.pdf.PdfRenderer;
 import android.net.Uri;
 import android.os.ParcelFileDescriptor;
 import android.util.DisplayMetrics;
+import android.util.Log;
+
 import com.tom_roush.pdfbox.pdmodel.PDDocument;
 import com.tom_roush.pdfbox.text.PDFTextStripper;
 import java.io.File;
@@ -70,7 +72,7 @@ public class PdfPreviewHelper {
     }
 
     public static String thumbPathFor(Context ctx, Uri uri) {
-        File dir = new File(ctx.getCacheDir(), "thumbs");
+        File dir = new File(ctx.getFilesDir(), "thumbs");
         if (!dir.exists()) dir.mkdirs();
         String name = sha1(uri.toString()) + ".png";
         return new File(dir, name).getAbsolutePath();
@@ -79,6 +81,7 @@ public class PdfPreviewHelper {
     public static String ensureThumb(Context ctx, Uri uri, int targetWidthPx) throws IOException {
         String path = thumbPathFor(ctx, uri);
         File f = new File(path);
+        Log.d("TEST_THUMB", "Thumb exists = " + f.exists() + " | size = " + f.length());
         if (f.exists() && f.length() > 0) return path;
 
         try (ParcelFileDescriptor pfd = ctx.getContentResolver().openFileDescriptor(uri, "r");
