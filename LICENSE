@@ -1,15 +1,17 @@
-DocTell — © 2025 Caspar Ekroth
+## License
 
-This project is licensed under the Creative Commons Attribution-NonCommercial 4.0 International License (CC BY-NC 4.0).
+The source code of DocTell is released under the GNU Affero General Public License v3.0 (AGPL-3.0).
 
-You are free to:
-- Share — copy and redistribute the material in any medium or format.
-- Adapt — remix, transform, and build upon the material.
+You are free to view, study, fork, and modify the code for personal, educational, or research purposes.
 
-Under the following terms:
-- Attribution — You must give appropriate credit, link to the license, and indicate if changes were made.
-- NonCommercial — You may not use the material for commercial purposes.
-- No additional restrictions — You may not apply legal terms or technological measures that legally restrict others from doing anything the license permits.
+However, **you may NOT**:
+- use the code for any commercial purpose,
+- publish the code or modified versions on app stores,
+- distribute paid or ad-supported versions,
+- include subscriptions, premium features, or commercial API usage,
+- relicense the code under a different license,
+- create closed-source or proprietary derivatives.
 
-Full license text:
-https://creativecommons.org/licenses/by-nc/4.0/
+Any redistributed version of the code **must remain fully open-source under AGPL-3.0** and must make all source code, including modifications, publicly available.
+
+DocTell’s official Android app and its proprietary assets are © 2025 Caspar Ekroth and are **not** covered by the open-source license.
