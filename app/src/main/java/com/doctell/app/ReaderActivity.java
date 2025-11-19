@@ -91,7 +91,8 @@ public class ReaderActivity extends AppCompatActivity {
         scale = imageScale.getScaleDetector();
 
         pdfImage.setOnTouchListener((view,motionEvent) -> {
-            scale.onTouchEvent(motionEvent);
+            //scale.onTouchEvent(motionEvent);
+            imageScale.onTouch(motionEvent);
             highlightOverlay.setImageMatrix(imageScale.getMatrix());
             return true;
         });
