@@ -11,7 +11,7 @@ import android.widget.TextView;
 
 import androidx.appcompat.app.AppCompatActivity;
 
-import com.doctell.app.model.tts.TTSModel;
+import com.doctell.app.model.voice.TTSModel;
 
 public class SettingsActivity extends AppCompatActivity {
 

@@ -18,7 +18,7 @@ import androidx.appcompat.app.AppCompatActivity;
 import com.doctell.app.model.data.Book;
 import com.doctell.app.model.data.BookStorage;
 import com.doctell.app.model.data.PdfPreviewHelper;
-import com.doctell.app.model.tts.TTSModel;
+import com.doctell.app.model.voice.TTSModel;
 import com.doctell.app.view.ItemView;
 import com.tom_roush.pdfbox.io.MemoryUsageSetting;
 import com.tom_roush.pdfbox.pdmodel.PDDocument;

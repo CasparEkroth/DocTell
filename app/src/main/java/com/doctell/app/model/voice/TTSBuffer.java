@@ -1,4 +1,4 @@
-package com.doctell.app.model.tts;
+package com.doctell.app.model.voice;
 
 import java.util.ArrayDeque;
 import java.util.Arrays;

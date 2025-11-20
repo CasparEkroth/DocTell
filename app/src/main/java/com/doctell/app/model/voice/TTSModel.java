@@ -1,4 +1,4 @@
-package com.doctell.app.model.tts;
+package com.doctell.app.model.voice;
 
 import android.content.Context;
 import android.content.SharedPreferences;
