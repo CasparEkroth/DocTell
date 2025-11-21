@@ -22,6 +22,8 @@ public class LocalTtsEngine implements TtsEngineStrategy{
     private boolean speaking;
     private Context app;
 
+    private String lastText;
+    private int lastIndex = -1;
 
     public LocalTtsEngine(Context context){
         app = context;
@@ -51,14 +53,12 @@ public class LocalTtsEngine implements TtsEngineStrategy{
                             main.post(() -> engineListener.onEngineChunkStart(id));
                         }
                     }
-
                     @Override public void onDone(String id) {
                         speaking = false;
                         if (engineListener != null) {
                             main.post(() -> engineListener.onEngineChunkDone(id));
                         }
                     }
-
                     @Override public void onError(String id) {
                         speaking = false;
                         if (engineListener != null) {
@@ -70,6 +70,7 @@ public class LocalTtsEngine implements TtsEngineStrategy{
         });
     }
 
+
     @Override
     public void setListener(TtsEngineListener listener) {
         this.engineListener = listener;
@@ -77,17 +78,28 @@ public class LocalTtsEngine implements TtsEngineStrategy{
 
     @Override
     public void speakChunk(String text, int index) {
+        if (tts == null) return;
 
+        lastText = text;
+        lastIndex = index;
+
+        String utteranceId = "CHUNK_" + index;
+        tts.speak(text, TextToSpeech.QUEUE_FLUSH, null, utteranceId);
     }
 
     @Override
     public void pause() {
-
+        if (tts != null) {
+            tts.stop();
+        }
     }
-
     @Override
     public void resume() {
+        if (tts == null) return;
+        if (lastText == null || lastIndex < 0) return;
 
+        String utteranceId = "CHUNK_" + lastIndex;
+        tts.speak(lastText, TextToSpeech.QUEUE_FLUSH, null, utteranceId);
     }
 
     @Override
@@ -143,6 +155,7 @@ public class LocalTtsEngine implements TtsEngineStrategy{
                 .edit().putFloat(Prefs.TTS_SPEED.toString(), clamped).apply();
     }
 
+    @Override
     public void shutdown() {//when terminating the app
         if (tts != null) {
             try { tts.stop(); tts.shutdown(); } catch (Exception ignored) {}

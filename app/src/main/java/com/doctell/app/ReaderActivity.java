@@ -109,7 +109,7 @@ public class ReaderActivity extends AppCompatActivity {
                 runOnUiThread(() -> {
                     if(!isSpeaking)return;
                     if(!buffer.isEmpty()){
-                        setSentence(buffer.getSenates(),doc);
+                        setSentence(buffer.getSentence(),doc);
                     } else if (buffer.isEmpty() && currentPage + 1 < totalPages) {
                         showNextPage();
                     }else {
@@ -266,7 +266,7 @@ public class ReaderActivity extends AppCompatActivity {
                         isSpeaking = true;
                         btnTTS.setText(getString(R.string.pref_pause));
                         buffer.setPage(text);
-                        String sentence = buffer.getSenates();
+                        String sentence = buffer.getSentence();
 
                         String id = setSentence(sentence,doc);
                         if (id == null) {

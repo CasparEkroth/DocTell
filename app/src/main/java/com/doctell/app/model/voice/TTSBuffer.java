@@ -10,38 +10,43 @@ public class TTSBuffer {
     private String page;
     private Queue<String> queueOfSentences;
 
-    private TTSBuffer(){
+    private TTSBuffer() {
         queueOfSentences = new ArrayDeque<>();
     }
-    public static TTSBuffer getInstance(){
+
+    public static TTSBuffer getInstance() {
         if (INSTANCE == null) {
-            synchronized (TTSModel.class) {
-                if (INSTANCE == null) INSTANCE = new TTSBuffer();
-            }
+            INSTANCE = new TTSBuffer();
         }
         return INSTANCE;
     }
 
-    public String getPage() {
-        return page;
-    }
-
-    public void setPage(String page) {
-        this.page = page;
+    public void setPage(String pageText) {
+        this.page = pageText != null ? pageText : "";
+        clear();
         setQueueOfSentences();
     }
 
-    public String getSenates(){
+    public String getSentence() {
         return queueOfSentences.poll();
     }
 
-    public boolean isEmpty(){return queueOfSentences.isEmpty();}
+    public boolean isEmpty() {
+        return queueOfSentences.isEmpty();
+    }
 
-    public void clear(){
+    public void clear() {
         queueOfSentences.clear();
     }
-    private void setQueueOfSentences(){
+
+    public java.util.List<String> getAllSentences() {
+        String[] sentences = page.split("(?<=[.!?])\\s+");
+        return java.util.Arrays.asList(sentences);
+    }
+
+    private void setQueueOfSentences() {
         String[] sentences = page.split("(?<=[.!?])\\s+");
         queueOfSentences.addAll(Arrays.asList(sentences));
     }
 }
+
