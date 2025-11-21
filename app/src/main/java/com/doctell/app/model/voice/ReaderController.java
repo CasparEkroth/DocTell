@@ -11,6 +11,7 @@ public class ReaderController implements TtsEngineListener {
     private TtsEngineStrategy engine;
     private HighlightListener highlightListener;
 
+
     public ReaderController(TtsEngineStrategy engine,
                             List<String> chunks,
                             HighlightListener highlightListener,
@@ -30,6 +31,11 @@ public class ReaderController implements TtsEngineListener {
 
     public void setRate(float rate) {
         engine.setRate(rate);
+    }
+
+    public void setChunks(List<String> chunks) {
+        this.chunks = chunks;
+        this.currentIndex = 0;
     }
 
     public void startReading() {
@@ -72,7 +78,6 @@ public class ReaderController implements TtsEngineListener {
         engine.speakChunk(text, currentIndex);
     }
 
-
     @Override
     public void onEngineChunkStart(String utteranceId) {
         int index = parseIndex(utteranceId);
@@ -96,10 +101,9 @@ public class ReaderController implements TtsEngineListener {
         }
     }
 
-
     @Override
     public void onEngineError(String utteranceId) {
-
+        //TODO add if needed
     }
 
     private int parseIndex(String utteranceId) {
@@ -109,5 +113,12 @@ public class ReaderController implements TtsEngineListener {
             }
         } catch (NumberFormatException ignored) {}
         return -1;
+    }
+
+    public void shutdown(){
+        if(engine != null){
+            engine.stop();
+            engine.shutdown();
+        }
     }
 }

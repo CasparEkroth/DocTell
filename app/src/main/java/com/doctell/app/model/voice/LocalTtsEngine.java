@@ -25,26 +25,64 @@ public class LocalTtsEngine implements TtsEngineStrategy{
     private String lastText;
     private int lastIndex = -1;
 
-    public LocalTtsEngine(Context context){
+    private String currentLangCode;
+    private float currentRate;
+
+    private static LocalTtsEngine instance;
+    public static LocalTtsEngine getInstance(Context context){
+        if(instance == null)
+            instance = new LocalTtsEngine(context);
+        return instance;
+    }
+
+    private LocalTtsEngine(Context context){
         app = context;
+
+        SharedPreferences prefs = this.app.getSharedPreferences(
+                Prefs.DOCTELL_PREFS.toString(), Context.MODE_PRIVATE);
+
+        currentLangCode = prefs.getString(
+                Prefs.LANG.toString(),
+                Locale.getDefault().toLanguageTag()
+        );
+        currentRate = prefs.getFloat(Prefs.TTS_SPEED.toString(), 1.0f);
+
         init(context);
     }
 
+    private void applyLanguage() {
+        if (tts == null) return;
+        Locale locale = Locale.forLanguageTag(currentLangCode);
+        tts.setLanguage(locale);
+    }
+
+    private void applyRate() {
+        if (tts == null) return;
+        float clamped = Math.max(0.5f, Math.min(2.0f, currentRate));
+        tts.setSpeechRate(clamped);
+    }
+
+    private void persistSettings() {
+        SharedPreferences prefs = app.getSharedPreferences(
+                Prefs.DOCTELL_PREFS.toString(), Context.MODE_PRIVATE);
+        prefs.edit()
+                .putString(Prefs.LANG.toString(), currentLangCode)
+                .putFloat(Prefs.TTS_SPEED.toString(), currentRate)
+                .apply();
+    }
+
     @Override
-    public void init(Context context) {
-        tts = new TextToSpeech(context, status -> {
+    public synchronized void init(Context context) {
+        if (tts != null) return;
+        tts = new TextToSpeech(app, status -> {
             if (status == TextToSpeech.SUCCESS) {
-                // set language etc...
-                // Audio attributes (speech)
                 tts.setAudioAttributes(new AudioAttributes.Builder()
                         .setUsage(AudioAttributes.USAGE_MEDIA)
                         .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
                         .build());
 
-                // Apply saved language & rate
-                SharedPreferences p = app.getSharedPreferences(Prefs.DOCTELL_PREFS.toString(), Context.MODE_PRIVATE);
-                String lang = p.getString(Prefs.LANG.toString(), "eng");
-
+                applyLanguage();
+                applyRate();
 
                 tts.setOnUtteranceProgressListener(new UtteranceProgressListener() {
                     @Override public void onStart(String id) {
@@ -110,50 +148,25 @@ public class LocalTtsEngine implements TtsEngineStrategy{
         }
     }
 
-    @Override
     public void setLanguageByCode(String langCode) {
-        app.getSharedPreferences(Prefs.DOCTELL_PREFS.toString(), Context.MODE_PRIVATE)
-                .edit().putString(Prefs.LANG.toString(), langCode).apply();
-        if (tts == null) return;
-        Locale loc;
-
-        switch (langCode) {
-            case "swe": loc = new Locale("swe"); break;
-            case "spa": loc = new Locale("spa"); break;
-            default:   loc = new Locale("eng"); // "eng"
-        }
-        tts.setLanguage(loc);
-        Log.d("LocalTTS", "setLanguage " + loc);
+        currentLangCode = langCode;
+        applyLanguage();
+        persistSettings();
     }
 
     @Override
     public String getLanguage() {
-        Locale lang = tts.getLanguage();
-        if(lang == null)lang = new Locale("eng");
-
-        return convertLang(lang);
+        return currentLangCode;
     }
-
-    private String convertLang(Locale locale) {
-        if (locale == null){
-            return "eng";
-        }
-        String lang = locale.getLanguage();
-        if (lang == null || lang.isEmpty()){
-            return "eng";
-        }
-        return lang;
-    }
-
 
     @Override
     public void setRate(float rate) {
-        if (tts == null) return;
-        float clamped = Math.max(0.5f, Math.min(2.0f, rate));
-        tts.setSpeechRate(clamped);
-        app.getSharedPreferences(Prefs.DOCTELL_PREFS.toString(), Context.MODE_PRIVATE)
-                .edit().putFloat(Prefs.TTS_SPEED.toString(), clamped).apply();
+        currentRate = rate;
+        applyRate();
+        persistSettings();
     }
+
+
 
     @Override
     public void shutdown() {//when terminating the app

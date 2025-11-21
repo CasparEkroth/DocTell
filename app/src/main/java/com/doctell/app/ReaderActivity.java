@@ -29,8 +29,13 @@ import com.doctell.app.model.data.Book;
 import com.doctell.app.model.data.BookStorage;
 import com.doctell.app.model.data.ChapterLoader;
 import com.doctell.app.model.data.PdfPreviewHelper;
+import com.doctell.app.model.voice.HighlightListener;
+import com.doctell.app.model.voice.LocalTtsEngine;
+import com.doctell.app.model.voice.ReaderController;
 import com.doctell.app.model.voice.TTSBuffer;
 import com.doctell.app.model.voice.TTSModel;
+import com.doctell.app.model.voice.TtsEngineStrategy;
+import com.doctell.app.model.voice.notPublic.TtsEngineProvider;
 import com.doctell.app.view.HighlightOverlayView;
 import com.doctell.app.view.ImageScale;
 import com.tom_roush.pdfbox.io.MemoryUsageSetting;
@@ -43,7 +48,7 @@ import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-public class ReaderActivity extends AppCompatActivity {
+public class ReaderActivity extends AppCompatActivity implements HighlightListener {
     private ImageView pdfImage;
     private ProgressBar loadingBar;
     private Button btnNext, btnPrev, btnTTS, btnChapter;
@@ -55,7 +60,6 @@ public class ReaderActivity extends AppCompatActivity {
     private Book currentBook;
     private PdfRenderer renderer;
     private String bookLocalPath;
-    private TTSModel ttsM;
     private boolean isSpeaking = false;
     private static final int REQ_SELECT_CHAPTER = 1001;
     private List<ChapterItem> chapters;
@@ -63,7 +67,7 @@ public class ReaderActivity extends AppCompatActivity {
     private HighlightOverlayView highlightOverlay;
     private TTSBuffer buffer;
     private PDDocument doc;
-    private ScaleGestureDetector scale;
+    private ReaderController readerController;
 
     @SuppressLint("ClickableViewAccessibility")
     @Override
@@ -86,10 +90,7 @@ public class ReaderActivity extends AppCompatActivity {
         main = new Handler(Looper.getMainLooper());
 
         ImageScale imageScale = new ImageScale(pdfImage,this);
-        scale = imageScale.getScaleDetector();
-
         pdfImage.setOnTouchListener((view,motionEvent) -> {
-            //scale.onTouchEvent(motionEvent);
             imageScale.onTouch(motionEvent);
             highlightOverlay.setImageMatrix(imageScale.getMatrix());
             return true;
@@ -102,32 +103,14 @@ public class ReaderActivity extends AppCompatActivity {
         assert currentBook != null;
         bookLocalPath = currentBook.getLocalPath();
 
-        ttsM = TTSModel.get(getApplicationContext());
-        ttsM.setExternalListener(new UtteranceProgressListener(){
-            @Override
-            public void onDone(String utteranceId) {
-                runOnUiThread(() -> {
-                    if(!isSpeaking)return;
-                    if(!buffer.isEmpty()){
-                        setSentence(buffer.getSentence(),doc);
-                    } else if (buffer.isEmpty() && currentPage + 1 < totalPages) {
-                        showNextPage();
-                    }else {
-                        isSpeaking = false;
-                        btnTTS.setText(getString(R.string.pref_pause));
-                    }
-                });
-            }
-            @Override
-            public void onError(String utteranceId) {
-                runOnUiThread(()-> {
-                    isSpeaking = false;
-                    btnTTS.setText(getString(R.string.pref_play));
-                });
-            }
-            @Override
-            public void onStart(String utteranceId) {}
-        });
+        //TtsEngineStrategy engine = LocalTtsEngine.getInstance(getApplicationContext());
+        TtsEngineStrategy engine = TtsEngineProvider.getEngine(getApplicationContext());
+        readerController = new ReaderController(
+                engine,
+                java.util.Collections.emptyList(),
+                this,
+                this
+        );
 
         btnNext.setOnClickListener(v -> showNextPage());
         btnPrev.setOnClickListener(v -> showPrevPage());
@@ -222,42 +205,18 @@ public class ReaderActivity extends AppCompatActivity {
         if (!isSpeaking) {
             speakPage();
         } else {
-            ttsM.stop();
+            readerController.stopReading();
             isSpeaking = false;
             btnTTS.setText(getString(R.string.pref_play));
+            highlightOverlay.clearHighlights();
         }
-    }
-
-    private String setSentence(String sentence, PDDocument doc){
-        BitmapDrawable drawable = (BitmapDrawable) pdfImage.getDrawable();
-        if(drawable == null)
-            return null;
-        Bitmap bitmap = drawable.getBitmap();
-        if(bitmap == null)
-            return null;
-
-        int bmpW = bitmap.getWidth();
-        int bmpH = bitmap.getHeight();
-        int pageW = renderer.openPage(currentPage).getWidth();
-        int pageH = renderer.openPage(currentPage).getHeight();
-
-        List<RectF> rects = PdfPreviewHelper.getRectsForSentence(
-                doc, currentPage, sentence, bmpW, bmpH, pageW, pageH
-        );
-
-        for (RectF r : rects) {
-            r.offset(0, -r.height());
-        }
-
-        highlightOverlay.setHighlights(rects);
-        return ttsM.speak(sentence, true);
     }
 
     private void speakPage() {
         showLoading(true);
         exec.execute(() -> {
             try {
-                String text = PdfPreviewHelper.extractOnePageText(doc,currentPage);
+                String text = PdfPreviewHelper.extractOnePageText(doc, currentPage);
                 main.post(() -> {
                     showLoading(false);
                     if (text == null || text.trim().isEmpty()) {
@@ -265,23 +224,18 @@ public class ReaderActivity extends AppCompatActivity {
                     } else {
                         isSpeaking = true;
                         btnTTS.setText(getString(R.string.pref_pause));
-                        buffer.setPage(text);
-                        String sentence = buffer.getSentence();
 
-                        String id = setSentence(sentence,doc);
-                        if (id == null) {
-                            Toast.makeText(this, "TTS engine not ready", Toast.LENGTH_SHORT).show();
-                            isSpeaking = false;
-                            highlightOverlay.clearHighlights();
-                            btnTTS.setText(getString(R.string.pref_play));
-                        } else {
-                            Toast.makeText(this, "Text extracted (" + Math.min(text.length(), 60) + " chars…)", Toast.LENGTH_SHORT).show();
-                        }
+                        buffer.setPage(text);
+                        List<String> chunks = buffer.getAllSentences();
+
+                        readerController.setChunks(chunks);
+                        readerController.startReadingFrom(0);
                     }
                 });
-            } catch (Exception e) { e.printStackTrace(); }
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
         });
-
     }
 
     @Override
@@ -325,15 +279,42 @@ public class ReaderActivity extends AppCompatActivity {
     }
 
     @Override
+    public void onChunkStart(int index, String text) {
+        BitmapDrawable drawable = (BitmapDrawable) pdfImage.getDrawable();
+        if (drawable == null) return;
+        Bitmap bitmap = drawable.getBitmap();
+        if (bitmap == null || renderer == null || doc == null) return;
+
+        int bmpW = bitmap.getWidth();
+        int bmpH = bitmap.getHeight();
+        int pageW = renderer.openPage(currentPage).getWidth();
+        int pageH = renderer.openPage(currentPage).getHeight();
+
+        List<RectF> rects = PdfPreviewHelper.getRectsForSentence(
+                doc, currentPage, text, bmpW, bmpH, pageW, pageH
+        );
+
+        for (RectF r : rects) {
+            r.offset(0, -r.height());
+        }
+        highlightOverlay.setHighlights(rects);
+    }
+
+    @Override
+    public void onChunkDone(int index, String text) {
+        highlightOverlay.clearHighlights();
+    }
+
+    @Override
     protected void onDestroy() {
         buffer.clear();
-        if (ttsM != null) {ttsM.stop();}
-        if(doc != null) {
-            try {doc.close();} catch (IOException e) {
+        readerController.shutdown();
+        if (doc != null) {
+            try { doc.close(); } catch (IOException e) {
                 throw new RuntimeException(e);
             }
         }
-        try {closeRenderer();} catch (Exception ignored) {}
+        try { closeRenderer(); } catch (Exception ignored) {}
         if (exec != null) exec.shutdownNow();
         if (chapterLoader != null) chapterLoader.shutdown();
         super.onDestroy();
