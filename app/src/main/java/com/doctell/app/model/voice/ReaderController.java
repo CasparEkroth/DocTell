@@ -12,7 +12,6 @@ public class ReaderController implements TtsEngineListener {
     private TtsEngineStrategy engine;
     private HighlightListener highlightListener;
 
-
     public ReaderController(TtsEngineStrategy engine,
                             List<String> chunks,
                             HighlightListener highlightListener,
@@ -63,7 +62,7 @@ public class ReaderController implements TtsEngineListener {
     public void resumeReading() {
         if (!isPaused) return;
         isPaused = false;
-        speakCurrent();
+        engine.resume();
     }
 
     public void stopReading() {
@@ -82,6 +81,7 @@ public class ReaderController implements TtsEngineListener {
     @Override
     public void onEngineChunkStart(String utteranceId) {
         int index = parseIndex(utteranceId);
+
         if (chunks == null || highlightListener == null) return;
         if (index < 0 || index >= chunks.size()) return;
         highlightListener.onChunkStart(index, chunks.get(index));
@@ -91,7 +91,7 @@ public class ReaderController implements TtsEngineListener {
     public void onEngineChunkDone(String utteranceId) {
         int index = parseIndex(utteranceId);
 
-        // Clear highlight for the chunk we just finished
+        // Clear highlight
         if (chunks != null && highlightListener != null &&
                 index >= 0 && index < chunks.size()) {
             highlightListener.onChunkDone(index, chunks.get(index));
@@ -102,10 +102,8 @@ public class ReaderController implements TtsEngineListener {
         currentIndex = index + 1;
 
         if (currentIndex < chunks.size()) {
-            // Still more chunks on this page → read next
             speakCurrent();
         } else {
-            // We just finished the last chunk on this page
             if (highlightListener != null) {
                 highlightListener.onPageFinished();
             }

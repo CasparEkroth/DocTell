@@ -58,6 +58,7 @@ public class ReaderActivity extends AppCompatActivity implements HighlightListen
     private PdfRenderer renderer;
     private String bookLocalPath;
     private boolean isSpeaking = false;
+    private boolean ttsStartedOnPage = false;
     private static final int REQ_SELECT_CHAPTER = 1001;
     private List<ChapterItem> chapters;
     private ChapterLoader chapterLoader;
@@ -180,6 +181,7 @@ public class ReaderActivity extends AppCompatActivity implements HighlightListen
     private void showPage(int page) {
         if (page < 0 || page >= totalPages) return;
         currentPage = page;
+        ttsStartedOnPage = false;
         showLoading(true);
 
         Bitmap bmp = PdfPreviewHelper.renderOnePage(
@@ -199,14 +201,23 @@ public class ReaderActivity extends AppCompatActivity implements HighlightListen
     }
 
     private void toggleTTS() {
-        if (!isSpeaking) {
-            speakPage();
-        } else {
-            readerController.stopReading();
-            isSpeaking = false;
-            btnTTS.setText(getString(R.string.pref_play));
-            highlightOverlay.clearHighlights();
-        }
+        btnTTS.setOnClickListener(v -> {
+            if (!isSpeaking) {
+                isSpeaking = true;
+                btnTTS.setText(getString(R.string.pref_pause));
+                if (!ttsStartedOnPage) {
+                    ttsStartedOnPage = true;
+                    speakPage();
+                } else {
+                    readerController.resumeReading();
+                }
+            } else {
+                isSpeaking = false;
+                btnTTS.setText(getString(R.string.pref_play));
+                readerController.pauseReading();
+            }
+        });
+
     }
 
     private void speakPage() {
