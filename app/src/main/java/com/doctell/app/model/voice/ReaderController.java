@@ -1,6 +1,7 @@
 package com.doctell.app.model.voice;
 
 import android.content.Context;
+import android.util.Log;
 
 import java.util.List;
 
@@ -89,17 +90,28 @@ public class ReaderController implements TtsEngineListener {
     @Override
     public void onEngineChunkDone(String utteranceId) {
         int index = parseIndex(utteranceId);
+
+        // Clear highlight for the chunk we just finished
         if (chunks != null && highlightListener != null &&
                 index >= 0 && index < chunks.size()) {
             highlightListener.onChunkDone(index, chunks.get(index));
         }
-        if (!isPaused) {
-            currentIndex = index + 1;
-            if (chunks != null && currentIndex < chunks.size()) {
-                speakCurrent();
+
+        if (isPaused || chunks == null) return;
+
+        currentIndex = index + 1;
+
+        if (currentIndex < chunks.size()) {
+            // Still more chunks on this page → read next
+            speakCurrent();
+        } else {
+            // We just finished the last chunk on this page
+            if (highlightListener != null) {
+                highlightListener.onPageFinished();
             }
         }
     }
+
 
     @Override
     public void onEngineError(String utteranceId) {

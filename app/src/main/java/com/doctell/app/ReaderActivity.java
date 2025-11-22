@@ -12,7 +12,6 @@ import android.os.Handler;
 import android.os.Looper;
 import android.os.ParcelFileDescriptor;
 import android.util.Log;
-import android.view.ScaleGestureDetector;
 import android.view.View;
 import android.widget.Button;
 import android.widget.ImageView;
@@ -21,7 +20,7 @@ import android.widget.TextView;
 
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
-import android.speech.tts.UtteranceProgressListener;
+
 import android.widget.Toast;
 
 import com.doctell.app.model.ChapterItem;
@@ -30,10 +29,8 @@ import com.doctell.app.model.data.BookStorage;
 import com.doctell.app.model.data.ChapterLoader;
 import com.doctell.app.model.data.PdfPreviewHelper;
 import com.doctell.app.model.voice.HighlightListener;
-import com.doctell.app.model.voice.LocalTtsEngine;
 import com.doctell.app.model.voice.ReaderController;
 import com.doctell.app.model.voice.TTSBuffer;
-import com.doctell.app.model.voice.TTSModel;
 import com.doctell.app.model.voice.TtsEngineStrategy;
 import com.doctell.app.model.voice.notPublic.TtsEngineProvider;
 import com.doctell.app.view.HighlightOverlayView;
@@ -304,6 +301,16 @@ public class ReaderActivity extends AppCompatActivity implements HighlightListen
     public void onChunkDone(int index, String text) {
         highlightOverlay.clearHighlights();
     }
+    @Override
+    public void onPageFinished() {
+        if (currentPage + 1 < totalPages) {
+            showNextPage();
+        } else {
+            isSpeaking = false;
+            runOnUiThread(() -> btnTTS.setText(getString(R.string.pref_play)));
+        }
+    }
+
 
     @Override
     protected void onDestroy() {

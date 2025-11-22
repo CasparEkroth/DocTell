@@ -92,6 +92,7 @@ public class LocalTtsEngine implements TtsEngineStrategy{
                         }
                     }
                     @Override public void onDone(String id) {
+                        Log.d("LocalTtsEngine", "onDone id=" + id);
                         speaking = false;
                         if (engineListener != null) {
                             main.post(() -> engineListener.onEngineChunkDone(id));

@@ -1,7 +1,6 @@
 package com.doctell.app;
 
 import android.annotation.SuppressLint;
-import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.view.View;
 import android.widget.AdapterView;
@@ -13,9 +12,6 @@ import android.widget.TextView;
 import androidx.appcompat.app.AppCompatActivity;
 
 import com.doctell.app.model.Prefs;
-import com.doctell.app.model.voice.LocalTtsEngine;
-import com.doctell.app.model.voice.ReaderController;
-import com.doctell.app.model.voice.TTSModel;
 import com.doctell.app.model.voice.TtsEngineStrategy;
 import com.doctell.app.model.voice.notPublic.TtsEngineProvider;
 
