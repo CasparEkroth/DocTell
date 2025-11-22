@@ -18,7 +18,8 @@ import androidx.appcompat.app.AppCompatActivity;
 import com.doctell.app.model.data.Book;
 import com.doctell.app.model.data.BookStorage;
 import com.doctell.app.model.data.PdfPreviewHelper;
-import com.doctell.app.model.tts.TTSModel;
+import com.doctell.app.model.voice.LocalTtsEngine;
+import com.doctell.app.model.voice.TtsEngineStrategy;
 import com.doctell.app.view.ItemView;
 import com.tom_roush.pdfbox.io.MemoryUsageSetting;
 import com.tom_roush.pdfbox.pdmodel.PDDocument;
@@ -35,9 +36,10 @@ public class MainActivity extends AppCompatActivity {
     private GridLayout pdfGrid;
     private final ExecutorService exec = Executors.newSingleThreadExecutor();
     private final Handler main = new Handler(Looper.getMainLooper());
-    private TTSModel ttsModel;
+
 
     private ProgressBar loadingBar;
+    private TtsEngineStrategy engine;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -52,7 +54,7 @@ public class MainActivity extends AppCompatActivity {
         loadingBar = findViewById(R.id.loadingMain);
         refreshGrid();
 
-        ttsModel = TTSModel.get(getApplicationContext());
+        engine = LocalTtsEngine.getInstance(getApplicationContext());
 
         getOnBackPressedDispatcher().addCallback(this, new OnBackPressedCallback(true) {
             @Override public void handleOnBackPressed() {finish();}
@@ -167,7 +169,7 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onDestroy() {
         try {
-            ttsModel.shutdown();
+            engine.shutdown();
         } catch (Exception ignored) {}
         super.onDestroy();
     }

@@ -91,3 +91,5 @@ app/src/main/assets/**/*.wav
 !README.md
 !LICENSE
 
+**/notPublic/
+
