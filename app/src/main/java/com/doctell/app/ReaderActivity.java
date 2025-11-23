@@ -212,6 +212,7 @@ public class ReaderActivity extends AppCompatActivity implements HighlightListen
 
     private void showPage(int page) {
         if (page < 0 || page >= totalPages) return;
+
         currentPage = page;
         ttsStartedOnPage = false;
         showLoading(true);
@@ -327,8 +328,18 @@ public class ReaderActivity extends AppCompatActivity implements HighlightListen
 
         int bmpW = bitmap.getWidth();
         int bmpH = bitmap.getHeight();
-        int pageW = renderer.openPage(currentPage).getWidth();
-        int pageH = renderer.openPage(currentPage).getHeight();
+
+        int pageW, pageH;
+        PdfRenderer.Page page = null;
+        try {
+            page = renderer.openPage(currentPage);
+            pageW = page.getWidth();
+            pageH = page.getHeight();
+        } finally {
+            if (page != null) {
+                page.close();
+            }
+        }
 
         List<RectF> rects = PdfPreviewHelper.getRectsForSentence(
                 doc, currentPage, text, bmpW, bmpH, pageW, pageH
