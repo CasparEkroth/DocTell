@@ -13,6 +13,7 @@ import android.os.Looper;
 import android.os.ParcelFileDescriptor;
 import android.util.Log;
 import android.view.View;
+import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.ProgressBar;
@@ -20,6 +21,8 @@ import android.widget.TextView;
 
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.view.ViewCompat;
+import androidx.core.view.WindowInsetsCompat;
 
 import android.widget.Toast;
 
@@ -125,8 +128,37 @@ public class ReaderActivity extends AppCompatActivity implements HighlightListen
             Log.d("ChapterLoader", "Loaded " + chapters.size() + " chapters");
         });
 
+        View root = findViewById(R.id.readerRoot);
+        View bottomBar = findViewById(R.id.readerBottomBar);
+
+        ViewCompat.setOnApplyWindowInsetsListener(root, (v, insets) -> {
+            androidx.core.graphics.Insets systemBars =
+                    insets.getInsets(WindowInsetsCompat.Type.systemBars());
+            int top = systemBars.top;
+            int bottom = systemBars.bottom;
+
+            v.setPadding(
+                    v.getPaddingLeft(),
+                    top,
+                    v.getPaddingRight(),
+                    0
+            );
+            ViewGroup.MarginLayoutParams barLp =
+                    (ViewGroup.MarginLayoutParams) bottomBar.getLayoutParams();
+            barLp.bottomMargin = bottom + dp(16, v);
+            bottomBar.setLayoutParams(barLp);
+
+            return insets;
+        });
+
+
         showLoading(true);
         openRendererAsync();
+    }
+
+    private int dp(int value, View v) {
+        float density = v.getResources().getDisplayMetrics().density;
+        return (int) (value * density + 0.5f);
     }
 
     private void openRendererAsync(){

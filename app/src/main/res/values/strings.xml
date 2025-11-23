@@ -24,5 +24,10 @@
     <string name="close">close</string>
     <string name="chapters">Chapters</string>
 
+    <!-- MainActivity-->
+    <string name="topSubtitle">Let your PDFs come to life</string>
+    <string name="nav_library">Library</string>
+    <string name="nav_add">Add</string>
+    <string name="nav_settings">Settings</string>
 
 </resources>

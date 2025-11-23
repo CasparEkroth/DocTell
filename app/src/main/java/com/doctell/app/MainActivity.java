@@ -7,6 +7,7 @@ import android.os.Handler;
 import android.os.Looper;
 import android.util.Log;
 import android.view.View;
+import android.view.ViewGroup;
 import android.widget.GridLayout;
 import android.widget.ProgressBar;
 import android.widget.Toast;
@@ -14,6 +15,9 @@ import android.widget.Toast;
 import androidx.activity.EdgeToEdge;
 import androidx.activity.OnBackPressedCallback;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.view.ViewCompat;
+import androidx.core.view.WindowCompat;
+import androidx.core.view.WindowInsetsCompat;
 
 import com.doctell.app.model.data.Book;
 import com.doctell.app.model.data.BookStorage;
@@ -44,7 +48,8 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        EdgeToEdge.enable(this);
+        //EdgeToEdge.enable(this);
+        WindowCompat.setDecorFitsSystemWindows(getWindow(), false);
         setContentView(R.layout.activity_main);
         //init pdfbox
         com.tom_roush.pdfbox.android.PDFBoxResourceLoader.init(getApplicationContext());
@@ -59,6 +64,31 @@ public class MainActivity extends AppCompatActivity {
         getOnBackPressedDispatcher().addCallback(this, new OnBackPressedCallback(true) {
             @Override public void handleOnBackPressed() {finish();}
         });
+
+        View root = findViewById(R.id.main);
+        View nav = findViewById(R.id.bottomNav);
+
+        ViewCompat.setOnApplyWindowInsetsListener(root, (v, insets) -> {
+            androidx.core.graphics.Insets systemBars =
+                    insets.getInsets(WindowInsetsCompat.Type.systemBars());
+
+            int top = systemBars.top;
+            int bottom = systemBars.bottom;
+
+            v.setPadding(
+                    v.getPaddingLeft(),
+                    top,
+                    v.getPaddingRight(),
+                    0
+            );
+            ViewGroup.MarginLayoutParams navLp =
+                    (ViewGroup.MarginLayoutParams) nav.getLayoutParams();
+            navLp.bottomMargin = bottom;
+            nav.setLayoutParams(navLp);
+
+            return insets;
+        });
+
     }
 
     public void addBook(View v){
