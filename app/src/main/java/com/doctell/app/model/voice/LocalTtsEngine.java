@@ -8,6 +8,7 @@ import android.media.AudioAttributes;
 import android.os.Handler;
 import android.speech.tts.TextToSpeech;
 import android.speech.tts.UtteranceProgressListener;
+import android.speech.tts.Voice;
 import android.util.Log;
 
 import com.doctell.app.model.Prefs;
@@ -83,6 +84,15 @@ public class LocalTtsEngine implements TtsEngineStrategy{
 
                 applyLanguage();
                 applyRate();
+
+                for (Voice v : tts.getVoices()) {
+                    if (v.getQuality() == Voice.QUALITY_HIGH &&
+                            !v.isNetworkConnectionRequired() &&
+                            v.getLocale().equals(tts.getLanguage())) {
+                        tts.setVoice(v);
+                        break;
+                    }
+                }
 
                 tts.setOnUtteranceProgressListener(new UtteranceProgressListener() {
                     @Override public void onStart(String id) {
