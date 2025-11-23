@@ -1,5 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <color name="black">#FF000000</color>
-    <color name="white">#FFFFFFFF</color>
+    <color name="white">#FFFFFFFC</color>
+
+    <color name="dt_background">#003018</color>        <!-- Deep green background -->
+    <color name="dt_surface">#064024</color>           <!-- Slightly lighter card surface -->
+    <color name="dt_accent">#FFFFFF</color>            <!-- Accent (FAB / icons) -->
+    <color name="dt_onSurface">#FFFFFF</color>         <!-- Text on cards -->
+    <color name="dt_onSurfaceSecondary">#CCFFFFFF</color> <!-- Slightly dimmer secondary text -->
+
 </resources>
