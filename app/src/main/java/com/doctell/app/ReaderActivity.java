@@ -69,6 +69,7 @@ public class ReaderActivity extends AppCompatActivity implements HighlightListen
     private TTSBuffer buffer;
     private PDDocument doc;
     private ReaderController readerController;
+    private boolean firstPage = false;
 
     @SuppressLint("ClickableViewAccessibility")
     @Override
@@ -103,7 +104,7 @@ public class ReaderActivity extends AppCompatActivity implements HighlightListen
         currentBook = BookStorage.findBookByUri(this, uri);
         assert currentBook != null;
         bookLocalPath = currentBook.getLocalPath();
-
+        //Log.d("sentence1", currentBook.toString());
         //TtsEngineStrategy engine = LocalTtsEngine.getInstance(getApplicationContext());
         TtsEngineStrategy engine = TtsEngineProvider.getEngine(getApplicationContext());
         readerController = new ReaderController(
@@ -199,12 +200,14 @@ public class ReaderActivity extends AppCompatActivity implements HighlightListen
     }
 
     private void showNextPage() {
+        currentBook.setSentence(0);
         showPage(currentPage + 1);
         buffer.clear();
         highlightOverlay.clearHighlights();
     }
 
     private void showPrevPage() {
+        currentBook.setSentence(0);
         showPage(currentPage - 1);
         buffer.clear();
         highlightOverlay.clearHighlights();
@@ -226,7 +229,6 @@ public class ReaderActivity extends AppCompatActivity implements HighlightListen
         pageIndicator.setText((page + 1) + " / " + totalPages);
 
         currentBook.setLastPage(currentPage);
-        currentBook.setSentence(0);
         BookStorage.updateBook(currentBook,this);
 
         showLoading(false);
@@ -268,9 +270,14 @@ public class ReaderActivity extends AppCompatActivity implements HighlightListen
 
                         buffer.setPage(text);
                         List<String> chunks = buffer.getAllSentences();
+                        if(!firstPage)
+                            firstPage = true;
+                        else
+                            currentBook.setSentence(0);
 
+                        readerController.setStartSentence(currentBook.getSentence());
                         readerController.setChunks(chunks);
-                        readerController.startReadingFrom(0);
+                        readerController.startReadingFrom(currentBook.getSentence());
                     }
                 });
             } catch (Exception e) {
@@ -348,6 +355,8 @@ public class ReaderActivity extends AppCompatActivity implements HighlightListen
         for (RectF r : rects) {
             r.offset(0, -r.height());
         }
+        //Log.d("sentence", "nr " + index);
+        currentBook.setSentence(index);
         highlightOverlay.setHighlights(rects);
     }
 
@@ -365,9 +374,21 @@ public class ReaderActivity extends AppCompatActivity implements HighlightListen
         }
     }
 
+    @Override
+    protected void onPause(){
+        BookStorage.updateBook(currentBook,this);
+        super.onPause();
+    }
+
+    @Override
+    protected void onStop(){
+        BookStorage.updateBook(currentBook,this);
+        super.onStop();
+    }
 
     @Override
     protected void onDestroy() {
+        BookStorage.updateBook(currentBook,this);
         buffer.clear();
         readerController.shutdown();
         if (doc != null) {

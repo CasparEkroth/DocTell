@@ -35,7 +35,7 @@ public class ReaderController implements TtsEngineListener {
 
     public void setChunks(List<String> chunks) {
         this.chunks = chunks;
-        this.currentIndex = 0;
+        //this.currentIndex = 0;
     }
 
     public void startReading() {
@@ -114,6 +114,11 @@ public class ReaderController implements TtsEngineListener {
     @Override
     public void onEngineError(String utteranceId) {
         //TODO add if needed
+    }
+
+    @Override
+    public void setStartSentence(int sentence) {
+        this.currentIndex = sentence;
     }
 
     private int parseIndex(String utteranceId) {
