@@ -91,7 +91,13 @@ public class ReaderActivity extends AppCompatActivity implements HighlightListen
         exec = Executors.newSingleThreadExecutor();
         main = new Handler(Looper.getMainLooper());
 
-        ImageScale imageScale = new ImageScale(pdfImage,this);
+        ImageScale imageScale = new ImageScale(pdfImage, this, new ImageScale.TapNavigator() {
+            @Override
+            public void onTapLeft() {showPrevPage();}
+            @Override
+            public void onTapRight() {showNextPage();}
+        });
+
         pdfImage.setOnTouchListener((view,motionEvent) -> {
             imageScale.onTouch(motionEvent);
             highlightOverlay.setImageMatrix(imageScale.getMatrix());
@@ -104,7 +110,6 @@ public class ReaderActivity extends AppCompatActivity implements HighlightListen
         currentBook = BookStorage.findBookByUri(this, uri);
         assert currentBook != null;
         bookLocalPath = currentBook.getLocalPath();
-        //Log.d("sentence1", currentBook.toString());
         //TtsEngineStrategy engine = LocalTtsEngine.getInstance(getApplicationContext());
         TtsEngineStrategy engine = TtsEngineProvider.getEngine(getApplicationContext());
         readerController = new ReaderController(

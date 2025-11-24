@@ -2,6 +2,7 @@ package com.doctell.app.view;
 
 import android.content.Context;
 import android.graphics.Matrix;
+import android.util.Log;
 import android.view.MotionEvent;
 import android.view.ScaleGestureDetector;
 import android.widget.ImageView;
@@ -22,8 +23,22 @@ public class ImageScale {
 
     private final float[] mValues = new float[9];
 
-    public ImageScale(ImageView pdfView, Context ctx) {
+
+    public interface TapNavigator {
+        void onTapLeft();
+        void onTapRight();
+    }
+    private final TapNavigator tapNavigator;
+    private float tapDownX;
+    private float tapDownY;
+    private long tapDownTime;
+
+    private static final int TAP_TIMEOUT_MS = 200;
+    private static final float TAP_SLOP_PX = 20f;
+
+    public ImageScale(ImageView pdfView, Context ctx, TapNavigator tapNavigator) {
         this.pdfView = pdfView;
+        this.tapNavigator = tapNavigator;
         this.matrix = new Matrix();
 
         this.pdfView.setScaleType(ImageView.ScaleType.MATRIX);
@@ -93,12 +108,15 @@ public class ImageScale {
 
     public boolean onTouch(MotionEvent event) {
         scaleDetector.onTouchEvent(event);
-
         switch (event.getActionMasked()) {
             case MotionEvent.ACTION_DOWN:
                 lastX = event.getX();
                 lastY = event.getY();
                 isDragging = true;
+
+                tapDownX = event.getX();
+                tapDownY = event.getY();
+                tapDownTime = System.currentTimeMillis();
                 break;
 
             case MotionEvent.ACTION_MOVE:
@@ -117,6 +135,23 @@ public class ImageScale {
                 break;
 
             case MotionEvent.ACTION_UP:
+                isDragging = false;
+                long dt = System.currentTimeMillis() - tapDownTime;
+                float dxUp = Math.abs(event.getX() - tapDownX);
+                float dyUp = Math.abs(event.getY() - tapDownY);
+
+                boolean isTap = dt < TAP_TIMEOUT_MS && dxUp < TAP_SLOP_PX && dyUp < TAP_SLOP_PX;
+
+                if (isTap && scale == MIN_SCALE && tapNavigator != null) {
+                    // Only page-tap when not zoomed in
+                    float midX = pdfView.getWidth() / 2f;
+                    if (event.getX() < midX) {
+                        tapNavigator.onTapLeft();
+                    } else {
+                        tapNavigator.onTapRight();
+                    }
+                }
+                break;
             case MotionEvent.ACTION_CANCEL:
                 isDragging = false;
                 break;
