@@ -5,6 +5,9 @@ import android.speech.tts.TextToSpeech;
 import android.speech.tts.Voice;
 import android.util.Log;
 
+import com.doctell.app.model.voice.notPublic.TtsEngineProvider;
+import com.doctell.app.model.voice.notPublic.TtsEngineType;
+
 import java.util.Locale;
 
 public class CloudTtsEngine extends BaseTtsEngine {
@@ -20,7 +23,6 @@ public class CloudTtsEngine extends BaseTtsEngine {
     private CloudTtsEngine(Context app) {
         super(app);
         this.app = app;
-        // maybe separate prefs or same as local
     }
 
     @Override
@@ -42,7 +44,6 @@ public class CloudTtsEngine extends BaseTtsEngine {
 
 
                 if (engineListener != null) {
-
                     //main.post(() -> engineListener.onEngineNetworkLost());
                     // show to main?
                 }
@@ -67,6 +68,8 @@ public class CloudTtsEngine extends BaseTtsEngine {
                         && v.getLocale().equals(lang)) {
                     Log.i("CloudTtsEngine", "Switching to offline voice: " + v.getName());
                     tts.setVoice(v);
+                    //rm
+                    TtsEngineProvider.saveEngineType(TtsEngineType.LOCAL, this.app);
                     return true;
                 }
             }

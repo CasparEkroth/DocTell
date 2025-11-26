@@ -6,6 +6,7 @@
 
 
     <!-- Settings -->
+    <string name="pref_voice">Voice</string>
     <string name="pref_cat_language_voice">Language &amp; Voice</string>
     <string name="pref_lang_title">Language</string>
     <string name="pref_lang_summary">Choose the app’s TTS language</string>

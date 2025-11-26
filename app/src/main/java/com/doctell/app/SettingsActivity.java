@@ -1,6 +1,7 @@
 package com.doctell.app;
 
 import android.annotation.SuppressLint;
+import android.content.Context;
 import android.os.Bundle;
 import android.view.View;
 import android.widget.AdapterView;
@@ -12,24 +13,31 @@ import android.widget.TextView;
 import androidx.appcompat.app.AppCompatActivity;
 
 import com.doctell.app.model.Prefs;
+import com.doctell.app.model.voice.CloudTtsEngine;
+import com.doctell.app.model.voice.LocalTtsEngine;
 import com.doctell.app.model.voice.TtsEngineStrategy;
 import com.doctell.app.model.voice.notPublic.TtsEngineProvider;
+import com.doctell.app.model.voice.notPublic.TtsEngineType;
+
+import java.util.Objects;
 
 public class SettingsActivity extends AppCompatActivity {
 
-    private Spinner spLang;
+    private Spinner spLang, spVoice;
     private SeekBar seekRate;
     private TextView txtRateValue;
-
     private int initIndex = 0;
+    private int initVoice = 0;
+    private Context app;
 
     @SuppressLint("DefaultLocale")
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_settings);
-
+        app = this;
         spLang = findViewById(R.id.spLang);
+        spVoice = findViewById(R.id.spVoice);
         seekRate = findViewById(R.id.seekRate);
         txtRateValue = findViewById(R.id.txtRateValue);
 
@@ -37,6 +45,16 @@ public class SettingsActivity extends AppCompatActivity {
                 this, R.array.pref_lang_entries, android.R.layout.simple_spinner_item);
         adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
         spLang.setAdapter(adapter);
+
+        ArrayAdapter<CharSequence> adapterV = ArrayAdapter.createFromResource(
+                this, R.array.pref_voice, android.R.layout.simple_spinner_item);
+        adapterV.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+
+        spVoice.setAdapter(adapterV);
+
+        String[] voices ={TtsEngineType.LOCAL.toString(),TtsEngineType.CLOUD.toString()};
+        TtsEngineType current = getEnginType();
+        setSpVoiceText(voices,current.toString());
 
         String[] values = getResources().getStringArray(R.array.pref_lang_values);
         String saved = getLanguage();
@@ -53,6 +71,20 @@ public class SettingsActivity extends AppCompatActivity {
             @Override
             public void onNothingSelected(AdapterView<?> parent) {}
         });
+
+        spVoice.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+            @Override
+            public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
+                if(position == initVoice)return;
+                setSpVoiceText(voices,voices[position]);
+                TtsEngineProvider.saveEngineType(convert(voices[position]),app);
+                initVoice = position;
+            }
+            @Override
+            public void onNothingSelected(AdapterView<?> parent) {}
+        });
+
+
 
         float savedRate = getSharedPreferences(Prefs.DOCTELL_PREFS.toString(), MODE_PRIVATE).getFloat(Prefs.TTS_SPEED.toString(), 1.0f);
         txtRateValue.setText(String.format("%.1fx", savedRate));
@@ -74,7 +106,6 @@ public class SettingsActivity extends AppCompatActivity {
 
     private void setSpLangText(String[] values, String value){
         for (int i = 0; i < values.length; i++) {
-            //Log.d("TEST13", "index " + i + " " + values[i] +" comp " + value);
             if(values[i].equals(value)){
                 initIndex = i;
                 spLang.setSelection(i);
@@ -84,8 +115,30 @@ public class SettingsActivity extends AppCompatActivity {
         }
     }
 
+    private void setSpVoiceText(String[] values, String value){
+        for (int i = 0; i < values.length; i++) {
+            if(values[i].equals(value)){
+                initVoice = i;
+                spVoice.setSelection(i);
+                break;
+            }
+
+        }
+    }
+
+    private TtsEngineType convert(String vstr){
+        if(TtsEngineType.CLOUD.toString().equals(vstr))return TtsEngineType.CLOUD;
+        return TtsEngineType.LOCAL;
+    }
+
     private void onLanguageSelected(String langCode) {
         getEngine().setLanguageByCode(langCode);
+    }
+
+    private TtsEngineType getEnginType(){
+        TtsEngineStrategy engine = getEngine();
+        if(engine instanceof CloudTtsEngine)return TtsEngineType.CLOUD;
+        return TtsEngineType.LOCAL;
     }
 
     private String getLanguage(){
