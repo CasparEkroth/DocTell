@@ -2,6 +2,7 @@ package com.doctell.app.model.voice;
 import android.content.Context;
 import android.support.v4.media.session.MediaSessionCompat;
 import com.doctell.app.model.voice.media.PlaybackControl;
+import com.doctell.app.model.voice.media.ReaderMediaController;
 
 import java.util.List;
 
@@ -11,7 +12,7 @@ public class ReaderController implements TtsEngineListener, PlaybackControl {
     private boolean isPaused;
     private TtsEngineStrategy engine;
     private HighlightListener highlightListener;
-    private MediaSessionCompat mediaSession;
+    private final ReaderMediaController mediaController;
     public ReaderController(TtsEngineStrategy engine,
                             List<String> chunks,
                             HighlightListener highlightListener,
@@ -19,6 +20,9 @@ public class ReaderController implements TtsEngineListener, PlaybackControl {
         this.engine = engine;
         this.chunks = chunks;
         this.highlightListener = highlightListener;
+
+        mediaController = new ReaderMediaController(ctx, this);
+
         engine.init(ctx);
         engine.setListener(this);
     }
@@ -41,6 +45,9 @@ public class ReaderController implements TtsEngineListener, PlaybackControl {
         isPaused = false;
         if (chunks == null || chunks.isEmpty()) return;
         speakCurrent();
+
+        String sentence = chunks.get(currentIndex);
+        mediaController.updateState(true, currentIndex, sentence,null);
     }
 
     public void startReadingFrom(int index) {
@@ -51,23 +58,32 @@ public class ReaderController implements TtsEngineListener, PlaybackControl {
         currentIndex = index;
         isPaused = false;
         speakCurrent();
+        String sentence = chunks.get(currentIndex);
+        mediaController.updateState(true, currentIndex, sentence,null);
     }
 
     public void pauseReading() {
         isPaused = true;
         engine.pause();
+        if (chunks != null && currentIndex >= 0 && currentIndex < chunks.size()) {
+            mediaController.updateState(false, currentIndex, chunks.get(currentIndex),null);
+        }
     }
 
     public void resumeReading() {
         if (!isPaused) return;
         isPaused = false;
         engine.resume();
+        if (chunks != null && currentIndex >= 0 && currentIndex < chunks.size()) {
+            mediaController.updateState(true, currentIndex, chunks.get(currentIndex),null);
+        }
     }
 
     public void stopReading() {
         isPaused = false;
         engine.stop();
         currentIndex = 0;
+        mediaController.stop();
     }
 
     private void speakCurrent() {
@@ -84,6 +100,9 @@ public class ReaderController implements TtsEngineListener, PlaybackControl {
         if (chunks == null || highlightListener == null) return;
         if (index < 0 || index >= chunks.size()) return;
         highlightListener.onChunkStart(index, chunks.get(index));
+
+        String sentence = chunks.get(index);
+        mediaController.updateState(!isPaused, index, sentence,null);
     }
 
     @Override
@@ -102,10 +121,13 @@ public class ReaderController implements TtsEngineListener, PlaybackControl {
 
         if (currentIndex < chunks.size()) {
             speakCurrent();
+            String sentence = chunks.get(currentIndex);
+            mediaController.updateState(true, currentIndex, sentence,null);
         } else {
             if (highlightListener != null) {
                 highlightListener.onPageFinished();
             }
+            mediaController.stop();
         }
     }
 
@@ -113,6 +135,7 @@ public class ReaderController implements TtsEngineListener, PlaybackControl {
     @Override
     public void onEngineError(String utteranceId) {
         //TODO add if needed
+        //mediaController.stop();
     }
 
     @Override
@@ -134,6 +157,7 @@ public class ReaderController implements TtsEngineListener, PlaybackControl {
             engine.stop();
             engine.shutdown();
         }
+        mediaController.stop();
     }
 
     @Override

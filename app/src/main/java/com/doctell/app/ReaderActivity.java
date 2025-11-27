@@ -1,12 +1,15 @@
 package com.doctell.app;
 
+import android.Manifest;
 import android.annotation.SuppressLint;
 import android.content.Intent;
+import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.graphics.RectF;
 import android.graphics.drawable.BitmapDrawable;
 import android.graphics.pdf.PdfRenderer;
 import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
@@ -21,6 +24,8 @@ import android.widget.TextView;
 
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.app.ActivityCompat;
+import androidx.core.content.ContextCompat;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
 
@@ -63,6 +68,7 @@ public class ReaderActivity extends AppCompatActivity implements HighlightListen
     private boolean isSpeaking = false;
     private boolean ttsStartedOnPage = false;
     private static final int REQ_SELECT_CHAPTER = 1001;
+    private static final int REQ_POST_NOTIFICATIONS = 42;
     private List<ChapterItem> chapters;
     private ChapterLoader chapterLoader;
     private HighlightOverlayView highlightOverlay;
@@ -200,6 +206,24 @@ public class ReaderActivity extends AppCompatActivity implements HighlightListen
         });
     }
 
+    private boolean ensureNotificationPermission() {
+        if (Build.VERSION.SDK_INT < 33) return true;
+
+        if (ContextCompat.checkSelfPermission(
+                this,
+                Manifest.permission.POST_NOTIFICATIONS
+        ) == PackageManager.PERMISSION_GRANTED) {
+            return true;
+        }
+
+        ActivityCompat.requestPermissions(
+                this,
+                new String[]{ Manifest.permission.POST_NOTIFICATIONS },
+                REQ_POST_NOTIFICATIONS
+        );
+        return false;
+    }
+
     private void showLoading(boolean on) {
         if (loadingBar != null) loadingBar.setVisibility(on ? View.VISIBLE : View.GONE);
     }
@@ -282,7 +306,9 @@ public class ReaderActivity extends AppCompatActivity implements HighlightListen
 
                         readerController.setStartSentence(currentBook.getSentence());
                         readerController.setChunks(chunks);
-                        readerController.startReadingFrom(currentBook.getSentence());
+                        if (ensureNotificationPermission()) {
+                            readerController.startReadingFrom(currentBook.getSentence());
+                        }
                     }
                 });
             } catch (Exception e) {
