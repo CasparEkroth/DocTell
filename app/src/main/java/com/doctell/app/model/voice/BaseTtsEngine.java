@@ -9,8 +9,10 @@ import android.speech.tts.TextToSpeech;
 import android.speech.tts.UtteranceProgressListener;
 import android.speech.tts.Voice;
 import android.util.Log;
+import android.widget.Toast;
 
 import com.doctell.app.model.Prefs;
+import com.doctell.app.model.voice.notPublic.TtsEngineType;
 
 import java.util.Locale;
 import java.util.Set;
@@ -76,6 +78,19 @@ public abstract class BaseTtsEngine implements TtsEngineStrategy {
                     Log.w("BaseTtsEngine", "Failed selecting voice", e);
                 }
 
+                Voice v = tts.getVoice();
+                if (v != null) {
+                    TtsEngineType type = null;
+                    if(this instanceof CloudTtsEngine)type = TtsEngineType.CLOUD;
+                    if(this instanceof LocalTtsEngine)type = TtsEngineType.LOCAL;
+                    assert type != null;
+                    Log.d("TtsEngine", "Voice: " + v.getName()
+                            + ", requiresNetwork=" + v.isNetworkConnectionRequired()
+                            + ", latency=" + v.getLatency()
+                            + ", quality=" + v.getQuality()
+                            + ", engine type=" + type.toString());
+                }
+
                 tts.setOnUtteranceProgressListener(new UtteranceProgressListener() {
                     @Override public void onStart(String id) {
                         speaking = true;
@@ -110,7 +125,6 @@ public abstract class BaseTtsEngine implements TtsEngineStrategy {
 
     protected void onErrorInternal(String utteranceId, int errorCode) {
         speaking = false;
-
         if (engineListener != null) {
             // If you later want to pass errorCode through, you can extend TtsEngineListener.
             main.post(() -> engineListener.onEngineError(utteranceId));
