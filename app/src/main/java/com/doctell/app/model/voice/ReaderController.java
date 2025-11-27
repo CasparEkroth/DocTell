@@ -1,17 +1,17 @@
 package com.doctell.app.model.voice;
-
 import android.content.Context;
-import android.util.Log;
+import android.support.v4.media.session.MediaSessionCompat;
+import com.doctell.app.model.voice.media.PlaybackControl;
 
 import java.util.List;
 
-public class ReaderController implements TtsEngineListener {
+public class ReaderController implements TtsEngineListener, PlaybackControl {
     private List<String> chunks;
     private int currentIndex;
     private boolean isPaused;
     private TtsEngineStrategy engine;
     private HighlightListener highlightListener;
-
+    private MediaSessionCompat mediaSession;
     public ReaderController(TtsEngineStrategy engine,
                             List<String> chunks,
                             HighlightListener highlightListener,
@@ -19,7 +19,6 @@ public class ReaderController implements TtsEngineListener {
         this.engine = engine;
         this.chunks = chunks;
         this.highlightListener = highlightListener;
-
         engine.init(ctx);
         engine.setListener(this);
     }
@@ -135,5 +134,20 @@ public class ReaderController implements TtsEngineListener {
             engine.stop();
             engine.shutdown();
         }
+    }
+
+    @Override
+    public void play() {
+        resumeReading();
+    }
+
+    @Override
+    public void pause() {
+        pauseReading();
+    }
+
+    @Override
+    public void stop() {
+        stopReading();
     }
 }
