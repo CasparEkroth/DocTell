@@ -122,7 +122,17 @@ public class ReaderActivity extends AppCompatActivity implements HighlightListen
                 engine,
                 java.util.Collections.emptyList(),
                 this,
-                this
+                this,
+                new ReaderController.MediaNav() {
+                    @Override
+                    public void navForward() {
+                        showNextPage();
+                    }
+                    @Override
+                    public void navBackward() {
+                        showPrevPage();
+                    }
+                }
         );
 
         btnNext.setOnClickListener(v -> showNextPage());

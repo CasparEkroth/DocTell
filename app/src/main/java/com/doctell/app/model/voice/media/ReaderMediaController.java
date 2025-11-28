@@ -35,6 +35,10 @@ public class ReaderMediaController {
         this.playbackControl = playbackControl;
 
         mediaSession = new MediaSessionCompat(context, "DocTell");
+        mediaSession.setFlags(
+                MediaSessionCompat.FLAG_HANDLES_MEDIA_BUTTONS
+                        | MediaSessionCompat.FLAG_HANDLES_TRANSPORT_CONTROLS
+        );
         notificationManager = NotificationManagerCompat.from(context);
 
         mediaSession.setCallback(new MediaSessionCompat.Callback() {
@@ -52,6 +56,17 @@ public class ReaderMediaController {
             public void onStop() {
                 playbackControl.stop();
             }
+
+            @Override
+            public void onSkipToNext(){
+                playbackControl.forward();
+            }
+
+            @Override
+            public void onSkipToPrevious(){
+                playbackControl.backward();
+            }
+
         });
 
         mediaSession.setActive(true);
@@ -76,6 +91,8 @@ public class ReaderMediaController {
                         PlaybackStateCompat.ACTION_PLAY |
                                 PlaybackStateCompat.ACTION_PAUSE |
                                 PlaybackStateCompat.ACTION_STOP
+                                | PlaybackStateCompat.ACTION_SKIP_TO_NEXT
+                                | PlaybackStateCompat.ACTION_SKIP_TO_PREVIOUS
                 )
                 .setState(
                         isPlaying ? PlaybackStateCompat.STATE_PLAYING
@@ -99,6 +116,19 @@ public class ReaderMediaController {
                 context, PlaybackStateCompat.ACTION_STOP);
 
 
+        NotificationCompat.Action prevAction =
+                new NotificationCompat.Action(
+                        android.R.drawable.ic_media_previous, "Previous",
+                        MediaButtonReceiver.buildMediaButtonPendingIntent(
+                                context, PlaybackStateCompat.ACTION_SKIP_TO_PREVIOUS));
+
+        NotificationCompat.Action nextAction =
+                new NotificationCompat.Action(
+                        android.R.drawable.ic_media_next, "Next",
+                        MediaButtonReceiver.buildMediaButtonPendingIntent(
+                                context, PlaybackStateCompat.ACTION_SKIP_TO_NEXT));
+
+
         NotificationCompat.Action playPauseAction =
                 new NotificationCompat.Action(
                         isPlaying ? android.R.drawable.ic_media_pause
@@ -120,12 +150,15 @@ public class ReaderMediaController {
                 .setContentText(currentSentence)
                 .setLargeIcon(coverBitmap)
                 .setOngoing(isPlaying)
+                .addAction(prevAction)       // index 0
+                .addAction(playPauseAction)  // index 1
+                .addAction(nextAction)       // index 2
                 .setStyle(new androidx.media.app.NotificationCompat.MediaStyle()
                         .setMediaSession(mediaSession.getSessionToken())
                         .setShowActionsInCompactView(0, 1)
                 )
-                .addAction(playPauseAction)
-                .addAction(stopAction)
+                .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
+                .setCategory(NotificationCompat.CATEGORY_TRANSPORT)
                 .build();
 
         notificationManager.notify(NOTIFICATION_ID, notification);

@@ -13,15 +13,23 @@ public class ReaderController implements TtsEngineListener, PlaybackControl {
     private TtsEngineStrategy engine;
     private HighlightListener highlightListener;
     private final ReaderMediaController mediaController;
+
+    public interface MediaNav{
+        void navForward();
+        void navBackward();
+    }
+
+    private final MediaNav mediaNav;
     public ReaderController(TtsEngineStrategy engine,
                             List<String> chunks,
                             HighlightListener highlightListener,
-                            Context ctx) {
+                            Context ctx, MediaNav mediaNav) {
         this.engine = engine;
         this.chunks = chunks;
         this.highlightListener = highlightListener;
 
         mediaController = new ReaderMediaController(ctx, this);
+        this.mediaNav = mediaNav;
 
         engine.init(ctx);
         engine.setListener(this);
@@ -173,5 +181,15 @@ public class ReaderController implements TtsEngineListener, PlaybackControl {
     @Override
     public void stop() {
         stopReading();
+    }
+
+    @Override
+    public void forward() {
+        mediaNav.navForward();
+    }
+
+    @Override
+    public void backward() {
+        mediaNav.navBackward();
     }
 }
