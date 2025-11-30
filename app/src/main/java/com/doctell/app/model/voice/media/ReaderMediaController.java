@@ -1,13 +1,15 @@
 package com.doctell.app.model.voice.media;
 
+import android.Manifest;
 import android.app.Notification;
 import android.app.PendingIntent;
 import android.content.Context;
+import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.support.v4.media.session.MediaSessionCompat;
 import android.support.v4.media.session.PlaybackStateCompat;
-import android.util.Log;
 
+import androidx.core.app.ActivityCompat;
 import androidx.core.app.NotificationCompat;
 import androidx.core.app.NotificationManagerCompat;
 import androidx.media.session.MediaButtonReceiver;
@@ -15,7 +17,7 @@ import androidx.media.session.MediaButtonReceiver;
 import com.doctell.app.R;
 
 public class ReaderMediaController {
-    public static final int NOTIFICATION_ID = 1;
+    private static final int NOTIFICATION_ID = 1;
     private static final String CHANNEL_ID = "reader_channel";
 
     private final Context context;
@@ -40,35 +42,33 @@ public class ReaderMediaController {
         notificationManager = NotificationManagerCompat.from(context);
 
         mediaSession.setCallback(new MediaSessionCompat.Callback() {
+            @Override
+            public void onPlay() {
+                playbackControl.play();
+            }
 
-
+            @Override
+            public void onPause() {
+                playbackControl.pause();
+            }
 
             @Override
             public void onStop() {
                 playbackControl.stop();
             }
+
             @Override
-            public void onPlay() {
-                Log.d("MEDIA_DOC", "onPlay from MediaSession");
-                playbackControl.play();
-            }
-            @Override
-            public void onPause() {
-                Log.d("MEDIA_DOC", "onPause from MediaSession");
-                playbackControl.pause();
-            }
-            @Override
-            public void onSkipToNext() {
-                Log.d("MEDIA_DOC", "onSkipToNext");
+            public void onSkipToNext(){
                 playbackControl.forward();
             }
+
             @Override
-            public void onSkipToPrevious() {
-                Log.d("MEDIA_DOC", "onSkipToPrevious");
+            public void onSkipToPrevious(){
                 playbackControl.backward();
             }
 
         });
+
         mediaSession.setActive(true);
     }
 
@@ -150,9 +150,9 @@ public class ReaderMediaController {
                 .setContentText(currentSentence)
                 .setLargeIcon(coverBitmap)
                 .setOngoing(isPlaying)
-                .addAction(prevAction)
-                .addAction(playPauseAction)
-                .addAction(nextAction)
+                .addAction(prevAction)       // index 0
+                .addAction(playPauseAction)  // index 1
+                .addAction(nextAction)       // index 2
                 .setStyle(new androidx.media.app.NotificationCompat.MediaStyle()
                         .setMediaSession(mediaSession.getSessionToken())
                         .setShowActionsInCompactView(0, 1)
@@ -160,7 +160,6 @@ public class ReaderMediaController {
                 .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
                 .setCategory(NotificationCompat.CATEGORY_TRANSPORT)
                 .build();
-
 
         notificationManager.notify(NOTIFICATION_ID, notification);
     }

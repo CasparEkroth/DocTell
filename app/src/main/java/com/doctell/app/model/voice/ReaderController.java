@@ -1,7 +1,6 @@
 package com.doctell.app.model.voice;
-import android.app.Notification;
 import android.content.Context;
-
+import android.support.v4.media.session.MediaSessionCompat;
 import com.doctell.app.model.voice.media.PlaybackControl;
 import com.doctell.app.model.voice.media.ReaderMediaController;
 
@@ -34,14 +33,6 @@ public class ReaderController implements TtsEngineListener, PlaybackControl {
 
         engine.init(ctx);
         engine.setListener(this);
-    }
-
-    public Notification buildNotification(boolean isPlaying, int currentIndex, String currentSentence) {
-        // exactly what you already do now – build and return Notification
-    }
-
-    public void updatePlaybackState(boolean isPlaying, int currentIndex) {
-        // your existing PlaybackStateCompat.Builder code
     }
 
 
@@ -179,33 +170,26 @@ public class ReaderController implements TtsEngineListener, PlaybackControl {
 
     @Override
     public void play() {
-        if (engine == null) return;
         resumeReading();
     }
 
     @Override
     public void pause() {
-        if (engine == null) return;
         pauseReading();
     }
 
     @Override
     public void stop() {
-        if (engine == null) return;
         stopReading();
     }
 
     @Override
     public void forward() {
-        if (mediaNav == null) return;
-        if (engine == null) return;
         mediaNav.navForward();
     }
 
     @Override
     public void backward() {
-        if (mediaNav == null) return;
-        if (engine == null) return;
         mediaNav.navBackward();
     }
 }
