@@ -102,8 +102,8 @@ public class ReaderService extends Service implements PlaybackControl, Highlight
 
         readerController.startReading();
 
-        Notification n = mediaController.buildInitialNotification();
-        startForeground(1001, n);
+        //Notification n = mediaController.buildInitialNotification();
+        //startForeground(1001, n);
     }
 
     private void onHighlightChange(int sentenceIndex) {
@@ -113,10 +113,9 @@ public class ReaderService extends Service implements PlaybackControl, Highlight
     // PUBLIC control API -----------------------------
 
     @Override
-    public void play()   { if (readerController != null) readerController.resume(); }
+    public void play()   { if (readerController != null) readerController.play(); }
     @Override
     public void pause()  { if (readerController != null) readerController.pause(); }
-
     @Override
     public void stop()   { if (readerController != null) readerController.stop(); }
     @Override

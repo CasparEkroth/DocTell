@@ -20,18 +20,6 @@ import androidx.media.session.MediaButtonReceiver;
 
 import com.doctell.app.MainActivity;
 
-/**
- * Handles MediaSession + media style notification (lock screen + notification panel).
- *
- * It does NOT own TTS or ReaderController directly.
- * It just:
- *  - exposes updateState(playing, index, sentence, cover)
- *  - controls the MediaSession
- *  - builds & updates the notification
- *
- * Anything that implements PlaybackControl (ReaderService, ReaderController, etc.)
- * can be passed in.
- */
 public class ReaderMediaController {
 
     private static final int NOTIFICATION_ID = 1001;
@@ -95,7 +83,6 @@ public class ReaderMediaController {
 
         createNotificationChannelIfNeeded();
 
-        // Start with paused state / empty text
         updateState(false, 0, "", null);
     }
 
@@ -112,7 +99,7 @@ public class ReaderMediaController {
         updateMediaSession();
         showNotification();
     }
-    public Notification buildNotification() {
+    public Notification buildInitialNotification() {
         updateMediaSession();
         return createNotificationInternal();
     }

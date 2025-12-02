@@ -1,6 +1,7 @@
 package com.doctell.app.model.voice;
 
 import android.content.Context;
+import android.util.Log;
 
 import com.doctell.app.model.voice.media.PlaybackControl;
 import com.doctell.app.model.voice.media.ReaderMediaController;
@@ -13,7 +14,7 @@ public class ReaderController implements TtsEngineListener, PlaybackControl {
     private boolean isPaused;
     private TtsEngineStrategy engine;
     private HighlightListener highlightListener;
-    private final ReaderMediaController mediaController;
+    private ReaderMediaController mediaController;
 
     public interface MediaNav {
         void navForward();
@@ -37,6 +38,8 @@ public class ReaderController implements TtsEngineListener, PlaybackControl {
         engine.init(ctx);
         engine.setListener(this);
     }
+
+    public void setMediaController(ReaderMediaController mediaController){this.mediaController = mediaController;}
 
     public void setLanguage(String langCode) {
         engine.setLanguageByCode(langCode);
@@ -174,6 +177,8 @@ public class ReaderController implements TtsEngineListener, PlaybackControl {
 
     @Override
     public void play() {
+        Log.d("ReaderController", "this works ");
+
         if (isPaused) {
             resumeReading();
         } else {
@@ -193,12 +198,19 @@ public class ReaderController implements TtsEngineListener, PlaybackControl {
 
     @Override
     public void next() {
-        mediaNav.navForward();
+        Log.d("ReaderController", "next() from media controls");
+        //stopReading();
+        if (mediaNav != null) {
+            mediaNav.navForward();   // ReaderActivity.showNextPage()
+        }
     }
 
     @Override
     public void prev() {
-        mediaNav.navBackward();
+        //stopReading();
+        if (mediaNav != null) {
+            mediaNav.navBackward();  // ReaderActivity.showPrevPage()
+        }
     }
     // ----
     public ReaderMediaController getMediaController() {
