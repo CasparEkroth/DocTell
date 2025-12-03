@@ -7,17 +7,22 @@ import android.app.NotificationManager;
 import android.app.Service;
 import android.content.Intent;
 import android.content.Context;
+import android.graphics.Bitmap;
 import android.os.Binder;
 import android.os.Build;
 import android.os.IBinder;
+import android.util.DisplayMetrics;
 
 import androidx.annotation.Nullable;
 
+import com.doctell.app.model.data.PdfManager;
 import com.doctell.app.model.voice.HighlightListener;
 import com.doctell.app.model.voice.ReaderController;
+import com.doctell.app.model.voice.TTSBuffer;
 import com.doctell.app.model.voice.TtsEngineStrategy;
 import com.doctell.app.model.voice.media.ReaderMediaController;
 
+import java.io.IOException;
 import java.util.List;
 
 public class ReaderService extends Service implements PlaybackControl, HighlightListener, ReaderController.MediaNav{
@@ -29,6 +34,9 @@ public class ReaderService extends Service implements PlaybackControl, Highlight
     private HighlightListener uiHighlightListener;
     private List<String> currentPage;
     private ReaderController.MediaNav uiMediaNav;
+    private PdfManager pdfManager;
+    private String bookLocalPath;
+    private int currentPageIndex;
 
     private void createNotificationChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
@@ -155,6 +163,30 @@ public class ReaderService extends Service implements PlaybackControl, Highlight
             uiHighlightListener.onPageFinished();
         }
     }
+
+    @Override
+    public int onStartCommand(Intent intent, int flags, int startId) {
+        if (mediaController != null) {
+            Notification n = mediaController.buildInitialNotification();
+            startForeground(1001, n);
+        }
+        return START_STICKY;
+    }
+    public void initBook(Context ctx, String localPath, int startPage) {
+        this.bookLocalPath = localPath;
+        this.currentPageIndex = startPage;
+        this.pdfManager = new PdfManager(ctx, localPath);
+    }
+    public List<String> loadCurrentPageSentences() throws IOException {
+        String pageText = pdfManager.getPageText(currentPageIndex);
+
+        TTSBuffer.getInstance().setPage(pageText);
+        return TTSBuffer.getInstance().getAllSentences();
+    }
+    public Bitmap getPageBitmap(DisplayMetrics dm, int widthPx) throws IOException {
+        return pdfManager.renderPageBitmap(currentPageIndex, dm, widthPx);
+    }
+
 }
 
 

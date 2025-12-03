@@ -43,7 +43,8 @@
         </activity>
         <service
             android:name=".model.voice.media.ReaderService"
-            android:exported="false" />
+            android:exported="false"
+            android:foregroundServiceType="mediaPlayback" />
 
     </application>
 

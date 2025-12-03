@@ -132,7 +132,9 @@ public class ReaderActivity extends AppCompatActivity implements HighlightListen
         assert currentBook != null;
         bookLocalPath = currentBook.getLocalPath();
 
-        // Bind till ReaderService (foreground TTS + media controls)
+        Intent svc = new Intent(this, ReaderService.class);
+        ContextCompat.startForegroundService(this, svc);
+        //ReaderService (foreground TTS + media controls)
         Intent serviceIntent = new Intent(this, ReaderService.class);
         bindService(serviceIntent, serviceConnection, BIND_AUTO_CREATE);
 
@@ -183,6 +185,13 @@ public class ReaderActivity extends AppCompatActivity implements HighlightListen
             ReaderService.LocalBinder binder = (ReaderService.LocalBinder) service;
             readerService = binder.getService();
             isServiceBound = true;
+            readerService.initBook(
+                    getApplicationContext(),
+                    bookLocalPath,
+                    currentPage
+            );
+
+            // load test readerService.loadCurrentPageSentences();
 
             readerService.registerUiHighlightListener(ReaderActivity.this);
             readerService.registerUiMediaNav(ReaderActivity.this);

@@ -1,0 +1,72 @@
+package com.doctell.app.model.data;
+
+import android.content.Context;
+import android.graphics.Bitmap;
+import android.graphics.pdf.PdfRenderer;
+import android.os.ParcelFileDescriptor;
+import android.util.DisplayMetrics;
+
+import com.tom_roush.pdfbox.pdmodel.PDDocument;
+
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.IOException;
+
+public class PdfManager {
+    private final Context appContext;
+    private final String bookLocalPath; // Book.getLocalPath()
+
+    private PDDocument pdDocument;
+    private PdfRenderer pdfRenderer;
+    private ParcelFileDescriptor pdfFd;
+
+    public PdfManager(Context ctx, String bookLocalPath) {
+        this.appContext = ctx.getApplicationContext();
+        this.bookLocalPath = bookLocalPath;
+    }
+
+    private void openIfNeeded() throws IOException {
+        if (pdDocument == null) {
+            pdDocument = PDDocument.load(new FileInputStream(bookLocalPath));
+        }
+        if (pdfRenderer == null) {
+            pdfFd = ParcelFileDescriptor.open(
+                    new File(bookLocalPath),
+                    ParcelFileDescriptor.MODE_READ_ONLY
+            );
+            pdfRenderer = new PdfRenderer(pdfFd);
+        }
+    }
+
+    public synchronized int getPageCount() throws IOException {
+        openIfNeeded();
+        return pdDocument.getNumberOfPages();
+    }
+
+    public synchronized String getPageText(int pageIndex) throws IOException {
+        openIfNeeded();
+        return PdfPreviewHelper.extractOnePageText(pdDocument, pageIndex);
+    }
+
+    public synchronized Bitmap renderPageBitmap(
+            int pageIndex,
+            DisplayMetrics dm,
+            int targetWidthPx
+    ) throws IOException {
+        openIfNeeded();
+        return PdfPreviewHelper.renderOnePage(pdfRenderer, pageIndex, dm, targetWidthPx);
+    }
+
+    public synchronized void close() {
+        if (pdfRenderer != null) pdfRenderer.close();
+        try {
+            if (pdfFd != null) pdfFd.close();
+        } catch (IOException ignored) {}
+        try {
+            if (pdDocument != null) pdDocument.close();
+        } catch (IOException ignored) {}
+        pdfRenderer = null;
+        pdfFd = null;
+        pdDocument = null;
+    }
+}
