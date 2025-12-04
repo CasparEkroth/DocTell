@@ -10,7 +10,9 @@ import android.content.Context;
 import android.graphics.Bitmap;
 import android.os.Binder;
 import android.os.Build;
+import android.os.Handler;
 import android.os.IBinder;
+import android.os.Looper;
 import android.util.DisplayMetrics;
 
 import androidx.annotation.Nullable;
@@ -20,10 +22,11 @@ import com.doctell.app.model.voice.HighlightListener;
 import com.doctell.app.model.voice.ReaderController;
 import com.doctell.app.model.voice.TTSBuffer;
 import com.doctell.app.model.voice.TtsEngineStrategy;
-import com.doctell.app.model.voice.media.ReaderMediaController;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 public class ReaderService extends Service implements PlaybackControl, HighlightListener, ReaderController.MediaNav{
 
@@ -37,6 +40,8 @@ public class ReaderService extends Service implements PlaybackControl, Highlight
     private PdfManager pdfManager;
     private String bookLocalPath;
     private int currentPageIndex;
+    private ExecutorService executor;
+    private Handler mainHandler;
 
     private void createNotificationChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
@@ -94,8 +99,15 @@ public class ReaderService extends Service implements PlaybackControl, Highlight
     @Override
     public void onCreate() {
         super.onCreate();
-
+        executor = Executors.newSingleThreadExecutor();
+        mainHandler = new Handler(Looper.getMainLooper());
         createNotificationChannel();
+    }
+
+    @Override
+    public void onDestroy() {
+        super.onDestroy();
+        executor.shutdownNow();
     }
 
     @SuppressLint("ForegroundServiceType")
@@ -186,6 +198,56 @@ public class ReaderService extends Service implements PlaybackControl, Highlight
     public Bitmap getPageBitmap(DisplayMetrics dm, int widthPx) throws IOException {
         return pdfManager.renderPageBitmap(currentPageIndex, dm, widthPx);
     }
+
+    @SuppressLint("ForegroundServiceType")
+    public void startReading(Context ctx,
+                             String bookPath,
+                             int pageIndex,
+                             TtsEngineStrategy engine) {
+
+        this.bookLocalPath = bookPath;
+        this.currentPageIndex = pageIndex;
+
+        if (pdfManager == null) {
+            pdfManager = new PdfManager(ctx, bookLocalPath);
+        }
+
+        if (mediaController == null) {
+            mediaController = new ReaderMediaController(ctx, this);
+        }
+
+        executor.execute(() -> {
+            try {
+                String text = pdfManager.getPageText(currentPageIndex);
+
+                TTSBuffer buffer = TTSBuffer.getInstance();
+                buffer.setPage(text);
+                List<String> chunks = buffer.getAllSentences();
+
+                mainHandler.post(() -> {
+                    if (readerController == null) {
+                        readerController = new ReaderController(
+                                engine,
+                                chunks,
+                                this,
+                                ctx,
+                                uiMediaNav
+                        );
+                        readerController.setMediaController(mediaController);
+                    } else {
+                        readerController.setChunks(chunks);
+                    }
+
+                    readerController.startReading();
+                });
+
+            } catch (IOException e) {
+                e.printStackTrace();
+                // TODO: maybe notify UI or show a Toast via a callback
+            }
+        });
+    }
+
 
 }
 
