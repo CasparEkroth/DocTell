@@ -1,7 +1,10 @@
 package com.doctell.app;
 
+import android.app.NotificationChannel;
+import android.app.NotificationManager;
 import android.content.Intent;
 import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
@@ -40,10 +43,9 @@ public class MainActivity extends AppCompatActivity {
     private GridLayout pdfGrid;
     private final ExecutorService exec = Executors.newSingleThreadExecutor();
     private final Handler main = new Handler(Looper.getMainLooper());
-
-
     private ProgressBar loadingBar;
     private TtsEngineStrategy engine;
+    private static final String READER_CHANNEL_ID = "reader_channel";
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -89,6 +91,7 @@ public class MainActivity extends AppCompatActivity {
             return insets;
         });
 
+        createReaderNotificationChannel();
     }
 
     public void addBook(View v){
@@ -193,6 +196,22 @@ public class MainActivity extends AppCompatActivity {
             Log.d("GRID", "Adding book: " + b.getTitle() + " | URI=" + b.getUri());
             ItemView item = new ItemView(this, null, b);
             pdfGrid.addView(item);
+        }
+    }
+
+    private void createReaderNotificationChannel() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            NotificationChannel channel = new NotificationChannel(
+                    READER_CHANNEL_ID,
+                    "DocTell reading",
+                    NotificationManager.IMPORTANCE_LOW
+            );
+            channel.setDescription("Playback controls when DocTell is reading");
+
+            NotificationManager manager = getSystemService(NotificationManager.class);
+            if (manager != null) {
+                manager.createNotificationChannel(channel);
+            }
         }
     }
 

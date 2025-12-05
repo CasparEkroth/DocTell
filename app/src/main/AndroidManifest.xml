@@ -2,6 +2,15 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
 
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+
+    <!-- Generic FGS permission -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE"
+        tools:ignore="ForegroundServicesPolicy" />
+
+    <!-- Specific permission for mediaPlayback foreground services -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
+
     <application
         android:allowBackup="true"
         android:dataExtractionRules="@xml/data_extraction_rules"
@@ -24,6 +33,7 @@
         <activity
             android:name=".ReaderActivity"
             android:screenOrientation="portrait"
+            android:launchMode="singleTop"
             android:exported="false"
             android:parentActivityName=".MainActivity" />
         <activity
@@ -39,6 +49,11 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+        <service
+            android:name=".model.voice.media.ReaderService"
+            android:exported="false"
+            android:foregroundServiceType="mediaPlayback"
+            tools:ignore="ForegroundServicePermission" />
     </application>
 
 </manifest>

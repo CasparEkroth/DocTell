@@ -31,6 +31,12 @@ android {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
     }
+
+    sourceSets {
+        getByName("main") {
+            java.srcDirs("src/main/java")
+        }
+    }
 }
 
 dependencies {
@@ -42,6 +48,8 @@ dependencies {
     implementation("com.tom-roush:pdfbox-android:2.0.27.0")
     //for saving bookMarks
     implementation("com.google.code.gson:gson:2.10.1")
+    //mediaPlayer
+    implementation("androidx.media:media:1.7.0")
 
     implementation(libs.google.material)
     testImplementation(libs.junit)
