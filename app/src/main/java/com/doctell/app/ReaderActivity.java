@@ -196,7 +196,7 @@ public class ReaderActivity extends AppCompatActivity implements HighlightListen
                 showNextPage();
             }
         });
-
+        ensureServiceBound();
         pdfImage.setOnTouchListener((view, motionEvent) -> {
             imageScale.onTouch(motionEvent);
             highlightOverlay.setImageMatrix(imageScale.getMatrix());
@@ -246,6 +246,15 @@ public class ReaderActivity extends AppCompatActivity implements HighlightListen
                 REQ_POST_NOTIFICATIONS
         );
         return false;
+    }
+
+    private void ensureServiceBound() {
+        if (isServiceBound && readerService != null) {
+            return;
+        }
+        Intent intent = new Intent(this, ReaderService.class);
+        startService(intent);//idempotent
+        bindService(intent, serviceConnection, BIND_AUTO_CREATE);
     }
 
     private void showLoading(boolean on) {
@@ -321,6 +330,7 @@ public class ReaderActivity extends AppCompatActivity implements HighlightListen
     }
 
     private void speakPage() {
+        ensureServiceBound();
         if (!isServiceBound || readerService == null) {
             Toast.makeText(this, "TTS service not connected", Toast.LENGTH_SHORT).show();
             return;

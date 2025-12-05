@@ -122,8 +122,8 @@ public class ReaderService extends Service implements PlaybackControl, Highlight
         super.onDestroy();
         Log.d("ReaderService", "onDestroy");
         if (readerController != null) {
-            readerController.shutdown();
             readerController.stop();
+            readerController.shutdown();
         }
 
         if (pdfManager != null) {
@@ -136,6 +136,22 @@ public class ReaderService extends Service implements PlaybackControl, Highlight
             executor = null;
         }
     }
+
+    @Override
+    public void onTaskRemoved(Intent rootIntent) {
+        if (readerController != null) {
+            readerController.stop();
+            //readerController.shutdown();
+        }
+
+        if (mediaController != null) {
+            mediaController.stop();
+        }
+        stopForeground(true);
+        stopSelf();
+        super.onTaskRemoved(rootIntent);
+    }
+
 
     private void onHighlightChange(int sentenceIndex) {
         // TODO: send highlight updates to ReaderActivity via callback (later step)
