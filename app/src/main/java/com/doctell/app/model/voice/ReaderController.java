@@ -51,7 +51,12 @@ public class ReaderController implements TtsEngineListener, PlaybackControl {
 
     public void setChunks(List<String> chunks) {
         this.chunks = chunks;
-        // this.currentIndex = 0;
+        this.currentIndex = 0;
+    }
+
+    public void setChunks(List<String> chunks, int startSentence) {
+        this.chunks = chunks;
+        this.currentIndex = startSentence;
     }
 
     public void startReading() {

@@ -40,7 +40,7 @@ public class PdfManager {
 
     public synchronized int getPageCount() throws IOException {
         openIfNeeded();
-        return pdDocument.getNumberOfPages();
+        return pdfRenderer.getPageCount();
     }
 
     public synchronized String getPageText(int pageIndex) throws IOException {

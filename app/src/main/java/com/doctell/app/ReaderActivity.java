@@ -50,6 +50,7 @@ import com.tom_roush.pdfbox.io.MemoryUsageSetting;
 import com.tom_roush.pdfbox.pdmodel.PDDocument;
 
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
@@ -63,10 +64,8 @@ public class ReaderActivity extends AppCompatActivity implements HighlightListen
     private TextView pageIndicator;
     private ExecutorService exec;
     private Handler main;
-    private ParcelFileDescriptor pfd;
     private int currentPage = 0, totalPages;
     private Book currentBook;
-    private PdfRenderer renderer;
     private String bookLocalPath;
     private boolean isSpeaking = false;
     private boolean ttsStartedOnPage = false;
@@ -75,11 +74,46 @@ public class ReaderActivity extends AppCompatActivity implements HighlightListen
     private List<ChapterItem> chapters;
     private ChapterLoader chapterLoader;
     private HighlightOverlayView highlightOverlay;
-    private TTSBuffer buffer;
-    private PDDocument doc;
     private ReaderService readerService;
     private boolean isServiceBound = false;
     private boolean firstPage = false;
+    private PdfRenderer renderer;
+    private ParcelFileDescriptor pfd;
+    private PDDocument doc;
+
+    private final ServiceConnection serviceConnection = new ServiceConnection() {
+        @Override
+        public void onServiceConnected(ComponentName name, IBinder service) {
+            ReaderService.LocalBinder binder = (ReaderService.LocalBinder) service;
+            readerService = binder.getService();
+            isServiceBound = true;
+            readerService.initBook(
+                    bookLocalPath,
+                    currentPage
+            );
+            try {
+                totalPages = readerService.getPageCount();
+            } catch (IOException e) {
+                Log.d("PDF","can't total numbers of pages");
+                throw new RuntimeException(e);
+            }
+
+            // load test readerService.loadCurrentPageSentences();
+
+            readerService.registerUiHighlightListener(ReaderActivity.this);
+            readerService.registerUiMediaNav(ReaderActivity.this);
+        }
+
+        @Override
+        public void onServiceDisconnected(ComponentName name) {
+            if (readerService != null) {
+                readerService.unregisterUiHighlightListener(ReaderActivity.this);
+                readerService.unregisterUiMediaNav(ReaderActivity.this);
+            }
+            readerService = null;
+            isServiceBound = false;
+        }
+    };
 
     @SuppressLint("ClickableViewAccessibility")
     @Override
@@ -96,7 +130,7 @@ public class ReaderActivity extends AppCompatActivity implements HighlightListen
         btnChapter = findViewById(R.id.chapterBtn);
 
         highlightOverlay = findViewById(R.id.highlightOverlay);
-        buffer = TTSBuffer.getInstance();
+        //buffer = TTSBuffer.getInstance();
 
         exec = Executors.newSingleThreadExecutor();
         main = new Handler(Looper.getMainLooper());
@@ -132,11 +166,10 @@ public class ReaderActivity extends AppCompatActivity implements HighlightListen
         assert currentBook != null;
         bookLocalPath = currentBook.getLocalPath();
 
-        Intent svc = new Intent(this, ReaderService.class);
-        ContextCompat.startForegroundService(this, svc);
-        //ReaderService (foreground TTS + media controls)
-        Intent serviceIntent = new Intent(this, ReaderService.class);
-        bindService(serviceIntent, serviceConnection, BIND_AUTO_CREATE);
+        Intent intent = new Intent(this, ReaderService.class);
+        // start as foreground service (for Android 8+)
+        startService(intent);
+        bindService(intent, serviceConnection, BIND_AUTO_CREATE);
 
         btnNext.setOnClickListener(v -> showNextPage());
         btnPrev.setOnClickListener(v -> showPrevPage());
@@ -158,7 +191,6 @@ public class ReaderActivity extends AppCompatActivity implements HighlightListen
             public void onTapLeft() {
                 showPrevPage();
             }
-
             @Override
             public void onTapRight() {
                 showNextPage();
@@ -171,7 +203,7 @@ public class ReaderActivity extends AppCompatActivity implements HighlightListen
             return true;
         });
 
-        loadPdfAsync(bookLocalPath, currentBook.getLastPage());
+        loadPdfAsync();
     }
 
     private int dp(int value, View v) {
@@ -179,57 +211,21 @@ public class ReaderActivity extends AppCompatActivity implements HighlightListen
         return (int) (value * density + 0.5f);
     }
 
-    private final ServiceConnection serviceConnection = new ServiceConnection() {
-        @Override
-        public void onServiceConnected(ComponentName name, IBinder service) {
-            ReaderService.LocalBinder binder = (ReaderService.LocalBinder) service;
-            readerService = binder.getService();
-            isServiceBound = true;
-            readerService.initBook(
-                    getApplicationContext(),
-                    bookLocalPath,
-                    currentPage
-            );
-
-            // load test readerService.loadCurrentPageSentences();
-
-            readerService.registerUiHighlightListener(ReaderActivity.this);
-            readerService.registerUiMediaNav(ReaderActivity.this);
-        }
-
-        @Override
-        public void onServiceDisconnected(ComponentName name) {
-            if (readerService != null) {
-                readerService.unregisterUiHighlightListener(ReaderActivity.this);
-                readerService.unregisterUiMediaNav(ReaderActivity.this);
-            }
-            readerService = null;
-            isServiceBound = false;
-        }
-    };
-    private void loadPdfAsync(String path, int pageToShow) {
-        showLoading(true);
-        exec.execute(() -> {
+    private void loadPdfAsync(){
+        exec.execute(()->{
+            File file = new File(bookLocalPath);
             try {
-                File file = new File(path);
                 pfd = ParcelFileDescriptor.open(file, ParcelFileDescriptor.MODE_READ_ONLY);
                 renderer = new PdfRenderer(pfd);
-
                 doc = PDDocument.load(file, MemoryUsageSetting.setupTempFileOnly());
-
-                totalPages = renderer.getPageCount();
-                main.post(() -> {
-                    showLoading(false);
-                    showPage(pageToShow);
-                });
-            } catch (Exception e) {
-                e.printStackTrace();
-                main.post(() -> {
-                    showLoading(false);
-                    Toast.makeText(this, "Failed to open PDF", Toast.LENGTH_LONG).show();
-                    finish();
-                });
+            } catch (IOException e) {
+                throw new RuntimeException(e);
             }
+            totalPages = renderer.getPageCount();
+
+            main.post(()->{
+                showPage(currentBook.getLastPage());
+            });
         });
     }
 
@@ -268,14 +264,12 @@ public class ReaderActivity extends AppCompatActivity implements HighlightListen
     private void showNextPage() {
         currentBook.setSentence(0);
         showPage(currentPage + 1);
-        buffer.clear();
         highlightOverlay.clearHighlights();
     }
 
     private void showPrevPage() {
         currentBook.setSentence(0);
         showPage(currentPage - 1);
-        buffer.clear();
         highlightOverlay.clearHighlights();
     }
 
@@ -284,22 +278,25 @@ public class ReaderActivity extends AppCompatActivity implements HighlightListen
 
         currentPage = page;
         ttsStartedOnPage = false;
+        readerService.setPage(page);
+
         showLoading(true);
-
-        Bitmap bmp = PdfPreviewHelper.renderOnePage(
-                renderer, currentPage,
-                pdfImage.getResources().getDisplayMetrics(),
-                pdfImage.getWidth());
-
-        pdfImage.setImageBitmap(bmp);
-        pageIndicator.setText((page + 1) + " / " + totalPages);
-
-        currentBook.setLastPage(currentPage);
-        BookStorage.updateBook(currentBook,this);
-
-        showLoading(false);
-        if (isSpeaking) speakPage();
+        Executors.newSingleThreadExecutor().execute(() -> {
+            try {
+                Bitmap bmp = readerService.getPageBitmap(
+                        pdfImage.getResources().getDisplayMetrics(),
+                        pdfImage.getWidth()
+                );
+                runOnUiThread(() -> {
+                    showLoading(false);
+                    pdfImage.setImageBitmap(bmp);
+                    pageIndicator.setText((page + 1) + " / " + totalPages);
+                    if (isSpeaking) speakPage();
+                });
+            } catch (IOException e) { /* handle */ }
+        });
     }
+
 
     private void toggleTTS() {
         if (!isSpeaking) {
@@ -323,40 +320,25 @@ public class ReaderActivity extends AppCompatActivity implements HighlightListen
     }
 
     private void speakPage() {
+        if (!isServiceBound || readerService == null) {
+            Toast.makeText(this, "TTS service not connected", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        if (!ensureNotificationPermission()) {
+            return;
+        }
+        TtsEngineStrategy engine = TtsEngineProvider.getEngine(getApplicationContext());
+        isSpeaking = true;
+        btnTTS.setText(getString(R.string.pref_pause));
         showLoading(true);
-        exec.execute(() -> {
-            try {
-                String text = PdfPreviewHelper.extractOnePageText(doc, currentPage);
-                main.post(() -> {
-                    showLoading(false);
-                    if (text == null || text.trim().isEmpty()) {
-                        Toast.makeText(this, "No searchable text on this page (scan?).", Toast.LENGTH_SHORT).show();
-                    } else {
-                        isSpeaking = true;
-                        btnTTS.setText(getString(R.string.pref_pause));
-
-                        buffer.setPage(text);
-                        List<String> chunks = buffer.getAllSentences();
-                        if (!firstPage)
-                            firstPage = true;
-                        else
-                            currentBook.setSentence(0);
-
-                        if (ensureNotificationPermission()) {
-                            TtsEngineStrategy engine = TtsEngineProvider.getEngine(getApplicationContext());
-                            if (isServiceBound && readerService != null) {
-                                readerService.startReading(ReaderActivity.this, chunks, engine);
-                            } else {
-                                Toast.makeText(this, "TTS service not connected", Toast.LENGTH_SHORT).show();
-                            }
-                        }
-                    }
-                });
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
-        });
+        // let the SERVICE do all heavy work (PDF + TTSBuffer + chunks)
+        readerService.startReading(
+                bookLocalPath,
+                currentPage,
+                engine
+        );
     }
+
 
     private void openChapterActivity() {
         if(chapters == null){
@@ -391,13 +373,6 @@ public class ReaderActivity extends AppCompatActivity implements HighlightListen
         }
     }
 
-    private void closeRenderer() {
-        try { if (renderer != null) renderer.close(); } catch (Exception ignored) {}
-        try { if (pfd != null) pfd.close(); } catch (Exception ignored) {}
-        renderer = null;
-        pfd = null;
-    }
-
     // ---- HighlightListener callbacks ----
     @Override
     public void onChunkStart(int index, String text) {
@@ -420,6 +395,7 @@ public class ReaderActivity extends AppCompatActivity implements HighlightListen
                 page.close();
             }
         }
+
         List<RectF> rects = PdfPreviewHelper.getRectsForSentence(
                 doc, currentPage, text, bmpW, bmpH, pageW, pageH
         );
@@ -427,10 +403,11 @@ public class ReaderActivity extends AppCompatActivity implements HighlightListen
         for (RectF r : rects) {
             r.offset(0, -r.height());
         }
-        //Log.d("sentence", "nr " + index);
+
         currentBook.setSentence(index);
         highlightOverlay.setHighlights(rects);
     }
+
 
     @Override
     public void onChunkDone(int index, String text) {
@@ -464,30 +441,14 @@ public class ReaderActivity extends AppCompatActivity implements HighlightListen
     @Override
     protected void onDestroy() {
         BookStorage.updateBook(currentBook, this);
-        buffer.clear();
-
         if (isServiceBound && readerService != null) {
             readerService.unregisterUiHighlightListener(this);
             readerService.unregisterUiMediaNav(this);
             unbindService(serviceConnection);
             isServiceBound = false;
         }
-
-        if (doc != null) {
-            try {doc.close();}
-            catch (IOException e) {throw new RuntimeException(e);}
-        }
-        try {closeRenderer();}
-        catch (Exception ignored) {}
-
         if (exec != null) exec.shutdownNow();
         if (chapterLoader != null) chapterLoader.shutdown();
-
-        if (isServiceBound) {
-            try {unbindService(serviceConnection);
-            } catch (Exception ignored) {}
-            isServiceBound = false;
-        }
         super.onDestroy();
     }
 }

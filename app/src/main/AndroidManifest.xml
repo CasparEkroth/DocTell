@@ -1,7 +1,16 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
+
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+
+    <!-- Generic FGS permission (still fine to keep) -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE"
+        tools:ignore="ForegroundServicesPolicy" />
+
+    <!-- Specific permission for mediaPlayback foreground services -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
+
 
     <application
         android:allowBackup="true"
@@ -44,8 +53,8 @@
         <service
             android:name=".model.voice.media.ReaderService"
             android:exported="false"
-            android:foregroundServiceType="mediaPlayback" />
-
+            android:foregroundServiceType="mediaPlayback"
+            tools:ignore="ForegroundServicePermission" />
     </application>
 
 </manifest>
