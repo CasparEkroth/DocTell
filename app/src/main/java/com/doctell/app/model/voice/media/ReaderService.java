@@ -112,6 +112,9 @@ public class ReaderService extends Service implements PlaybackControl, Highlight
         executor = Executors.newSingleThreadExecutor();
         mainHandler = new Handler(Looper.getMainLooper());
         createNotificationChannel();
+        mediaController = new ReaderMediaController(this, this);
+        Notification notification = mediaController.buildInitialNotification();
+        startForeground(ReaderMediaController.NOTIFICATION_ID, notification);
     }
 
     @Override
@@ -119,6 +122,7 @@ public class ReaderService extends Service implements PlaybackControl, Highlight
         super.onDestroy();
         Log.d("ReaderService", "onDestroy");
         if (readerController != null) {
+            readerController.shutdown();
             readerController.stop();
         }
 
@@ -185,12 +189,14 @@ public class ReaderService extends Service implements PlaybackControl, Highlight
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
-        /*
-        if (mediaController != null) {
-            Notification n = mediaController.buildInitialNotification();
-            startForeground(1001, n);
+        if (intent != null && intent.getAction() != null) {
+            switch (intent.getAction()) {
+                case ReaderMediaController.ACTION_PLAY:  play();  break;
+                case ReaderMediaController.ACTION_PAUSE: pause(); break;
+                case ReaderMediaController.ACTION_NEXT:  next();  break;
+                case ReaderMediaController.ACTION_PREV:  prev();  break;
+            }
         }
-         */
         return START_STICKY;
     }
     public void initBook(String localPath, int startPage) {

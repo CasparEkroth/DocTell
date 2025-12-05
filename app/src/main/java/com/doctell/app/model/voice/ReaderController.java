@@ -169,7 +169,6 @@ public class ReaderController implements TtsEngineListener, PlaybackControl {
         } catch (NumberFormatException ignored) {}
         return -1;
     }
-
     public void shutdown() {
         if (engine != null) {
             engine.stop();

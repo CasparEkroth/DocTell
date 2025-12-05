@@ -225,6 +225,7 @@ public class ReaderActivity extends AppCompatActivity implements HighlightListen
 
             main.post(()->{
                 showPage(currentBook.getLastPage());
+                showLoading(false);
             });
         });
     }
@@ -337,6 +338,7 @@ public class ReaderActivity extends AppCompatActivity implements HighlightListen
                 currentPage,
                 engine
         );
+        showLoading(false);
     }
 
 
@@ -449,6 +451,7 @@ public class ReaderActivity extends AppCompatActivity implements HighlightListen
         }
         if (exec != null) exec.shutdownNow();
         if (chapterLoader != null) chapterLoader.shutdown();
+
         super.onDestroy();
     }
 }
