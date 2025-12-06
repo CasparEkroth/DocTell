@@ -8,6 +8,7 @@ import android.app.Service;
 import android.content.Intent;
 import android.content.Context;
 import android.graphics.Bitmap;
+import android.net.Uri;
 import android.os.Binder;
 import android.os.Build;
 import android.os.Handler;
@@ -18,6 +19,8 @@ import android.util.Log;
 
 import androidx.annotation.Nullable;
 
+import com.doctell.app.model.data.Book;
+import com.doctell.app.model.data.BookStorage;
 import com.doctell.app.model.data.PdfManager;
 import com.doctell.app.model.voice.HighlightListener;
 import com.doctell.app.model.voice.ReaderController;
@@ -36,11 +39,9 @@ public class ReaderService extends Service implements PlaybackControl, Highlight
     private ReaderController readerController;
     private ReaderMediaController mediaController;
     private HighlightListener uiHighlightListener;
-    private List<String> currentPage;
+    private Book currentBook;
     private ReaderController.MediaNav uiMediaNav;
     private PdfManager pdfManager;
-    private String bookLocalPath;
-    private int currentPageIndex;
     private ExecutorService executor;
     private Handler mainHandler;
 
@@ -55,7 +56,6 @@ public class ReaderService extends Service implements PlaybackControl, Highlight
             manager.createNotificationChannel(channel);
         }
     }
-
 
     public void registerUiMediaNav(ReaderController.MediaNav nav) {
         uiMediaNav = nav;
@@ -81,12 +81,10 @@ public class ReaderService extends Service implements PlaybackControl, Highlight
         }
     }
 
-    public List<String> getCurrentPage() {
-        return currentPage;
-    }
-
     public void setPage(int pageIndex) {
-        this.currentPageIndex = pageIndex;
+        currentBook.setLastPage(pageIndex);
+        //currentBook.setSentence(0);
+        onReadingPositionChanged();
     }
 
     public int getPageCount() throws IOException{
@@ -119,11 +117,12 @@ public class ReaderService extends Service implements PlaybackControl, Highlight
 
     @Override
     public void onDestroy() {
+        onReadingPositionChanged();
         super.onDestroy();
         Log.d("ReaderService", "onDestroy");
         if (readerController != null) {
-            readerController.shutdown();
             readerController.stop();
+            readerController.shutdown();
         }
 
         if (pdfManager != null) {
@@ -135,6 +134,27 @@ public class ReaderService extends Service implements PlaybackControl, Highlight
             executor.shutdownNow();
             executor = null;
         }
+    }
+
+    @Override
+    public void onTaskRemoved(Intent rootIntent) {
+        onReadingPositionChanged();
+        if (readerController != null) {
+            readerController.stop();
+            //readerController.shutdown();
+        }
+
+        if (mediaController != null) {
+            mediaController.stop();
+        }
+        stopForeground(true);
+        stopSelf();
+        super.onTaskRemoved(rootIntent);
+    }
+
+    private void onReadingPositionChanged() {
+        if (currentBook == null) return;
+        BookStorage.updateBook(currentBook, getApplicationContext());
     }
 
     private void onHighlightChange(int sentenceIndex) {
@@ -168,6 +188,8 @@ public class ReaderService extends Service implements PlaybackControl, Highlight
 
     @Override
     public void onChunkStart(int index, String text) {
+        currentBook.setSentence(index);
+        onReadingPositionChanged();
         if (uiHighlightListener != null) {
             uiHighlightListener.onChunkStart(index, text);
         }
@@ -199,42 +221,43 @@ public class ReaderService extends Service implements PlaybackControl, Highlight
         }
         return START_STICKY;
     }
-    public void initBook(String localPath, int startPage) {
+    public void initBook(Book book) {
         Context appCtx = getApplicationContext();
-        this.bookLocalPath = localPath;
-        this.currentPageIndex = startPage;
-        this.pdfManager = new PdfManager(appCtx, localPath);
+        if (book != null) {
+            currentBook = book;
+        }
+
+        this.pdfManager = new PdfManager(appCtx, currentBook.getLocalPath());
     }
     public List<String> loadCurrentPageSentences() throws IOException {
-        String pageText = pdfManager.getPageText(currentPageIndex);
+        String pageText = pdfManager.getPageText(currentBook.getLastPage());
 
         TTSBuffer.getInstance().setPage(pageText);
         return TTSBuffer.getInstance().getAllSentences();
     }
     public Bitmap getPageBitmap(DisplayMetrics dm, int widthPx) throws IOException {
-        return pdfManager.renderPageBitmap(currentPageIndex, dm, widthPx);
+        return pdfManager.renderPageBitmap(currentBook.getLastPage(), dm, widthPx);
     }
 
     @SuppressLint("ForegroundServiceType")
-    public void startReading(String bookPath,
-                             int pageIndex,
+    public void startReading(Book book,
                              TtsEngineStrategy engine) {
+        currentBook = book;
         Context appCtx = getApplicationContext();
-        this.bookLocalPath = bookPath;
-        this.currentPageIndex = pageIndex;
         if (pdfManager == null) {
-            pdfManager = new PdfManager(appCtx, bookLocalPath);
+            pdfManager = new PdfManager(appCtx, currentBook.getLocalPath());
         }
         if (mediaController == null) {
             mediaController = new ReaderMediaController(appCtx, this);
         }
         executor.execute(() -> {
             try {
-                String text = pdfManager.getPageText(currentPageIndex);
+                String text = pdfManager.getPageText(currentBook.getLastPage());
 
                 TTSBuffer buffer = TTSBuffer.getInstance();
                 buffer.setPage(text);
                 List<String> chunks = buffer.getAllSentences();
+                int startSentence = currentBook.getSentence();
 
                 mainHandler.post(() -> {
                     if (readerController == null) {
@@ -247,8 +270,9 @@ public class ReaderService extends Service implements PlaybackControl, Highlight
                         );
                         readerController.setMediaController(mediaController);
                     } else {
-                        readerController.setChunks(chunks);
+                        readerController.setChunks(chunks, startSentence);
                     }
+                    readerController.setChunks(chunks, startSentence);
                     readerController.startReading();
 
                     Notification n = mediaController.buildInitialNotification();
