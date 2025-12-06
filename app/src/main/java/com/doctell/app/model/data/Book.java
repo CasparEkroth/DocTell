@@ -45,6 +45,16 @@ public class Book {
         this.sentence = sentence;
     }
 
+    public int incrementPage(){
+        return ++lastPage;
+    }
+    public int decrementPage(){
+        if (lastPage > 0) {
+            lastPage--;
+        }
+        return lastPage;
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;

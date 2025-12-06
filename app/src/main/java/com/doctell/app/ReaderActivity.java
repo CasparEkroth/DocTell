@@ -64,9 +64,8 @@ public class ReaderActivity extends AppCompatActivity implements HighlightListen
     private TextView pageIndicator;
     private ExecutorService exec;
     private Handler main;
-    private int currentPage = 0, totalPages;
+    private int totalPages;
     private Book currentBook;
-    private String bookLocalPath;
     private boolean isSpeaking = false;
     private boolean ttsStartedOnPage = false;
     private static final int REQ_SELECT_CHAPTER = 1001;
@@ -76,21 +75,17 @@ public class ReaderActivity extends AppCompatActivity implements HighlightListen
     private HighlightOverlayView highlightOverlay;
     private ReaderService readerService;
     private boolean isServiceBound = false;
-    private boolean firstPage = false;
+    //private boolean firstPage = false;
     private PdfRenderer renderer;
     private ParcelFileDescriptor pfd;
     private PDDocument doc;
-
     private final ServiceConnection serviceConnection = new ServiceConnection() {
         @Override
         public void onServiceConnected(ComponentName name, IBinder service) {
             ReaderService.LocalBinder binder = (ReaderService.LocalBinder) service;
             readerService = binder.getService();
             isServiceBound = true;
-            readerService.initBook(
-                    bookLocalPath,
-                    currentPage
-            );
+            readerService.initBook(currentBook);
             try {
                 totalPages = readerService.getPageCount();
             } catch (IOException e) {
@@ -160,12 +155,20 @@ public class ReaderActivity extends AppCompatActivity implements HighlightListen
 
 
         // Load Book from MainActivity
-        String uriString = getIntent().getStringExtra("uri");
-        Uri uri = Uri.parse(uriString);
+        Intent mainIntent = getIntent();
+        String uriStr = null;
+        if (mainIntent != null) {
+            uriStr = mainIntent.getStringExtra("uri");
+        }
+        if (uriStr == null) {
+            Log.e("ReaderActivity", "No 'uri' extra in intent");
+            finish();
+            return;
+        }
+
+        Uri uri = Uri.parse(uriStr);
         currentBook = BookStorage.findBookByUri(this, uri);
         assert currentBook != null;
-        bookLocalPath = currentBook.getLocalPath();
-
         Intent intent = new Intent(this, ReaderService.class);
         // start as foreground service (for Android 8+)
         startService(intent);
@@ -179,7 +182,7 @@ public class ReaderActivity extends AppCompatActivity implements HighlightListen
 
         chapterLoader = new ChapterLoader();
         chapters = new ArrayList<>();
-        chapterLoader.loadChaptersAsync(bookLocalPath, loadedChapters -> {
+        chapterLoader.loadChaptersAsync(currentBook.getLocalPath(), loadedChapters -> {
             chapters.clear();
             chapters.addAll(loadedChapters);
             btnChapter.setEnabled(chapters != null);
@@ -213,7 +216,7 @@ public class ReaderActivity extends AppCompatActivity implements HighlightListen
 
     private void loadPdfAsync(){
         exec.execute(()->{
-            File file = new File(bookLocalPath);
+            File file = new File(currentBook.getLocalPath());
             try {
                 pfd = ParcelFileDescriptor.open(file, ParcelFileDescriptor.MODE_READ_ONLY);
                 renderer = new PdfRenderer(pfd);
@@ -273,20 +276,18 @@ public class ReaderActivity extends AppCompatActivity implements HighlightListen
 
     private void showNextPage() {
         currentBook.setSentence(0);
-        showPage(currentPage + 1);
+        showPage(currentBook.incrementPage());
         highlightOverlay.clearHighlights();
     }
 
     private void showPrevPage() {
         currentBook.setSentence(0);
-        showPage(currentPage - 1);
+        showPage(currentBook.decrementPage());
         highlightOverlay.clearHighlights();
     }
 
     private void showPage(int page) {
         if (page < 0 || page >= totalPages) return;
-
-        currentPage = page;
         ttsStartedOnPage = false;
         readerService.setPage(page);
 
@@ -344,8 +345,7 @@ public class ReaderActivity extends AppCompatActivity implements HighlightListen
         showLoading(true);
         // let the SERVICE do all heavy work (PDF + TTSBuffer + chunks)
         readerService.startReading(
-                bookLocalPath,
-                currentPage,
+                currentBook,
                 engine
         );
         showLoading(false);
@@ -380,8 +380,10 @@ public class ReaderActivity extends AppCompatActivity implements HighlightListen
         super.onActivityResult(requestCode, resultCode, data);
         if (requestCode == REQ_SELECT_CHAPTER && resultCode == RESULT_OK && data != null) {
             int page = data.getIntExtra("selectedPage", -1);
-            if (page >= 0)
+            if (page >= 0){
+                currentBook.setLastPage(page);
                 showPage(page);
+            }
         }
     }
 
@@ -399,7 +401,7 @@ public class ReaderActivity extends AppCompatActivity implements HighlightListen
         int pageW, pageH;
         PdfRenderer.Page page = null;
         try {
-            page = renderer.openPage(currentPage);
+            page = renderer.openPage(currentBook.getLastPage());
             pageW = page.getWidth();
             pageH = page.getHeight();
         } finally {
@@ -409,7 +411,7 @@ public class ReaderActivity extends AppCompatActivity implements HighlightListen
         }
 
         List<RectF> rects = PdfPreviewHelper.getRectsForSentence(
-                doc, currentPage, text, bmpW, bmpH, pageW, pageH
+                doc, currentBook.getLastPage(), text, bmpW, bmpH, pageW, pageH
         );
 
         for (RectF r : rects) {
@@ -430,8 +432,11 @@ public class ReaderActivity extends AppCompatActivity implements HighlightListen
 
     @Override
     public void onPageFinished() {
-        if (currentPage + 1 < totalPages) {
-            showNextPage();
+        int nextPage = currentBook.getLastPage() + 1;
+        if (nextPage < totalPages) {
+            currentBook.setLastPage(nextPage);
+            currentBook.setSentence(0);
+            showPage(nextPage);
         } else {
             isSpeaking = false;
             runOnUiThread(() -> btnTTS.setText(getString(R.string.pref_play)));
