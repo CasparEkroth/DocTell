@@ -215,6 +215,7 @@ public class ReaderActivity extends AppCompatActivity implements HighlightListen
     }
 
     private void loadPdfAsync(){
+        showLoading(true);
         exec.execute(()->{
             File file = new File(currentBook.getLocalPath());
             try {
