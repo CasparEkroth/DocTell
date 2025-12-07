@@ -46,7 +46,8 @@ public class Book {
     }
 
     public int incrementPage(){
-        return ++lastPage;
+        lastPage++;
+        return lastPage;
     }
     public int decrementPage(){
         if (lastPage > 0) {

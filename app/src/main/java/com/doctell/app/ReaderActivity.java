@@ -79,6 +79,7 @@ public class ReaderActivity extends AppCompatActivity implements HighlightListen
     private PdfRenderer renderer;
     private ParcelFileDescriptor pfd;
     private PDDocument doc;
+    private TtsEngineStrategy ttsEngine;
     private final ServiceConnection serviceConnection = new ServiceConnection() {
         @Override
         public void onServiceConnected(ComponentName name, IBinder service) {
@@ -129,6 +130,9 @@ public class ReaderActivity extends AppCompatActivity implements HighlightListen
 
         exec = Executors.newSingleThreadExecutor();
         main = new Handler(Looper.getMainLooper());
+
+        ttsEngine = TtsEngineProvider.getEngine(getApplicationContext());
+        ttsEngine.init(getApplicationContext());
 
         View root = findViewById(R.id.readerRoot);
         View bottomBar = findViewById(R.id.readerBottomBar);
@@ -215,6 +219,7 @@ public class ReaderActivity extends AppCompatActivity implements HighlightListen
     }
 
     private void loadPdfAsync(){
+        showLoading(true);
         exec.execute(()->{
             File file = new File(currentBook.getLocalPath());
             try {
