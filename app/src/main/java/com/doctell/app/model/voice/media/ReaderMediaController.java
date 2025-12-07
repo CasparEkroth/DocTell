@@ -162,7 +162,7 @@ public class ReaderMediaController {
         );
 
         NotificationCompat.Builder builder = new NotificationCompat.Builder(context, ReaderService.CHANNEL_ID)
-                .setSmallIcon(R.drawable.ic_launcher_foreground)//TODO add DocTell logo
+                .setSmallIcon(R.drawable.doctell_notification)//TODO add DocTell logo
                 .setContentTitle("DocTell")
                 .setContentText(currentSentence)
                 .setContentIntent(contentIntent)
