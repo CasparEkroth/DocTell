@@ -1,7 +1,13 @@
 package com.doctell.app.model.voice;
 
+import android.util.Log;
+
+import com.doctell.app.model.data.Noise;
+
 import java.util.ArrayDeque;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 import java.util.Queue;
 
 public class TTSBuffer {
@@ -40,8 +46,19 @@ public class TTSBuffer {
     }
 
     public java.util.List<String> getAllSentences() {
-        String[] sentences = page.split("(?<=[.!?])\\s+");
-        return java.util.Arrays.asList(sentences);
+        String[] rawSentences = page.split("(?<=[.!?])\\s+");
+        Log.d("TTSBuffer","page content: " + page);
+        Log.d("TTSBuffer","the split meanings:");
+        List<String> cleaned = new ArrayList<>();
+        for (String s : rawSentences) {
+            s = s.trim();
+            if (s.isEmpty()) continue;
+            s = s.replaceAll("\\s+", " ");
+            if(Noise.isNoise(s))continue;
+            Log.d("TTSBuffer","sentence: " + s);
+            cleaned.add(s);
+        }
+        return cleaned;
     }
 
     private void setQueueOfSentences() {
