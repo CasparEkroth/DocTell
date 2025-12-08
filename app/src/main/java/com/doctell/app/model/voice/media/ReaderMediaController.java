@@ -101,8 +101,8 @@ public class ReaderMediaController {
         updateMediaSession();
     }
 
-    public void updateState(boolean playing, int index, String sentence, Bitmap cover) {
-        updateFromReader(playing, index, sentence, cover);
+    public void updateState(boolean playing, int index, String sentence) {
+        updateFromReader(playing, index, sentence, coverBitmap);
     }
 
     public void updateFromReader(boolean playing, int index,
@@ -111,11 +111,19 @@ public class ReaderMediaController {
         currentIndex = index;
         currentSentence = sentence != null ? sentence : "";
         coverBitmap = cover;
+        if(cover == null)
+            Log.d(TAG,"cover is null form the beginning");
 
         updateMediaSession();
         updateNotification();
     }
 
+    public void setCover(Bitmap cover) {
+        Log.d(TAG, "MediaController.setCover called, cover = " + cover);
+        this.coverBitmap = cover;
+        updateMediaSession();
+        updateNotification();
+    }
     private void updateMediaSession() {
         String title = currentSentence.isEmpty()
                 ? "DocTell is reading…"
@@ -162,7 +170,7 @@ public class ReaderMediaController {
         );
 
         NotificationCompat.Builder builder = new NotificationCompat.Builder(context, ReaderService.CHANNEL_ID)
-                .setSmallIcon(R.drawable.ic_launcher_foreground)//TODO add DocTell logo
+                .setSmallIcon(R.drawable.doctell_notification)
                 .setContentTitle("DocTell")
                 .setContentText(currentSentence)
                 .setContentIntent(contentIntent)
@@ -173,7 +181,10 @@ public class ReaderMediaController {
                 )
                 .setPriority(NotificationCompat.PRIORITY_LOW);
 
-        // Actions can stay if you like, but they’re not needed for the big system card.
+        if (coverBitmap != null) {
+            builder.setLargeIcon(coverBitmap);
+        }else
+            Log.d(TAG,"cover is null");
         return builder.build();
     }
 
@@ -210,7 +221,7 @@ public class ReaderMediaController {
 
         NotificationCompat.Builder builder =
                 new NotificationCompat.Builder(context, ReaderService.CHANNEL_ID)
-                        .setSmallIcon(R.drawable.ic_launcher_foreground)        // your app icon
+                        .setSmallIcon(R.drawable.doctell_notification)
                         .setContentTitle("DocTell")
                         .setContentText(subtitle)
                         .setContentIntent(contentIntent)

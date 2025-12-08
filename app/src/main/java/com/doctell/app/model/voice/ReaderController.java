@@ -1,6 +1,7 @@
 package com.doctell.app.model.voice;
 
 import android.content.Context;
+import android.graphics.Bitmap;
 import android.util.Log;
 
 import com.doctell.app.model.voice.media.PlaybackControl;
@@ -31,7 +32,6 @@ public class ReaderController implements TtsEngineListener, PlaybackControl {
         this.engine = engine;
         this.chunks = chunks;
         this.highlightListener = highlightListener;
-
         mediaController = new ReaderMediaController(ctx, this);
         this.mediaNav = mediaNav;
 
@@ -65,7 +65,7 @@ public class ReaderController implements TtsEngineListener, PlaybackControl {
         speakCurrent();
 
         String sentence = chunks.get(currentIndex);
-        mediaController.updateState(true, currentIndex, sentence, null);
+        mediaController.updateState(true, currentIndex, sentence);
     }
 
     public void startReadingFrom(int index) {
@@ -77,14 +77,14 @@ public class ReaderController implements TtsEngineListener, PlaybackControl {
         isPaused = false;
         speakCurrent();
         String sentence = chunks.get(currentIndex);
-        mediaController.updateState(true, currentIndex, sentence, null);
+        mediaController.updateState(true, currentIndex, sentence);
     }
 
     public void pauseReading() {
         isPaused = true;
         engine.pause();
         if (chunks != null && currentIndex >= 0 && currentIndex < chunks.size()) {
-            mediaController.updateState(false, currentIndex, chunks.get(currentIndex), null);
+            mediaController.updateState(false, currentIndex, chunks.get(currentIndex));
         }
     }
 
@@ -93,7 +93,7 @@ public class ReaderController implements TtsEngineListener, PlaybackControl {
         isPaused = false;
         engine.resume();
         if (chunks != null && currentIndex >= 0 && currentIndex < chunks.size()) {
-            mediaController.updateState(true, currentIndex, chunks.get(currentIndex), null);
+            mediaController.updateState(true, currentIndex, chunks.get(currentIndex));
         }
     }
 
@@ -120,7 +120,7 @@ public class ReaderController implements TtsEngineListener, PlaybackControl {
         highlightListener.onChunkStart(index, chunks.get(index));
 
         String sentence = chunks.get(index);
-        mediaController.updateState(!isPaused, index, sentence, null);
+        mediaController.updateState(!isPaused, index, sentence);
     }
 
     @Override
@@ -140,13 +140,13 @@ public class ReaderController implements TtsEngineListener, PlaybackControl {
         if (currentIndex < chunks.size()) {
             speakCurrent();
             String sentence = chunks.get(currentIndex);
-            mediaController.updateState(true, currentIndex, sentence, null);
+            mediaController.updateState(true, currentIndex, sentence);
         } else {
             if (highlightListener != null) {
                 highlightListener.onPageFinished();
             }
             // We reached the end → consider this a stop
-            mediaController.updateState(false, index, "", null);
+            mediaController.updateState(false, index, "");
         }
     }
 

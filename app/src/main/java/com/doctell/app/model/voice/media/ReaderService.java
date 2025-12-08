@@ -22,6 +22,7 @@ import androidx.annotation.Nullable;
 import com.doctell.app.model.data.Book;
 import com.doctell.app.model.data.BookStorage;
 import com.doctell.app.model.data.PdfManager;
+import com.doctell.app.model.data.PdfPreviewHelper;
 import com.doctell.app.model.voice.HighlightListener;
 import com.doctell.app.model.voice.ReaderController;
 import com.doctell.app.model.voice.TTSBuffer;
@@ -44,6 +45,7 @@ public class ReaderService extends Service implements PlaybackControl, Highlight
     private PdfManager pdfManager;
     private ExecutorService executor;
     private Handler mainHandler;
+    private Bitmap coverOfBook;
 
     private void createNotificationChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
@@ -225,8 +227,24 @@ public class ReaderService extends Service implements PlaybackControl, Highlight
         Context appCtx = getApplicationContext();
         if (book != null) {
             currentBook = book;
-        }
 
+            try {
+                Uri uri = currentBook.getUri();
+                String thumbPath = PdfPreviewHelper.ensureThumb(appCtx, uri, 320);
+                coverOfBook = PdfPreviewHelper.loadThumbBitmap(thumbPath);
+
+                if (coverOfBook == null) {
+                    //Log.d("ReaderService", "initBook: coverOfBook is NULL, thumbPath = " + thumbPath);
+                } else {
+                    //Log.d("ReaderService", "initBook: coverOfBook loaded OK, thumbPath = " + thumbPath);
+                    if (mediaController != null) {
+                        mediaController.setCover(coverOfBook);
+                    }
+                }
+            } catch (IOException e) {
+                Log.e("ReaderService", "initBook: failed to generate/load thumbnail", e);
+            }
+        }
         this.pdfManager = new PdfManager(appCtx, currentBook.getLocalPath());
     }
     public List<String> loadCurrentPageSentences() throws IOException {
@@ -250,6 +268,10 @@ public class ReaderService extends Service implements PlaybackControl, Highlight
         if (mediaController == null) {
             mediaController = new ReaderMediaController(appCtx, this);
         }
+        if(coverOfBook != null)
+            mediaController.setCover(coverOfBook);
+        else
+            Log.d("TEST9","cover is null in startReading");
         executor.execute(() -> {
             try {
                 String text = pdfManager.getPageText(currentBook.getLastPage());
@@ -268,6 +290,7 @@ public class ReaderService extends Service implements PlaybackControl, Highlight
                                 appCtx,
                                 uiMediaNav
                         );
+
                         readerController.setMediaController(mediaController);
                     } else {
                         readerController.setChunks(chunks, startSentence);

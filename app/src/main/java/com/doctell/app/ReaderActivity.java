@@ -20,6 +20,7 @@ import android.os.IBinder;
 import android.util.Log;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.WindowManager;
 import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.ProgressBar;
@@ -316,6 +317,7 @@ public class ReaderActivity extends AppCompatActivity implements HighlightListen
 
     private void toggleTTS() {
         if (!isSpeaking) {
+            getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
             isSpeaking = true;
             btnTTS.setText(getString(R.string.pref_pause));
             if (!ttsStartedOnPage) {
@@ -327,6 +329,7 @@ public class ReaderActivity extends AppCompatActivity implements HighlightListen
                 }
             }
         } else {
+            getWindow().clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
             isSpeaking = false;
             btnTTS.setText(getString(R.string.pref_play));
             if (isServiceBound && readerService != null) {
