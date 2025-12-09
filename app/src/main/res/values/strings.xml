@@ -41,4 +41,19 @@
     <string name="action_cancel">Cancel</string>
     <string name="action_apply">Apply</string>
 
+    <!-- popup -->
+    <string name="document_options_title">Document options</string>
+    <string name="document_action_open">Open</string>
+    <string name="document_action_rename">Rename</string>
+    <string name="document_action_close">Close</string>
+    <string name="document_action_delete">Delete</string>
+
+    <!-- rename -->
+    <string name="rename_title">Rename document</string>
+    <string name="rename_hint">New title</string>
+    <string name="action_save">Save</string>
+    <string name="rename_error_empty_title">Please enter a title</string>
+
+
+
 </resources>
