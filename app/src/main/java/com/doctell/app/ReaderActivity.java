@@ -38,6 +38,7 @@ import com.doctell.app.model.ChapterItem;
 import com.doctell.app.model.data.Book;
 import com.doctell.app.model.data.BookStorage;
 import com.doctell.app.model.data.ChapterLoader;
+import com.doctell.app.model.data.PdfLoader;
 import com.doctell.app.model.data.PdfPreviewHelper;
 import com.doctell.app.model.voice.HighlightListener;
 import com.doctell.app.model.voice.ReaderController;
@@ -76,7 +77,6 @@ public class ReaderActivity extends AppCompatActivity implements HighlightListen
     private HighlightOverlayView highlightOverlay;
     private ReaderService readerService;
     private boolean isServiceBound = false;
-    //private boolean firstPage = false;
     private PdfRenderer renderer;
     private ParcelFileDescriptor pfd;
     private PDDocument doc;
@@ -87,20 +87,27 @@ public class ReaderActivity extends AppCompatActivity implements HighlightListen
             ReaderService.LocalBinder binder = (ReaderService.LocalBinder) service;
             readerService = binder.getService();
             isServiceBound = true;
-            readerService.initBook(currentBook);
+
+            readerService.initBook(currentBook, doc, pfd, renderer);
+
             try {
                 totalPages = readerService.getPageCount();
             } catch (IOException e) {
-                Log.d("PDF","can't total numbers of pages");
-                throw new RuntimeException(e);
+                Log.d("PDF","can't total numbers of pages", e);
+                Toast.makeText(ReaderActivity.this,
+                        "Could not read this PDF.",
+                        Toast.LENGTH_LONG
+                ).show();
+                finish();
+                return;
             }
-
-            // load test readerService.loadCurrentPageSentences();
 
             readerService.registerUiHighlightListener(ReaderActivity.this);
             readerService.registerUiMediaNav(ReaderActivity.this);
-        }
 
+            showPage(currentBook.getLastPage());
+            showLoading(false);
+        }
         @Override
         public void onServiceDisconnected(ComponentName name) {
             if (readerService != null) {
@@ -127,14 +134,10 @@ public class ReaderActivity extends AppCompatActivity implements HighlightListen
         btnChapter = findViewById(R.id.chapterBtn);
 
         highlightOverlay = findViewById(R.id.highlightOverlay);
-        //buffer = TTSBuffer.getInstance();
 
         exec = Executors.newSingleThreadExecutor();
         main = new Handler(Looper.getMainLooper());
-
-        ttsEngine = TtsEngineProvider.getEngine(getApplicationContext());
-        ttsEngine.init(getApplicationContext());
-
+        ensureTtsInit();
         View root = findViewById(R.id.readerRoot);
         View bottomBar = findViewById(R.id.readerBottomBar);
 
@@ -157,8 +160,6 @@ public class ReaderActivity extends AppCompatActivity implements HighlightListen
 
             return insets;
         });
-
-
         // Load Book from MainActivity
         Intent mainIntent = getIntent();
         String uriStr = null;
@@ -174,10 +175,6 @@ public class ReaderActivity extends AppCompatActivity implements HighlightListen
         Uri uri = Uri.parse(uriStr);
         currentBook = BookStorage.findBookByUri(this, uri);
         assert currentBook != null;
-        Intent intent = new Intent(this, ReaderService.class);
-        // start as foreground service (for Android 8+)
-        startService(intent);
-        bindService(intent, serviceConnection, BIND_AUTO_CREATE);
 
         btnNext.setOnClickListener(v -> showNextPage());
         btnPrev.setOnClickListener(v -> showPrevPage());
@@ -204,7 +201,6 @@ public class ReaderActivity extends AppCompatActivity implements HighlightListen
                 showNextPage();
             }
         });
-        ensureServiceBound();
         pdfImage.setOnTouchListener((view, motionEvent) -> {
             imageScale.onTouch(motionEvent);
             highlightOverlay.setImageMatrix(imageScale.getMatrix());
@@ -214,29 +210,72 @@ public class ReaderActivity extends AppCompatActivity implements HighlightListen
         loadPdfAsync();
     }
 
+    private void ensureTtsInit() {
+        if (ttsEngine == null) {
+            ttsEngine = TtsEngineProvider.getEngine(getApplicationContext());
+            exec.execute(() -> {
+                ttsEngine.init(getApplicationContext());
+            });
+        }
+    }
     private int dp(int value, View v) {
         float density = v.getResources().getDisplayMetrics().density;
         return (int) (value * density + 0.5f);
     }
 
-    private void loadPdfAsync(){
+    private void loadPdfAsync() {
         showLoading(true);
-        exec.execute(()->{
-            File file = new File(currentBook.getLocalPath());
-            try {
-                pfd = ParcelFileDescriptor.open(file, ParcelFileDescriptor.MODE_READ_ONLY);
-                renderer = new PdfRenderer(pfd);
-                doc = PDDocument.load(file, MemoryUsageSetting.setupTempFileOnly());
-            } catch (IOException e) {
-                throw new RuntimeException(e);
-            }
-            totalPages = renderer.getPageCount();
 
-            main.post(()->{
-                showPage(currentBook.getLastPage());
+        String path = currentBook.getLocalPath();
+        PdfLoader loader = PdfLoader.getInstance(getApplicationContext());
+
+        // 1) Fast path: already loaded
+        if (loader.isReady(path)) {
+            PdfLoader.PdfSession session = loader.getCurrentSession();
+            if (session != null) {
+                useLoadedSession(session);
+                return;
+            }
+            // if session is somehow null, just fall through and load again
+        }
+        // 2) Slow path: not loaded yet, or no session => load on background thread
+        loader.loadIfNeeded(path, new PdfLoader.Listener() {
+            @Override
+            public void onLoaded(PdfLoader.PdfSession session) {
+                useLoadedSession(session);
+            }
+            @Override
+            public void onError(Throwable error) {
+                Log.e("ReaderActivity", "Failed to load PDF", error);
                 showLoading(false);
-            });
+
+                if (error instanceof OutOfMemoryError) {
+                    Toast.makeText(ReaderActivity.this,
+                            "This PDF is too large to open on this device.",
+                            Toast.LENGTH_LONG
+                    ).show();
+                } else {
+                    Toast.makeText(ReaderActivity.this,
+                            "Could not open this PDF.",
+                            Toast.LENGTH_LONG
+                    ).show();
+                }
+                finish();
+            }
         });
+    }
+
+    private void useLoadedSession(PdfLoader.PdfSession session) {
+        renderer = session.renderer;
+        doc = session.doc;
+        pfd = session.pfd;
+        totalPages = session.pageCount;
+        // Start + bind service
+        Intent intent = new Intent(ReaderActivity.this, ReaderService.class);
+        startService(intent); // idempotent
+        bindService(intent, serviceConnection, BIND_AUTO_CREATE);
+
+        showLoading(false);
     }
 
     private boolean ensureNotificationPermission() {
@@ -354,7 +393,10 @@ public class ReaderActivity extends AppCompatActivity implements HighlightListen
         // let the SERVICE do all heavy work (PDF + TTSBuffer + chunks)
         readerService.startReading(
                 currentBook,
-                engine
+                engine,
+                doc,
+                pfd,
+                renderer
         );
         showLoading(false);
     }

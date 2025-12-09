@@ -3,6 +3,8 @@ package com.doctell.app.model.data;
 import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.pdf.PdfRenderer;
+import android.os.Handler;
+import android.os.Looper;
 import android.os.ParcelFileDescriptor;
 import android.util.DisplayMetrics;
 
@@ -11,6 +13,8 @@ import com.tom_roush.pdfbox.pdmodel.PDDocument;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
+import java.util.concurrent.Executor;
+import java.util.function.Consumer;
 
 public class PdfManager {
     private final Context appContext;
@@ -19,10 +23,18 @@ public class PdfManager {
     private PDDocument pdDocument;
     private PdfRenderer pdfRenderer;
     private ParcelFileDescriptor pdfFd;
+    private final Handler mainHandler = new Handler(Looper.getMainLooper());
 
-    public PdfManager(Context ctx, String bookLocalPath) {
+    public PdfManager(Context ctx,
+                      String bookLocalPath,
+                      PDDocument doc,
+                      ParcelFileDescriptor pdfFd,
+                      PdfRenderer renderer) {
         this.appContext = ctx.getApplicationContext();
         this.bookLocalPath = bookLocalPath;
+        this.pdDocument = doc;
+        this.pdfFd = pdfFd;
+        this.pdfRenderer = renderer;
     }
 
     private void openIfNeeded() throws IOException {
@@ -36,6 +48,10 @@ public class PdfManager {
             );
             pdfRenderer = new PdfRenderer(pdfFd);
         }
+    }
+
+    public void ensureOpened() throws IOException{
+        openIfNeeded();
     }
 
     public synchronized int getPageCount() throws IOException {

@@ -8,12 +8,14 @@ import android.app.Service;
 import android.content.Intent;
 import android.content.Context;
 import android.graphics.Bitmap;
+import android.graphics.pdf.PdfRenderer;
 import android.net.Uri;
 import android.os.Binder;
 import android.os.Build;
 import android.os.Handler;
 import android.os.IBinder;
 import android.os.Looper;
+import android.os.ParcelFileDescriptor;
 import android.util.DisplayMetrics;
 import android.util.Log;
 
@@ -27,6 +29,7 @@ import com.doctell.app.model.voice.HighlightListener;
 import com.doctell.app.model.voice.ReaderController;
 import com.doctell.app.model.voice.TTSBuffer;
 import com.doctell.app.model.voice.TtsEngineStrategy;
+import com.tom_roush.pdfbox.pdmodel.PDDocument;
 
 import java.io.IOException;
 import java.util.List;
@@ -223,29 +226,32 @@ public class ReaderService extends Service implements PlaybackControl, Highlight
         }
         return START_STICKY;
     }
-    public void initBook(Book book) {
+    public void initBook(Book book, PDDocument doc, ParcelFileDescriptor pdf, PdfRenderer renderer) {
         Context appCtx = getApplicationContext();
         if (book != null) {
             currentBook = book;
+            this.pdfManager = new PdfManager(appCtx, currentBook.getLocalPath(), doc, pdf, renderer);
+            executor.execute(()->{
+                try {
+                    pdfManager.ensureOpened();
 
-            try {
-                Uri uri = currentBook.getUri();
-                String thumbPath = PdfPreviewHelper.ensureThumb(appCtx, uri, 320);
-                coverOfBook = PdfPreviewHelper.loadThumbBitmap(thumbPath);
+                    Uri uri = currentBook.getUri();
+                    String thumbPath = PdfPreviewHelper.ensureThumb(appCtx, uri, 320);
+                    coverOfBook = PdfPreviewHelper.loadThumbBitmap(thumbPath);
 
-                if (coverOfBook == null) {
-                    //Log.d("ReaderService", "initBook: coverOfBook is NULL, thumbPath = " + thumbPath);
-                } else {
-                    //Log.d("ReaderService", "initBook: coverOfBook loaded OK, thumbPath = " + thumbPath);
-                    if (mediaController != null) {
-                        mediaController.setCover(coverOfBook);
+                    if (coverOfBook == null) {
+                    } else {
+                        if (mediaController != null) {
+                            mainHandler.post(()->{
+                                mediaController.setCover(coverOfBook);
+                            });
+                        }
                     }
+                } catch (IOException e) {
+                    Log.e("ReaderService", "initBook: failed to generate/load thumbnail", e);
                 }
-            } catch (IOException e) {
-                Log.e("ReaderService", "initBook: failed to generate/load thumbnail", e);
-            }
+            });
         }
-        this.pdfManager = new PdfManager(appCtx, currentBook.getLocalPath());
     }
     public List<String> loadCurrentPageSentences() throws IOException {
         String pageText = pdfManager.getPageText(currentBook.getLastPage());
@@ -259,11 +265,14 @@ public class ReaderService extends Service implements PlaybackControl, Highlight
 
     @SuppressLint("ForegroundServiceType")
     public void startReading(Book book,
-                             TtsEngineStrategy engine) {
+                             TtsEngineStrategy engine,
+                             PDDocument doc,
+                             ParcelFileDescriptor pfd,
+                             PdfRenderer renderer) {
         currentBook = book;
         Context appCtx = getApplicationContext();
         if (pdfManager == null) {
-            pdfManager = new PdfManager(appCtx, currentBook.getLocalPath());
+            pdfManager = new PdfManager(appCtx, currentBook.getLocalPath(),doc, pfd, renderer);
         }
         if (mediaController == null) {
             mediaController = new ReaderMediaController(appCtx, this);
