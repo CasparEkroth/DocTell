@@ -1,4 +1,4 @@
-package com.doctell.app.model.data;
+package com.doctell.app.model.entity;
 import android.net.Uri;
 
 public class Book {
@@ -8,8 +8,9 @@ public class Book {
     private int sentence;
     private String localPath;
     private String thumbnailPath;
+    private long lastOpenedAt;
 
-    public Book(Uri uri, String title,int lastPage,int sentence, String thumbnailPath, String localPath){
+    public Book(Uri uri, String title,int lastPage,int sentence, String thumbnailPath, String localPath, long lastOpenedAt){
         if(uri == null) throw new IllegalArgumentException("uri can´t be null ");
         this.uri = uri;
         this.title = title;
@@ -17,6 +18,11 @@ public class Book {
         this.lastPage = lastPage;
         this.thumbnailPath = thumbnailPath;
         this.localPath = localPath;
+        this.lastOpenedAt = lastOpenedAt;
+    }
+
+    public Book(Uri uri, String title,int lastPage,int sentence, String thumbnailPath, String localPath){
+        this(uri,title,lastPage,sentence,thumbnailPath,localPath,System.currentTimeMillis());
     }
 
     public Uri getUri() {return uri;}
@@ -44,6 +50,10 @@ public class Book {
     public void setSentence(int sentence) {
         this.sentence = sentence;
     }
+
+    public long getLastOpenedAt() {return lastOpenedAt;}
+
+    public void setLastOpenedAt() {this.lastOpenedAt = System.currentTimeMillis();}
 
     public int incrementPage(){
         lastPage++;
@@ -78,6 +88,7 @@ public class Book {
                 ", sentence=" + sentence +
                 ", localPath='" + localPath + '\'' +
                 ", thumbnailPath='" + thumbnailPath + '\'' +
+                ", lastOpenedAt=" + lastOpenedAt + '\'' +
                 '}';
     }
 }

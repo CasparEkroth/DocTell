@@ -1,4 +1,4 @@
-package com.doctell.app.model.data;
+package com.doctell.app.model.pdf;
 
 import android.content.Context;
 import android.graphics.Bitmap;
@@ -13,8 +13,6 @@ import com.tom_roush.pdfbox.pdmodel.PDDocument;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
-import java.util.concurrent.Executor;
-import java.util.function.Consumer;
 
 public class PdfManager {
     private final Context appContext;

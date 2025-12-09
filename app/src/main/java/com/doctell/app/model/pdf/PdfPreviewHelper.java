@@ -1,4 +1,4 @@
-package com.doctell.app.model.data;
+package com.doctell.app.model.pdf;
 
 import android.content.Context;
 import android.graphics.Bitmap;

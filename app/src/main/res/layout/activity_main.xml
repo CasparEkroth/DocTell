@@ -125,6 +125,7 @@
             android:layout_weight="1"
             android:orientation="vertical"
             android:gravity="center"
+            android:onClick="openLibrary"
             android:clickable="true"
             android:focusable="true">
 

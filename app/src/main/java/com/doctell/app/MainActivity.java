@@ -1,5 +1,6 @@
 package com.doctell.app;
 
+import android.app.AlertDialog;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.content.Intent;
@@ -9,22 +10,24 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.util.Log;
+import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.GridLayout;
 import android.widget.ProgressBar;
+import android.widget.RadioGroup;
 import android.widget.Toast;
 
-import androidx.activity.EdgeToEdge;
 import androidx.activity.OnBackPressedCallback;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowCompat;
 import androidx.core.view.WindowInsetsCompat;
 
-import com.doctell.app.model.data.Book;
-import com.doctell.app.model.data.BookStorage;
-import com.doctell.app.model.data.PdfPreviewHelper;
+import com.doctell.app.model.entity.Book;
+import com.doctell.app.model.repository.BookStorage;
+import com.doctell.app.model.pdf.PdfPreviewHelper;
+import com.doctell.app.model.utils.BookSorter;
 import com.doctell.app.model.voice.LocalTtsEngine;
 import com.doctell.app.model.voice.TtsEngineStrategy;
 import com.doctell.app.view.ItemView;
@@ -45,12 +48,12 @@ public class MainActivity extends AppCompatActivity {
     private final Handler main = new Handler(Looper.getMainLooper());
     private ProgressBar loadingBar;
     private TtsEngineStrategy engine;
+    private int selectedSortIndex = 0;
     private static final String READER_CHANNEL_ID = "reader_channel";
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        //EdgeToEdge.enable(this);
         WindowCompat.setDecorFitsSystemWindows(getWindow(), false);
         setContentView(R.layout.activity_main);
         //init pdfbox
@@ -59,8 +62,10 @@ public class MainActivity extends AppCompatActivity {
         BookStorage.booksCache = BookStorage.loadBooks(this);
         pdfGrid = findViewById(R.id.pdfGrid);
         loadingBar = findViewById(R.id.loadingMain);
+        BookSorter.getSavedSort(getApplicationContext());
+        BookSorter.sortBooksOnDefault(BookStorage.booksCache);
+        selectedSortIndex = BookSorter.getIndex();
         refreshGrid();
-
         engine = LocalTtsEngine.getInstance(getApplicationContext());
 
         getOnBackPressedDispatcher().addCallback(this, new OnBackPressedCallback(true) {
@@ -109,8 +114,68 @@ public class MainActivity extends AppCompatActivity {
 
     public void openSettings(View v){
         Intent intent = new Intent(this, SettingsActivity.class);
-        // set values??
         startActivity(intent);
+    }
+
+    public void openLibrary(View v){
+        showSortDialog();
+    }
+    private void showSortDialog() {
+        LayoutInflater inflater = LayoutInflater.from(this);
+        View dialogView = inflater.inflate(R.layout.dialog_sort_library,null);
+
+        RadioGroup rgSortOptions = dialogView.findViewById(R.id.rgSortOptions);
+        View btnCancel = dialogView.findViewById(R.id.btnCancel);
+        View btnOk = dialogView.findViewById(R.id.btnOk);
+
+        // Pre-select current sort choice
+        switch (selectedSortIndex) {
+            case 0:
+                rgSortOptions.check(R.id.rbTitleAZ);
+                break;
+            case 1:
+                rgSortOptions.check(R.id.rbTitleZA);
+                break;
+            case 2:
+                rgSortOptions.check(R.id.rbDateNewest);
+                break;
+            case 3:
+                rgSortOptions.check(R.id.rbDateOldest);
+                break;
+            default:
+                break;
+        }
+        AlertDialog dialog = new AlertDialog.Builder(this).setView(dialogView).create();
+        if (dialog.getWindow() != null) {
+            dialog.getWindow().setBackgroundDrawable(
+                    new android.graphics.drawable.ColorDrawable(android.graphics.Color.TRANSPARENT)
+            );
+        }
+        // Button actions
+        btnCancel.setOnClickListener(v -> dialog.dismiss());
+        btnOk.setOnClickListener(v -> {
+            if (BookStorage.booksCache == null) {
+                dialog.dismiss();
+                return;
+            }
+            int checkedId = rgSortOptions.getCheckedRadioButtonId();
+            int newIndex = selectedSortIndex;
+            if (checkedId == R.id.rbTitleAZ) {
+                newIndex = 0;
+            } else if (checkedId == R.id.rbTitleZA) {
+                newIndex = 1;
+            } else if (checkedId == R.id.rbDateNewest) {
+                newIndex = 2;
+            } else if (checkedId == R.id.rbDateOldest) {
+                newIndex = 3;
+            }
+            selectedSortIndex = newIndex;
+            BookSorter.sortBooks(selectedSortIndex, BookStorage.booksCache);
+            BookSorter.saveSortIndex(getApplicationContext());
+            refreshGrid();
+            dialog.dismiss();
+        });
+        dialog.show();
     }
 
     @Override
@@ -145,6 +210,7 @@ public class MainActivity extends AppCompatActivity {
                         BookStorage.updateBook(b, this);
                     }
                     main.post(() ->{
+                        BookSorter.sortBooksOnDefault(BookStorage.booksCache);
                         this.refreshGrid();
                         showLoading(false);
                     });
@@ -161,11 +227,18 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+    @Override
+    protected void onStart(){
+        super.onStart();
+        BookSorter.sortBooksOnDefault(BookStorage.booksCache);
+        refreshGrid();
+    }
 
     @Override
     protected void onResume() {
         super.onResume();
         BookStorage.loadBooks(this);
+        BookSorter.sortBooksOnDefault(BookStorage.booksCache);
         refreshGrid();
     }
 
@@ -217,6 +290,7 @@ public class MainActivity extends AppCompatActivity {
 
     @Override
     protected void onDestroy() {
+        BookSorter.saveSortIndex(getApplicationContext());
         try {
             engine.shutdown();
         } catch (Exception ignored) {}

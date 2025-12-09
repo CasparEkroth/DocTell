@@ -31,4 +31,14 @@
     <string name="nav_add">Add</string>
     <string name="nav_settings">Settings</string>
 
+    <!-- dialog_sort_library -->
+    <string name="sort_library_title">Sort library</string>
+    <string name="sort_library_subtitle">Choose how you want your books ordered.</string>
+    <string name="sort_a_z">Title (A–Z)</string>
+    <string name="sort_z_a">Title (Z–A)</string>
+    <string name="date_new">Date (newest first)</string>
+    <string name="date_old">Date (oldest first)</string>
+    <string name="action_cancel">Cancel</string>
+    <string name="action_apply">Apply</string>
+
 </resources>

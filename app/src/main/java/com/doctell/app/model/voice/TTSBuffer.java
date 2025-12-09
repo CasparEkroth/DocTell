@@ -2,7 +2,7 @@ package com.doctell.app.model.voice;
 
 import android.util.Log;
 
-import com.doctell.app.model.data.Noise;
+import com.doctell.app.model.entity.Noise;
 
 import java.util.ArrayDeque;
 import java.util.ArrayList;

@@ -34,25 +34,21 @@ import androidx.core.content.ContextCompat;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
 
-import com.doctell.app.model.ChapterItem;
-import com.doctell.app.model.data.Book;
-import com.doctell.app.model.data.BookStorage;
-import com.doctell.app.model.data.ChapterLoader;
-import com.doctell.app.model.data.PdfLoader;
-import com.doctell.app.model.data.PdfPreviewHelper;
+import com.doctell.app.model.entity.ChapterItem;
+import com.doctell.app.model.entity.Book;
+import com.doctell.app.model.repository.BookStorage;
+import com.doctell.app.model.utils.ChapterLoader;
+import com.doctell.app.model.pdf.PdfLoader;
+import com.doctell.app.model.pdf.PdfPreviewHelper;
 import com.doctell.app.model.voice.HighlightListener;
 import com.doctell.app.model.voice.ReaderController;
-import com.doctell.app.model.voice.TTSBuffer;
 import com.doctell.app.model.voice.TtsEngineStrategy;
 import com.doctell.app.model.voice.media.ReaderService;
 import com.doctell.app.model.voice.notPublic.TtsEngineProvider;
 import com.doctell.app.view.HighlightOverlayView;
 import com.doctell.app.view.ImageScale;
-import com.tom_roush.pdfbox.io.MemoryUsageSetting;
 import com.tom_roush.pdfbox.pdmodel.PDDocument;
 
-import java.io.File;
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
@@ -175,7 +171,7 @@ public class ReaderActivity extends AppCompatActivity implements HighlightListen
         Uri uri = Uri.parse(uriStr);
         currentBook = BookStorage.findBookByUri(this, uri);
         assert currentBook != null;
-
+        currentBook.setLastOpenedAt();
         btnNext.setOnClickListener(v -> showNextPage());
         btnPrev.setOnClickListener(v -> showPrevPage());
         btnTTS.setOnClickListener(v -> toggleTTS());
