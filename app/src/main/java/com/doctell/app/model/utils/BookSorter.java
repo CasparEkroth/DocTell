@@ -1,5 +1,9 @@
 package com.doctell.app.model.utils;
 
+import android.content.Context;
+import android.content.SharedPreferences;
+
+import com.doctell.app.model.Prefs;
 import com.doctell.app.model.entity.Book;
 import com.doctell.app.model.entity.SortOn;
 
@@ -56,5 +60,21 @@ public class BookSorter {
 
     private static String safeTitle(Book b) {
         return b.getTitle() != null ? b.getTitle() : "";
+    }
+
+    public static void getSavedSort(Context ctx){
+        SharedPreferences pref = ctx.getSharedPreferences(Prefs.DOCTELL_PREFS.toString(), Context.MODE_PRIVATE);
+        sort = SortOn.fromValue(pref.getInt(Prefs.SORT_INDEX.toString(), -1));
+    }
+
+    public static void saveSortIndex(Context ctx){
+        SharedPreferences pref = ctx.getSharedPreferences(Prefs.DOCTELL_PREFS.toString(), Context.MODE_PRIVATE);
+        SharedPreferences.Editor editor = pref.edit();
+
+        editor.putInt(Prefs.SORT_INDEX.toString(), sort.getValue());
+    }
+
+    public static int getIndex(){
+        return sort.getValue();
     }
 }

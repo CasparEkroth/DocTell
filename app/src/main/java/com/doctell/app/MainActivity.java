@@ -66,8 +66,10 @@ public class MainActivity extends AppCompatActivity {
         BookStorage.booksCache = BookStorage.loadBooks(this);
         pdfGrid = findViewById(R.id.pdfGrid);
         loadingBar = findViewById(R.id.loadingMain);
+        BookSorter.getSavedSort(getApplicationContext());
+        BookSorter.sortBooksOnDefault(BookStorage.booksCache);
+        selectedSortIndex = BookSorter.getIndex();
         refreshGrid();
-
         engine = LocalTtsEngine.getInstance(getApplicationContext());
 
         getOnBackPressedDispatcher().addCallback(this, new OnBackPressedCallback(true) {
@@ -116,7 +118,6 @@ public class MainActivity extends AppCompatActivity {
 
     public void openSettings(View v){
         Intent intent = new Intent(this, SettingsActivity.class);
-        // set values??
         startActivity(intent);
     }
 
@@ -131,6 +132,7 @@ public class MainActivity extends AppCompatActivity {
             .setPositiveButton("OK", (dialog, which) -> {
                 if (BookStorage.booksCache == null) return;
                 BookSorter.sortBooks(selectedSortIndex,BookStorage.booksCache);
+                BookSorter.saveSortIndex(getApplicationContext());
                 refreshGrid();
             })
             .setNegativeButton("Cancel", null)
@@ -171,6 +173,7 @@ public class MainActivity extends AppCompatActivity {
                         BookStorage.updateBook(b, this);
                     }
                     main.post(() ->{
+                        BookSorter.sortBooksOnDefault(BookStorage.booksCache);
                         this.refreshGrid();
                         showLoading(false);
                     });
@@ -250,6 +253,7 @@ public class MainActivity extends AppCompatActivity {
 
     @Override
     protected void onDestroy() {
+        BookSorter.saveSortIndex(getApplicationContext());
         try {
             engine.shutdown();
         } catch (Exception ignored) {}
