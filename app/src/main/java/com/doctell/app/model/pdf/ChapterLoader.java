@@ -1,10 +1,10 @@
-package com.doctell.app.model.data;
+package com.doctell.app.model.pdf;
 
 import android.os.Handler;
 import android.os.Looper;
 import android.util.Log;
 
-import com.doctell.app.model.ChapterItem;
+import com.doctell.app.model.entity.ChapterItem;
 import com.tom_roush.pdfbox.pdmodel.PDDocument;
 import com.tom_roush.pdfbox.pdmodel.PDDocumentCatalog;
 import com.tom_roush.pdfbox.pdmodel.PDPage;

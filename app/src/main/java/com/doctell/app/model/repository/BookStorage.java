@@ -1,9 +1,11 @@
-package com.doctell.app.model.data;
+package com.doctell.app.model.repository;
 
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.net.Uri;
 import android.util.Log;
+
+import com.doctell.app.model.entity.Book;
 
 import java.io.FileNotFoundException;
 import java.io.IOException;

@@ -1,4 +1,4 @@
-package com.doctell.app.model.data;
+package com.doctell.app.model.pdf;
 
 import com.tom_roush.pdfbox.text.PDFTextStripper;
 import com.tom_roush.pdfbox.text.TextPosition;

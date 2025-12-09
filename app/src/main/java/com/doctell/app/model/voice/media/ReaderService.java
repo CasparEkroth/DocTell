@@ -21,10 +21,10 @@ import android.util.Log;
 
 import androidx.annotation.Nullable;
 
-import com.doctell.app.model.data.Book;
-import com.doctell.app.model.data.BookStorage;
-import com.doctell.app.model.data.PdfManager;
-import com.doctell.app.model.data.PdfPreviewHelper;
+import com.doctell.app.model.entity.Book;
+import com.doctell.app.model.repository.BookStorage;
+import com.doctell.app.model.pdf.PdfManager;
+import com.doctell.app.model.pdf.PdfPreviewHelper;
 import com.doctell.app.model.voice.HighlightListener;
 import com.doctell.app.model.voice.ReaderController;
 import com.doctell.app.model.voice.TTSBuffer;

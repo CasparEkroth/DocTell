@@ -1,4 +1,4 @@
-package com.doctell.app.model;
+package com.doctell.app.model.entity;
 
 public class ChapterItem {
     private final String title;

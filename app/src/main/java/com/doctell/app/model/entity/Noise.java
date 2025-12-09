@@ -1,4 +1,4 @@
-package com.doctell.app.model.data;
+package com.doctell.app.model.entity;
 
 public enum Noise {
     OCEAN_OF_PDF;

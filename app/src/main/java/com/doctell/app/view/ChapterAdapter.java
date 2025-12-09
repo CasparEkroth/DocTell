@@ -1,6 +1,5 @@
 package com.doctell.app.view;
 
-import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -10,7 +9,7 @@ import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.doctell.app.R;
-import com.doctell.app.model.ChapterItem;
+import com.doctell.app.model.entity.ChapterItem;
 
 import java.util.List;
 

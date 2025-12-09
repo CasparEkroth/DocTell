@@ -1,5 +1,6 @@
 package com.doctell.app;
 
+import android.app.AlertDialog;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.content.Intent;
@@ -9,22 +10,23 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.util.Log;
+import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.GridLayout;
 import android.widget.ProgressBar;
+import android.widget.RadioGroup;
 import android.widget.Toast;
 
-import androidx.activity.EdgeToEdge;
 import androidx.activity.OnBackPressedCallback;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowCompat;
 import androidx.core.view.WindowInsetsCompat;
 
-import com.doctell.app.model.data.Book;
-import com.doctell.app.model.data.BookStorage;
-import com.doctell.app.model.data.PdfPreviewHelper;
+import com.doctell.app.model.entity.Book;
+import com.doctell.app.model.repository.BookStorage;
+import com.doctell.app.model.pdf.PdfPreviewHelper;
 import com.doctell.app.model.voice.LocalTtsEngine;
 import com.doctell.app.model.voice.TtsEngineStrategy;
 import com.doctell.app.view.ItemView;
@@ -34,6 +36,9 @@ import com.tom_roush.pdfbox.pdmodel.PDDocumentInformation;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.text.Collator;
+import java.util.Collections;
+import java.util.Locale;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -112,6 +117,57 @@ public class MainActivity extends AppCompatActivity {
         // set values??
         startActivity(intent);
     }
+
+    public void openLibrary(View v){
+        showSortDialog();
+    }
+
+    private void showSortDialog() {
+        LayoutInflater inflater = LayoutInflater.from(this);
+        View dialogView = inflater.inflate(R.layout.dialog_sort_library, null);
+
+        RadioGroup rgSort = dialogView.findViewById(R.id.rgSortOptions);
+
+        new AlertDialog.Builder(this)
+                .setView(dialogView)
+                .setPositiveButton("OK", (dialog, which) -> {
+                    int checkedId = rgSort.getCheckedRadioButtonId();
+                    if (checkedId == R.id.rbTitleAZ) {
+                        sortBooksByTitleAsc();
+                    } else if (checkedId == R.id.rbTitleZA) {
+                        sortBooksByTitleDesc();
+                    } else if (checkedId == R.id.rbDateNewest) {
+                        sortBooksByDateNewest();
+                    } else if (checkedId == R.id.rbDateOldest) {
+                        sortBooksByDateOldest();
+                    }
+                    // After sorting: rebuild your GridLayout in memory, no extra PDF I/O
+                    rebuildGrid();
+                })
+                .setNegativeButton("Cancel", null)
+                .show();
+    }
+
+    private void sortBooksByTitleAsc() {
+        if (BookStorage.booksCache == null || BookStorage.booksCache.isEmpty()) {
+            return;
+        }
+
+        // Swedish-friendly A–Ö sort
+        Collator collator = Collator.getInstance(new Locale("sv", "SE"));
+        collator.setStrength(Collator.PRIMARY); // ignore case / accents mostly
+
+        Collections.sort(BookStorage.booksCache,
+                (b1, b2) -> {
+                    String t1 = b1.getTitle() != null ? b1.getTitle() : "";
+                    String t2 = b2.getTitle() != null ? b2.getTitle() : "";
+                    return collator.compare(t1, t2);
+                });
+
+        // Redraw the grid with the new order
+        refreshGrid();
+    }
+
 
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
