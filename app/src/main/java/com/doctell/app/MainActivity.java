@@ -27,6 +27,7 @@ import androidx.core.view.WindowInsetsCompat;
 import com.doctell.app.model.entity.Book;
 import com.doctell.app.model.repository.BookStorage;
 import com.doctell.app.model.pdf.PdfPreviewHelper;
+import com.doctell.app.model.utils.BookSorter;
 import com.doctell.app.model.voice.LocalTtsEngine;
 import com.doctell.app.model.voice.TtsEngineStrategy;
 import com.doctell.app.view.ItemView;
@@ -50,6 +51,7 @@ public class MainActivity extends AppCompatActivity {
     private final Handler main = new Handler(Looper.getMainLooper());
     private ProgressBar loadingBar;
     private TtsEngineStrategy engine;
+    private int selectedSortIndex = 0;
     private static final String READER_CHANNEL_ID = "reader_channel";
 
     @Override
@@ -121,51 +123,25 @@ public class MainActivity extends AppCompatActivity {
     public void openLibrary(View v){
         showSortDialog();
     }
-
     private void showSortDialog() {
-        LayoutInflater inflater = LayoutInflater.from(this);
-        View dialogView = inflater.inflate(R.layout.dialog_sort_library, null);
-
-        RadioGroup rgSort = dialogView.findViewById(R.id.rgSortOptions);
-
         new AlertDialog.Builder(this)
-                .setView(dialogView)
+                .setTitle("Sortera böcker")
+                .setSingleChoiceItems(R.array.sort_options, selectedSortIndex,
+                        (dialog, which) -> selectedSortIndex = which)
                 .setPositiveButton("OK", (dialog, which) -> {
-                    int checkedId = rgSort.getCheckedRadioButtonId();
-                    if (checkedId == R.id.rbTitleAZ) {
-                        sortBooksByTitleAsc();
-                    } else if (checkedId == R.id.rbTitleZA) {
-                        sortBooksByTitleDesc();
-                    } else if (checkedId == R.id.rbDateNewest) {
-                        sortBooksByDateNewest();
-                    } else if (checkedId == R.id.rbDateOldest) {
-                        sortBooksByDateOldest();
+                    if (BookStorage.booksCache == null) return;
+
+                    switch (selectedSortIndex) {
+                        case 0: BookSorter.sortByTitleAsc(BookStorage.booksCache); break;
+                        case 1: BookSorter.sortByTitleDesc(BookStorage.booksCache); break;
+                        case 2: BookSorter.sortByDateNewest(BookStorage.booksCache); break;
+                        case 3: BookSorter.sortByDateOldest(BookStorage.booksCache); break;
                     }
-                    // After sorting: rebuild your GridLayout in memory, no extra PDF I/O
-                    rebuildGrid();
+
+                    refreshGrid();
                 })
                 .setNegativeButton("Cancel", null)
                 .show();
-    }
-
-    private void sortBooksByTitleAsc() {
-        if (BookStorage.booksCache == null || BookStorage.booksCache.isEmpty()) {
-            return;
-        }
-
-        // Swedish-friendly A–Ö sort
-        Collator collator = Collator.getInstance(new Locale("sv", "SE"));
-        collator.setStrength(Collator.PRIMARY); // ignore case / accents mostly
-
-        Collections.sort(BookStorage.booksCache,
-                (b1, b2) -> {
-                    String t1 = b1.getTitle() != null ? b1.getTitle() : "";
-                    String t2 = b2.getTitle() != null ? b2.getTitle() : "";
-                    return collator.compare(t1, t2);
-                });
-
-        // Redraw the grid with the new order
-        refreshGrid();
     }
 
 

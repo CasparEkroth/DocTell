@@ -37,7 +37,7 @@ import androidx.core.view.WindowInsetsCompat;
 import com.doctell.app.model.entity.ChapterItem;
 import com.doctell.app.model.entity.Book;
 import com.doctell.app.model.repository.BookStorage;
-import com.doctell.app.model.pdf.ChapterLoader;
+import com.doctell.app.model.utils.ChapterLoader;
 import com.doctell.app.model.pdf.PdfLoader;
 import com.doctell.app.model.pdf.PdfPreviewHelper;
 import com.doctell.app.model.voice.HighlightListener;
@@ -171,7 +171,7 @@ public class ReaderActivity extends AppCompatActivity implements HighlightListen
         Uri uri = Uri.parse(uriStr);
         currentBook = BookStorage.findBookByUri(this, uri);
         assert currentBook != null;
-
+        currentBook.setLastOpenedAt();
         btnNext.setOnClickListener(v -> showNextPage());
         btnPrev.setOnClickListener(v -> showPrevPage());
         btnTTS.setOnClickListener(v -> toggleTTS());

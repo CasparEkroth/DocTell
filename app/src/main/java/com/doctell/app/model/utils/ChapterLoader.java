@@ -1,4 +1,4 @@
-package com.doctell.app.model.pdf;
+package com.doctell.app.model.utils;
 
 import android.os.Handler;
 import android.os.Looper;

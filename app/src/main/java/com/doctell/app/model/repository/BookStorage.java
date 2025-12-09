@@ -28,6 +28,7 @@ public class BookStorage {
             editor.putString("title_" + i, b.getTitle());
             editor.putInt("lastPage_" + i, b.getLastPage());
             editor.putInt("sentence_" + i, b.getSentence());
+            editor.putLong("lastOpened_" + i, b.getLastOpenedAt());
 
             editor.putString("thumb_" + i, b.getThumbnailPath());
             editor.putString("local_" + i, b.getLocalPath());
@@ -55,14 +56,15 @@ public class BookStorage {
                 int sentence = pref.getInt("sentence_" + i, 0);
                 String thumbPath = pref.getString("thumb_" + i, null);
                 String localPath = pref.getString("local_" + i, null);
-
+                long lastOpened = pref.getLong("lastOpened_" + i, System.currentTimeMillis());
                 Book b = new Book(
                         uri,
                         title,
                         lastPage,
                         sentence,
                         thumbPath,
-                        localPath
+                        localPath,
+                        lastOpened
                 );
 
                 list.add(b);

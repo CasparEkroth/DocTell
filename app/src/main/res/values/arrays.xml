@@ -20,4 +20,11 @@
         <item>spa</item>
     </string-array>
 
+    <string-array name="sort_options">
+        <item>Title (A–Z)</item>
+        <item>Title (Z–A)</item>
+        <item>Date (last reda first)</item>
+        <item>Date (last reda last)</item>
+    </string-array>
+
 </resources>
