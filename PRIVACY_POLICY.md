@@ -1,39 +1,51 @@
 # Privacy Policy for DocTell
 
-_Last updated: 2025-11-19_
+_Last updated: 2025-12-09_
 
 DocTell ("the App") is developed by Ekroth Dev ("the Developer").  
 This Privacy Policy explains how the App handles user data and protects your privacy.
 
 DocTell is a tool for reading and listening to PDF documents using Text-to-Speech (TTS).  
-The App does not collect any personal information, does not upload your files, and does not share data with any third parties.
+Your PDF files and their contents always remain on your device and are never uploaded.
 
 ---
 
 ## 1. Information We Collect
-DocTell does **not** collect or store any personal data on the Developer’s servers.  
-All processing happens **locally on your device**.
 
-The App only uses the following data locally:
-
-### a. PDF Files
+### a. PDF Files (Local Only)
 - The App accesses PDF files **only when you manually choose a file**.
 - The App never scans your device automatically.
 - Your PDF files are **never uploaded** or shared anywhere.
 
-### b. Reading Progress & Bookmarks
+### b. Reading Progress & Bookmarks (Local Only)
 - Saving your reading position and bookmarks happens **only on your device**.
-- No data is transferred outside your device.
 
 ### c. Text-to-Speech (TTS)
 - The App uses your device’s built-in TTS engine.
 - Processing is done **offline on your device** unless your TTS engine requires internet.
-- The App itself does not send TTS data anywhere.
+- DocTell does not upload spoken text to the Developer.
 
-### d. Permissions Used
+### d. Anonymous Usage Statistics (Firebase Analytics)
+To improve stability and usability, the App collects anonymous usage statistics, such as:
+- Screen views (e.g., Reader screen)
+- Feature usage (e.g., starting or pausing TTS)
+- Page navigation events (e.g., next page, previous page)
+- General device data (device model, OS version, country)
+  
+No PDF content, file names, or personally identifiable information is collected.
+You may disable analytics at any time in the App settings.
+
+### e. Crash Reports (Firebase Crashlytics)
+To diagnose technical issues, the App may collect:
+- Anonymous crash logs
+- Error messages
+- Device/OS information
+Crash reports never include your PDF content or personal files.
+
+### f. Permissions Used
 The App may request:
 - **Read external storage** — needed to open PDF files
-- **Internet** — currently unused, but may be required for future optional features
+- **Internet** — used only for optional analytics & crash reporting, and for certain TTS engines
 
 The App does **not** request access to:
 - Microphone  
@@ -43,27 +55,22 @@ The App does **not** request access to:
 
 ---
 
-## 2. Future Online Features (Optional)
-In future updates, DocTell may include optional online features such as:
-- Cloud syncing  
-- Online text processing  
-- API calls for enhanced TTS voices  
-
-If these features are added:
-- You will be clearly informed inside the App.
-- This Privacy Policy will be updated.
-- No online features will activate without your consent.
+### 2. User Consent
+When launching the App for the first time, you may be asked whether you want to enable anonymous usage statistics.
+- If you decline, analytics data will not be collected.
+- Crash reporting may still collect strictly technical information needed to fix app crashes, but no document content is ever included.
 
 ---
 
 ## 3. Data Sharing
-DocTell does **not** share data with:
-- Third parties  
-- Advertisers  
-- Analytics services  
-- External servers  
+DocTell does ***not*** sell or share personal data.
+For analytics and crash reporting, DocTell uses:
 
-Your documents and app usage stay on your device.
+- Google Firebase Analytics (anonymous usage statistics)
+- Google Firebase Crashlytics (crash diagnostics)
+  
+These services process data on secure Google servers.
+### No PDF content, personal identifiers, or document data are ever shared.
 
 ---
 
@@ -71,7 +78,7 @@ Your documents and app usage stay on your device.
 Parts of DocTell may be open source.  
 Source code stored on GitHub or other platforms **never includes any user data**.
 
-User files, bookmarks, TTS content, or reading activity are **not uploaded** anywhere and cannot appear in the code repository.
+User files, bookmarks or reading activity are **not uploaded** anywhere and cannot appear in the code repository.
 
 ---
 
@@ -82,14 +89,21 @@ It is safe for general audiences, including children.
 ---
 
 ## 6. Security
-Because DocTell processes data only locally, your files remain private and under your control.  
-The Developer does not have access to your documents or usage data.
+DocTell is designed so that your PDF documents and their contents remain fully local on your device.
+
+The Developer cannot access:
+- Your documents
+- Your extracted text  
+- Your reading progress
+- Your bookmarks
+
+Only anonymous analytics or crash information may be processed by Google Firebase.
 
 ---
 
 ## 7. Changes to This Privacy Policy
-This Privacy Policy may be updated when new features are added.  
-Updates will be published at the same URL as this policy.
+This Privacy Policy may be updated when new features are added.
+Updates will be published at the same URL as this policy and inside the App when required.
 
 ---
 
@@ -98,4 +112,6 @@ If you have any questions about this Privacy Policy or DocTell:
 
 **Developer:** Ekroth Dev  
 **Email:** ekrothdev@gmail.com
+
+
 
