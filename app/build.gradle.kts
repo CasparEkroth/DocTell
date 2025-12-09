@@ -1,5 +1,6 @@
 plugins {
     alias(libs.plugins.android.application)
+    id("com.google.gms.google-services")
 }
 
 android {
@@ -50,6 +51,9 @@ dependencies {
     implementation("com.google.code.gson:gson:2.10.1")
     //mediaPlayer
     implementation("androidx.media:media:1.7.0")
+    //firebase
+    implementation(platform("com.google.firebase:firebase-bom:34.6.0"))
+    implementation("com.google.firebase:firebase-analytics")
 
     implementation(libs.google.material)
     testImplementation(libs.junit)
