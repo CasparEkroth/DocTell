@@ -1,6 +1,7 @@
 package com.doctell.app.model.utils;
 
 import com.doctell.app.model.entity.Book;
+import com.doctell.app.model.entity.SortOn;
 
 import java.text.Collator;
 import java.util.Comparator;
@@ -10,9 +11,25 @@ import java.util.Locale;
 public class BookSorter {
     private static final Collator SV_COLLATOR =
             Collator.getInstance(new Locale("sv", "SE"));
+    private static SortOn sort = SortOn.NOT_DEFINED;
     private BookSorter() {}
 
-    public static void sortByTitleAsc(List<Book> books) {
+    public static void sortBooks(int selectedSortIndex, List<Book> books){
+        SortOn s = SortOn.fromValue(selectedSortIndex);
+        switch (selectedSortIndex) {
+            case 0: BookSorter.sortByTitleAsc(books); break;
+            case 1: BookSorter.sortByTitleDesc(books); break;
+            case 2: BookSorter.sortByDateNewest(books); break;
+            case 3: BookSorter.sortByDateOldest(books); break;
+        }
+        sort = SortOn.fromValue(selectedSortIndex);
+    }
+
+    public static void sortBooksOnDefault(List<Book> books){
+        if(sort == SortOn.NOT_DEFINED)return;
+        sortBooks(sort.getValue(), books);
+    }
+    private static void sortByTitleAsc(List<Book> books) {
         books.sort((b1, b2) -> {
             String t1 = safeTitle(b1);
             String t2 = safeTitle(b2);
@@ -20,7 +37,7 @@ public class BookSorter {
         });
     }
 
-    public static void sortByTitleDesc(List<Book> books) {
+    private static void sortByTitleDesc(List<Book> books) {
         books.sort((b1, b2) -> {
             String t1 = safeTitle(b1);
             String t2 = safeTitle(b2);
@@ -28,12 +45,12 @@ public class BookSorter {
         });
     }
 
-    public static void sortByDateNewest(List<Book> books) {
+    private static void sortByDateNewest(List<Book> books) {
         books.sort((b1, b2) ->
                 Long.compare(b2.getLastOpenedAt(), b1.getLastOpenedAt()));
     }
 
-    public static void sortByDateOldest(List<Book> books) {
+    private static void sortByDateOldest(List<Book> books) {
         books.sort(Comparator.comparingLong(Book::getLastOpenedAt));
     }
 

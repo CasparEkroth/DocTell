@@ -39,6 +39,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.text.Collator;
 import java.util.Collections;
+import java.util.List;
 import java.util.Locale;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -57,7 +58,6 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        //EdgeToEdge.enable(this);
         WindowCompat.setDecorFitsSystemWindows(getWindow(), false);
         setContentView(R.layout.activity_main);
         //init pdfbox
@@ -125,24 +125,18 @@ public class MainActivity extends AppCompatActivity {
     }
     private void showSortDialog() {
         new AlertDialog.Builder(this)
-                .setTitle("Sortera böcker")
-                .setSingleChoiceItems(R.array.sort_options, selectedSortIndex,
-                        (dialog, which) -> selectedSortIndex = which)
-                .setPositiveButton("OK", (dialog, which) -> {
-                    if (BookStorage.booksCache == null) return;
-
-                    switch (selectedSortIndex) {
-                        case 0: BookSorter.sortByTitleAsc(BookStorage.booksCache); break;
-                        case 1: BookSorter.sortByTitleDesc(BookStorage.booksCache); break;
-                        case 2: BookSorter.sortByDateNewest(BookStorage.booksCache); break;
-                        case 3: BookSorter.sortByDateOldest(BookStorage.booksCache); break;
-                    }
-
-                    refreshGrid();
-                })
-                .setNegativeButton("Cancel", null)
-                .show();
+            .setTitle("Sortera böcker")
+            .setSingleChoiceItems(R.array.sort_options, selectedSortIndex,
+                    (dialog, which) -> selectedSortIndex = which)
+            .setPositiveButton("OK", (dialog, which) -> {
+                if (BookStorage.booksCache == null) return;
+                BookSorter.sortBooks(selectedSortIndex,BookStorage.booksCache);
+                refreshGrid();
+            })
+            .setNegativeButton("Cancel", null)
+            .show();
     }
+
 
 
     @Override
@@ -193,11 +187,18 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+    @Override
+    protected void onStart(){
+        super.onStart();
+        BookSorter.sortBooksOnDefault(BookStorage.booksCache);
+        refreshGrid();
+    }
 
     @Override
     protected void onResume() {
         super.onResume();
         BookStorage.loadBooks(this);
+        BookSorter.sortBooksOnDefault(BookStorage.booksCache);
         refreshGrid();
     }
 
