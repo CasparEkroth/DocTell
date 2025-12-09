@@ -35,6 +35,7 @@ import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
 
 import com.doctell.app.model.analytics.DocTellAnalytics;
+import com.doctell.app.model.analytics.DocTellCrashlytics;
 import com.doctell.app.model.entity.ChapterItem;
 import com.doctell.app.model.entity.Book;
 import com.doctell.app.model.repository.BookStorage;
@@ -174,7 +175,9 @@ public class ReaderActivity extends AppCompatActivity implements HighlightListen
         currentBook = BookStorage.findBookByUri(this, uri);
         assert currentBook != null;
         DocTellAnalytics.bookOpened(this,currentBook);
+        DocTellCrashlytics.setCurrentBookContext(currentBook, currentBook.getLastPage());
         currentBook.setLastOpenedAt();
+
         btnNext.setOnClickListener(v -> showNextPage());
         btnPrev.setOnClickListener(v -> showPrevPage());
         btnTTS.setOnClickListener(v -> toggleTTS());
@@ -326,7 +329,7 @@ public class ReaderActivity extends AppCompatActivity implements HighlightListen
         showPage(currentBook.incrementPage());
         highlightOverlay.clearHighlights();
         DocTellAnalytics.pageChanged(this, currentBook, fromPage, toPage);
-
+        DocTellCrashlytics.setCurrentBookContext(currentBook, toPage);
     }
 
     private void showPrevPage() {
@@ -337,7 +340,7 @@ public class ReaderActivity extends AppCompatActivity implements HighlightListen
         showPage(currentBook.decrementPage());
         highlightOverlay.clearHighlights();
         DocTellAnalytics.pageChanged(this, currentBook, fromPage, toPage);
-
+        DocTellCrashlytics.setCurrentBookContext(currentBook, toPage);
     }
 
     private void showPage(int page) {
@@ -522,6 +525,7 @@ public class ReaderActivity extends AppCompatActivity implements HighlightListen
     @Override
     protected void onDestroy() {
         BookStorage.updateBook(currentBook, this);
+        DocTellCrashlytics.clearBookContext();
         if (isServiceBound && readerService != null) {
             readerService.unregisterUiHighlightListener(this);
             readerService.unregisterUiMediaNav(this);

@@ -21,6 +21,7 @@ import android.util.Log;
 
 import androidx.annotation.Nullable;
 
+import com.doctell.app.model.analytics.DocTellCrashlytics;
 import com.doctell.app.model.entity.Book;
 import com.doctell.app.model.repository.BookStorage;
 import com.doctell.app.model.pdf.PdfManager;
@@ -249,6 +250,7 @@ public class ReaderService extends Service implements PlaybackControl, Highlight
                     }
                 } catch (IOException e) {
                     Log.e("ReaderService", "initBook: failed to generate/load thumbnail", e);
+                    DocTellCrashlytics.logPdfError(currentBook, 0, "render_page", e);
                 }
             });
         }
@@ -279,8 +281,7 @@ public class ReaderService extends Service implements PlaybackControl, Highlight
         }
         if(coverOfBook != null)
             mediaController.setCover(coverOfBook);
-        else
-            Log.d("TEST9","cover is null in startReading");
+
         executor.execute(() -> {
             try {
                 String text = pdfManager.getPageText(currentBook.getLastPage());
@@ -313,6 +314,7 @@ public class ReaderService extends Service implements PlaybackControl, Highlight
 
             } catch (IOException e) {
                 e.printStackTrace();
+                DocTellCrashlytics.logPdfError(currentBook, currentBook.getLastPage(), "render_page", e);
                 // TODO: maybe notify UI or show a Toast via a callback
             }
         });

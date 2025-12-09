@@ -8,6 +8,7 @@ import com.doctell.app.model.entity.Book;
 
 public class DocTellAnalytics {
 
+    private DocTellAnalytics(){}
     private static FirebaseAnalytics get(Context ctx) {
         return FirebaseAnalytics.getInstance(ctx.getApplicationContext());
     }
@@ -21,7 +22,7 @@ public class DocTellAnalytics {
         return "book_" + sha256Short(raw);
     }
 
-    private static String sha256Short(String input) {
+    static String sha256Short(String input) {
         try {
             java.security.MessageDigest digest = java.security.MessageDigest.getInstance("SHA-256");
             byte[] hash = digest.digest(input.getBytes(java.nio.charset.StandardCharsets.UTF_8));
@@ -39,6 +40,12 @@ public class DocTellAnalytics {
     }
 
     // --- Events ---
+    /**
+     * Enable or disable Analytics collection (for settings / consent).
+     */
+    public static void setEnable(Context ctx,boolean enable){
+        get(ctx).setAnalyticsCollectionEnabled(enable);
+    }
 
     public static void bookOpened(Context ctx, Book book) {
         Bundle b = new Bundle();
