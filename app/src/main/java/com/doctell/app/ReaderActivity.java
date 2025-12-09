@@ -34,6 +34,7 @@ import androidx.core.content.ContextCompat;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
 
+import com.doctell.app.model.analytics.DocTellAnalytics;
 import com.doctell.app.model.entity.ChapterItem;
 import com.doctell.app.model.entity.Book;
 import com.doctell.app.model.repository.BookStorage;
@@ -78,7 +79,6 @@ public class ReaderActivity extends AppCompatActivity implements HighlightListen
     private ParcelFileDescriptor pfd;
     private PDDocument doc;
     private TtsEngineStrategy ttsEngine;
-    private FirebaseAnalytics analytics;
     private final ServiceConnection serviceConnection = new ServiceConnection() {
         @Override
         public void onServiceConnected(ComponentName name, IBinder service) {
@@ -122,13 +122,6 @@ public class ReaderActivity extends AppCompatActivity implements HighlightListen
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_reader);
-
-        analytics = FirebaseAnalytics.getInstance(this);
-
-        // Test event
-        Bundle params = new Bundle();
-        params.putString("screen_name", "reader");
-        analytics.logEvent("screen_opened", params);
 
         pdfImage = findViewById(R.id.pdfImage);
         btnPrev = findViewById(R.id.btnPrev);
@@ -180,6 +173,7 @@ public class ReaderActivity extends AppCompatActivity implements HighlightListen
         Uri uri = Uri.parse(uriStr);
         currentBook = BookStorage.findBookByUri(this, uri);
         assert currentBook != null;
+        DocTellAnalytics.bookOpened(this,currentBook);
         currentBook.setLastOpenedAt();
         btnNext.setOnClickListener(v -> showNextPage());
         btnPrev.setOnClickListener(v -> showPrevPage());
@@ -325,15 +319,25 @@ public class ReaderActivity extends AppCompatActivity implements HighlightListen
     }
 
     private void showNextPage() {
+        int fromPage = currentBook.getLastPage();
         currentBook.setSentence(0);
+        int toPage = currentBook.incrementPage();
+
         showPage(currentBook.incrementPage());
         highlightOverlay.clearHighlights();
+        DocTellAnalytics.pageChanged(this, currentBook, fromPage, toPage);
+
     }
 
     private void showPrevPage() {
+        int fromPage = currentBook.getLastPage();
         currentBook.setSentence(0);
+        int toPage = currentBook.incrementPage();
+
         showPage(currentBook.decrementPage());
         highlightOverlay.clearHighlights();
+        DocTellAnalytics.pageChanged(this, currentBook, fromPage, toPage);
+
     }
 
     private void showPage(int page) {
@@ -360,15 +364,18 @@ public class ReaderActivity extends AppCompatActivity implements HighlightListen
 
 
     private void toggleTTS() {
+        int pageIndex = currentBook.getLastPage();
         if (!isSpeaking) {
             getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
             isSpeaking = true;
             btnTTS.setText(getString(R.string.pref_pause));
             if (!ttsStartedOnPage) {
                 ttsStartedOnPage = true;
+                DocTellAnalytics.readingStarted(this, currentBook, pageIndex);
                 speakPage();
             } else {
                 if (isServiceBound && readerService != null) {
+                    DocTellAnalytics.readingResumed(this, currentBook, pageIndex);
                     readerService.play();
                 }
             }
@@ -377,6 +384,7 @@ public class ReaderActivity extends AppCompatActivity implements HighlightListen
             isSpeaking = false;
             btnTTS.setText(getString(R.string.pref_play));
             if (isServiceBound && readerService != null) {
+                DocTellAnalytics.readingPaused(this, currentBook, pageIndex);
                 readerService.pause();
             }
         }
@@ -396,6 +404,7 @@ public class ReaderActivity extends AppCompatActivity implements HighlightListen
         btnTTS.setText(getString(R.string.pref_pause));
         showLoading(true);
         // let the SERVICE do all heavy work (PDF + TTSBuffer + chunks)
+
         readerService.startReading(
                 currentBook,
                 engine,
