@@ -47,6 +47,7 @@ import com.doctell.app.model.voice.media.ReaderService;
 import com.doctell.app.model.voice.notPublic.TtsEngineProvider;
 import com.doctell.app.view.HighlightOverlayView;
 import com.doctell.app.view.ImageScale;
+import com.google.firebase.analytics.FirebaseAnalytics;
 import com.tom_roush.pdfbox.pdmodel.PDDocument;
 
 import java.io.IOException;
@@ -77,6 +78,7 @@ public class ReaderActivity extends AppCompatActivity implements HighlightListen
     private ParcelFileDescriptor pfd;
     private PDDocument doc;
     private TtsEngineStrategy ttsEngine;
+    private FirebaseAnalytics analytics;
     private final ServiceConnection serviceConnection = new ServiceConnection() {
         @Override
         public void onServiceConnected(ComponentName name, IBinder service) {
@@ -120,6 +122,13 @@ public class ReaderActivity extends AppCompatActivity implements HighlightListen
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_reader);
+
+        analytics = FirebaseAnalytics.getInstance(this);
+
+        // Test event
+        Bundle params = new Bundle();
+        params.putString("screen_name", "reader");
+        analytics.logEvent("screen_opened", params);
 
         pdfImage = findViewById(R.id.pdfImage);
         btnPrev = findViewById(R.id.btnPrev);
