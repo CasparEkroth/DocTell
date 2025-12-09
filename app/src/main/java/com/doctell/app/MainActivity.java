@@ -37,10 +37,6 @@ import com.tom_roush.pdfbox.pdmodel.PDDocumentInformation;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.text.Collator;
-import java.util.Collections;
-import java.util.List;
-import java.util.Locale;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -125,21 +121,62 @@ public class MainActivity extends AppCompatActivity {
         showSortDialog();
     }
     private void showSortDialog() {
-        new AlertDialog.Builder(this)
-            .setTitle("Sortera böcker")
-            .setSingleChoiceItems(R.array.sort_options, selectedSortIndex,
-                    (dialog, which) -> selectedSortIndex = which)
-            .setPositiveButton("OK", (dialog, which) -> {
-                if (BookStorage.booksCache == null) return;
-                BookSorter.sortBooks(selectedSortIndex,BookStorage.booksCache);
-                BookSorter.saveSortIndex(getApplicationContext());
-                refreshGrid();
-            })
-            .setNegativeButton("Cancel", null)
-            .show();
+        LayoutInflater inflater = LayoutInflater.from(this);
+        View dialogView = inflater.inflate(R.layout.dialog_sort_library,null);
+
+        RadioGroup rgSortOptions = dialogView.findViewById(R.id.rgSortOptions);
+        View btnCancel = dialogView.findViewById(R.id.btnCancel);
+        View btnOk = dialogView.findViewById(R.id.btnOk);
+
+        // Pre-select current sort choice
+        switch (selectedSortIndex) {
+            case 0:
+                rgSortOptions.check(R.id.rbTitleAZ);
+                break;
+            case 1:
+                rgSortOptions.check(R.id.rbTitleZA);
+                break;
+            case 2:
+                rgSortOptions.check(R.id.rbDateNewest);
+                break;
+            case 3:
+                rgSortOptions.check(R.id.rbDateOldest);
+                break;
+            default:
+                break;
+        }
+        AlertDialog dialog = new AlertDialog.Builder(this).setView(dialogView).create();
+        if (dialog.getWindow() != null) {
+            dialog.getWindow().setBackgroundDrawable(
+                    new android.graphics.drawable.ColorDrawable(android.graphics.Color.TRANSPARENT)
+            );
+        }
+        // Button actions
+        btnCancel.setOnClickListener(v -> dialog.dismiss());
+        btnOk.setOnClickListener(v -> {
+            if (BookStorage.booksCache == null) {
+                dialog.dismiss();
+                return;
+            }
+            int checkedId = rgSortOptions.getCheckedRadioButtonId();
+            int newIndex = selectedSortIndex;
+            if (checkedId == R.id.rbTitleAZ) {
+                newIndex = 0;
+            } else if (checkedId == R.id.rbTitleZA) {
+                newIndex = 1;
+            } else if (checkedId == R.id.rbDateNewest) {
+                newIndex = 2;
+            } else if (checkedId == R.id.rbDateOldest) {
+                newIndex = 3;
+            }
+            selectedSortIndex = newIndex;
+            BookSorter.sortBooks(selectedSortIndex, BookStorage.booksCache);
+            BookSorter.saveSortIndex(getApplicationContext());
+            refreshGrid();
+            dialog.dismiss();
+        });
+        dialog.show();
     }
-
-
 
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
