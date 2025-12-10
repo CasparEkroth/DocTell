@@ -448,6 +448,7 @@ public class ReaderActivity extends AppCompatActivity implements HighlightListen
             int page = data.getIntExtra("selectedPage", -1);
             if (page >= 0){
                 currentBook.setLastPage(page);
+                currentBook.setSentence(0);
                 showPage(page);
             }
         }
