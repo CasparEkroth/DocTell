@@ -313,20 +313,26 @@ public class ReaderActivity extends AppCompatActivity implements HighlightListen
 
     @Override
     public void navForward() {
-        runOnUiThread(this::showNextPage);
+        runOnUiThread(() -> {
+            int page = currentBook.getLastPage();
+            showPageFromService(page);
+        });
     }
 
     @Override
     public void navBackward() {
-        runOnUiThread(this::showPrevPage);
+        runOnUiThread(() -> {
+            int page = currentBook.getLastPage();
+            showPageFromService(page);
+        });
     }
 
     private void showNextPage() {
         int fromPage = currentBook.getLastPage();
         currentBook.setSentence(0);
-        int toPage = fromPage++;
+        int toPage = currentBook.incrementPage();
+        showPage(toPage);
 
-        showPage(currentBook.incrementPage());
         highlightOverlay.clearHighlights();
         DocTellAnalytics.pageChanged(this, currentBook, fromPage, toPage);
         DocTellCrashlytics.setCurrentBookContext(currentBook, toPage);
@@ -335,15 +341,22 @@ public class ReaderActivity extends AppCompatActivity implements HighlightListen
     private void showPrevPage() {
         int fromPage = currentBook.getLastPage();
         currentBook.setSentence(0);
-        int toPage = fromPage--;
+        int toPage = currentBook.decrementPage();
+        showPage(toPage);
 
-        showPage(currentBook.decrementPage());
         highlightOverlay.clearHighlights();
         DocTellAnalytics.pageChanged(this, currentBook, fromPage, toPage);
         DocTellCrashlytics.setCurrentBookContext(currentBook, toPage);
     }
 
+
     private void showPage(int page) {
+        showPageInternal(page, true);
+    }
+    private void showPageFromService(int page) {
+        showPageInternal(page, false);
+    }
+    private void showPageInternal(int page, boolean autoSpeak) {
         if (page < 0 || page >= totalPages) return;
         ttsStartedOnPage = false;
         readerService.setPage(page);
@@ -359,12 +372,14 @@ public class ReaderActivity extends AppCompatActivity implements HighlightListen
                     showLoading(false);
                     pdfImage.setImageBitmap(bmp);
                     pageIndicator.setText((page + 1) + " / " + totalPages);
-                    if (isSpeaking) speakPage();
+                    if (autoSpeak && isSpeaking) {
+                        DocTellAnalytics.autoPageChanged(getApplicationContext(),currentBook,page);
+                        speakPage();
+                    }
                 });
             } catch (IOException e) { /* handle */ }
         });
     }
-
 
     private void toggleTTS() {
         int pageIndex = currentBook.getLastPage();

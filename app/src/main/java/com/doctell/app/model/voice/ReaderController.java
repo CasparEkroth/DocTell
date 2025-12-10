@@ -203,9 +203,8 @@ public class ReaderController implements TtsEngineListener, PlaybackControl {
     @Override
     public void next() {
         Log.d("ReaderController", "next() from media controls");
-        //stopReading();
         if (mediaNav != null) {
-            mediaNav.navForward();   // ReaderActivity.showNextPage()
+            mediaNav.navForward();
         }
     }
 
@@ -213,7 +212,7 @@ public class ReaderController implements TtsEngineListener, PlaybackControl {
     public void prev() {
         //stopReading();
         if (mediaNav != null) {
-            mediaNav.navBackward();  // ReaderActivity.showPrevPage()
+            mediaNav.navBackward();
         }
     }
     // ----

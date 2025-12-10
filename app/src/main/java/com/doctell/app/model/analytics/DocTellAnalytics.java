@@ -81,4 +81,11 @@ public class DocTellAnalytics {
         b.putInt("to_page", toPage);
         get(ctx).logEvent("page_changed", b);
     }
+
+    public static void autoPageChanged(Context ctx, Book book, int toPage){
+        Bundle b = new Bundle();
+        b.putString("book_id", bookId(book));
+        b.putInt("to_page", toPage);
+        get(ctx).logEvent("auto_page_changed", b);
+    }
 }
