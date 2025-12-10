@@ -7,7 +7,7 @@
 - Read aloud with Text‑to‑Speech (play/pause/stop)
 - Simple library grid with cover previews
 - Remembers last opened page per document
-- Works offline (no accounts, no tracking)
+- Works offline (no accounts)
 
 ## Build & Run
 1. Open the project in **Android Studio** (latest stable).
