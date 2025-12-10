@@ -324,7 +324,7 @@ public class ReaderActivity extends AppCompatActivity implements HighlightListen
     private void showNextPage() {
         int fromPage = currentBook.getLastPage();
         currentBook.setSentence(0);
-        int toPage = currentBook.incrementPage();
+        int toPage = fromPage++;
 
         showPage(currentBook.incrementPage());
         highlightOverlay.clearHighlights();
@@ -335,7 +335,7 @@ public class ReaderActivity extends AppCompatActivity implements HighlightListen
     private void showPrevPage() {
         int fromPage = currentBook.getLastPage();
         currentBook.setSentence(0);
-        int toPage = currentBook.incrementPage();
+        int toPage = fromPage--;
 
         showPage(currentBook.decrementPage());
         highlightOverlay.clearHighlights();
@@ -407,7 +407,6 @@ public class ReaderActivity extends AppCompatActivity implements HighlightListen
         btnTTS.setText(getString(R.string.pref_pause));
         showLoading(true);
         // let the SERVICE do all heavy work (PDF + TTSBuffer + chunks)
-
         readerService.startReading(
                 currentBook,
                 engine,

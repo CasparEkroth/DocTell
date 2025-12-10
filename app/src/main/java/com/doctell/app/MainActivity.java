@@ -4,6 +4,7 @@ import android.app.AlertDialog;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
@@ -24,6 +25,9 @@ import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowCompat;
 import androidx.core.view.WindowInsetsCompat;
 
+import com.doctell.app.model.Prefs;
+import com.doctell.app.model.analytics.DocTellAnalytics;
+import com.doctell.app.model.analytics.DocTellCrashlytics;
 import com.doctell.app.model.entity.Book;
 import com.doctell.app.model.repository.BookStorage;
 import com.doctell.app.model.pdf.PdfPreviewHelper;
@@ -68,6 +72,8 @@ public class MainActivity extends AppCompatActivity {
         refreshGrid();
         engine = LocalTtsEngine.getInstance(getApplicationContext());
 
+        setPremonitionsForAnalytics();
+
         getOnBackPressedDispatcher().addCallback(this, new OnBackPressedCallback(true) {
             @Override public void handleOnBackPressed() {finish();}
         });
@@ -111,7 +117,6 @@ public class MainActivity extends AppCompatActivity {
 
         startActivityForResult(intent, PICK_PDF_REQUEST);
     }
-
     public void openSettings(View v){
         Intent intent = new Intent(this, SettingsActivity.class);
         startActivity(intent);
@@ -286,6 +291,13 @@ public class MainActivity extends AppCompatActivity {
                 manager.createNotificationChannel(channel);
             }
         }
+    }
+
+    private void setPremonitionsForAnalytics(){
+        SharedPreferences prefs = getSharedPreferences(Prefs.DOCTELL_PREFS.toString(), MODE_PRIVATE);
+        DocTellAnalytics.setEnable(getApplicationContext(),
+                prefs.getBoolean(Prefs.ANALYTICS_ENABLED.toString(), true));
+        DocTellCrashlytics.setEnabled(prefs.getBoolean(Prefs.CRASHLYTICS_ENABLED.toString(),true));
     }
 
     @Override

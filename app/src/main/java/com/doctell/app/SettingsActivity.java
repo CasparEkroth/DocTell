@@ -2,22 +2,28 @@ package com.doctell.app;
 
 import android.annotation.SuppressLint;
 import android.content.Context;
+import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.view.View;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
+import android.widget.CompoundButton;
 import android.widget.SeekBar;
 import android.widget.Spinner;
+import android.widget.Switch;
 import android.widget.TextView;
 
 import androidx.appcompat.app.AppCompatActivity;
 
 import com.doctell.app.model.Prefs;
+import com.doctell.app.model.analytics.DocTellAnalytics;
+import com.doctell.app.model.analytics.DocTellCrashlytics;
 import com.doctell.app.model.voice.CloudTtsEngine;
 import com.doctell.app.model.voice.LocalTtsEngine;
 import com.doctell.app.model.voice.TtsEngineStrategy;
 import com.doctell.app.model.voice.notPublic.TtsEngineProvider;
 import com.doctell.app.model.voice.notPublic.TtsEngineType;
+import com.google.firebase.analytics.FirebaseAnalytics;
 
 import java.util.Objects;
 
@@ -26,6 +32,7 @@ public class SettingsActivity extends AppCompatActivity {
     private Spinner spLang, spVoice;
     private SeekBar seekRate;
     private TextView txtRateValue;
+    private Switch swAnalytics, swCrashlytics;
     private int initIndex = 0;
     private int initVoice = 0;
     private Context app;
@@ -40,6 +47,8 @@ public class SettingsActivity extends AppCompatActivity {
         spVoice = findViewById(R.id.spVoice);
         seekRate = findViewById(R.id.seekRate);
         txtRateValue = findViewById(R.id.txtRateValue);
+        swAnalytics   = findViewById(R.id.swAnalytics);
+        swCrashlytics = findViewById(R.id.swCrashlytics);
 
         ArrayAdapter<CharSequence> adapter = ArrayAdapter.createFromResource(
                 this, R.array.pref_lang_entries, android.R.layout.simple_spinner_item);
@@ -84,9 +93,10 @@ public class SettingsActivity extends AppCompatActivity {
             public void onNothingSelected(AdapterView<?> parent) {}
         });
 
+        SharedPreferences prefs =
+                getSharedPreferences(Prefs.DOCTELL_PREFS.toString(), MODE_PRIVATE);
 
-
-        float savedRate = getSharedPreferences(Prefs.DOCTELL_PREFS.toString(), MODE_PRIVATE).getFloat(Prefs.TTS_SPEED.toString(), 1.0f);
+        float savedRate = prefs.getFloat(Prefs.TTS_SPEED.toString(), 1.0f);
         txtRateValue.setText(String.format("%.1fx", savedRate));
         seekRate.setProgress(Math.round((savedRate - 0.5f) * 100));
 
@@ -101,6 +111,29 @@ public class SettingsActivity extends AppCompatActivity {
             public void onStartTrackingTouch(SeekBar seekBar) {}
             @Override
             public void onStopTrackingTouch(SeekBar seekBar) {}
+        });
+
+        boolean analyticsEnabled   = prefs.getBoolean(Prefs.ANALYTICS_ENABLED.toString(), true);
+        boolean crashlyticsEnabled = prefs.getBoolean(Prefs.CRASHLYTICS_ENABLED.toString(), true);
+        swAnalytics.setChecked(analyticsEnabled);
+        swCrashlytics.setChecked(crashlyticsEnabled);
+
+        swAnalytics.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
+            @Override
+            public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
+                prefs.edit().putBoolean(Prefs.ANALYTICS_ENABLED.toString(), isChecked)
+                        .apply();
+                DocTellAnalytics.setEnable(getApplicationContext(),isChecked);
+            }
+        });
+
+        swCrashlytics.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
+            @Override
+            public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
+                prefs.edit().putBoolean(Prefs.CRASHLYTICS_ENABLED.toString(), isChecked)
+                        .apply();
+                DocTellCrashlytics.setEnabled(isChecked);
+            }
         });
     }
 
