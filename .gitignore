@@ -74,6 +74,7 @@ gradle.properties
 
 # Firebase / Google Services (if used)
 google-services.json
+app/google-services.json
 
 # Optional: ignore local assets (e.g. test PDFs, audio, etc.)
 app/src/main/assets/**/*.pdf

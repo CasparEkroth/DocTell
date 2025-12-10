@@ -68,5 +68,30 @@
             android:progress="50"
             android:layout_marginTop="8dp" />
 
+        <!-- Privacy / Data collection -->
+        <TextView
+            android:id="@+id/txtPrivacy"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/pref_privacy_title"
+            android:textStyle="bold"
+            android:textSize="16sp"
+            android:layout_marginTop="24dp" />
+
+        <Switch
+            android:id="@+id/swAnalytics"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/pref_analytics_enabled"
+            android:layout_marginTop="8dp" />
+
+        <Switch
+            android:id="@+id/swCrashlytics"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/pref_crashlytics_enabled"
+            android:layout_marginTop="8dp" />
+
+
     </LinearLayout>
 </ScrollView>

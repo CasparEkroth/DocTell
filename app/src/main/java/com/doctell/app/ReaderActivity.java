@@ -34,6 +34,8 @@ import androidx.core.content.ContextCompat;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
 
+import com.doctell.app.model.analytics.DocTellAnalytics;
+import com.doctell.app.model.analytics.DocTellCrashlytics;
 import com.doctell.app.model.entity.ChapterItem;
 import com.doctell.app.model.entity.Book;
 import com.doctell.app.model.repository.BookStorage;
@@ -47,6 +49,7 @@ import com.doctell.app.model.voice.media.ReaderService;
 import com.doctell.app.model.voice.notPublic.TtsEngineProvider;
 import com.doctell.app.view.HighlightOverlayView;
 import com.doctell.app.view.ImageScale;
+import com.google.firebase.analytics.FirebaseAnalytics;
 import com.tom_roush.pdfbox.pdmodel.PDDocument;
 
 import java.io.IOException;
@@ -171,7 +174,10 @@ public class ReaderActivity extends AppCompatActivity implements HighlightListen
         Uri uri = Uri.parse(uriStr);
         currentBook = BookStorage.findBookByUri(this, uri);
         assert currentBook != null;
+        DocTellAnalytics.bookOpened(this,currentBook);
+        DocTellCrashlytics.setCurrentBookContext(currentBook, currentBook.getLastPage());
         currentBook.setLastOpenedAt();
+
         btnNext.setOnClickListener(v -> showNextPage());
         btnPrev.setOnClickListener(v -> showPrevPage());
         btnTTS.setOnClickListener(v -> toggleTTS());
@@ -316,15 +322,25 @@ public class ReaderActivity extends AppCompatActivity implements HighlightListen
     }
 
     private void showNextPage() {
+        int fromPage = currentBook.getLastPage();
         currentBook.setSentence(0);
+        int toPage = fromPage++;
+
         showPage(currentBook.incrementPage());
         highlightOverlay.clearHighlights();
+        DocTellAnalytics.pageChanged(this, currentBook, fromPage, toPage);
+        DocTellCrashlytics.setCurrentBookContext(currentBook, toPage);
     }
 
     private void showPrevPage() {
+        int fromPage = currentBook.getLastPage();
         currentBook.setSentence(0);
+        int toPage = fromPage--;
+
         showPage(currentBook.decrementPage());
         highlightOverlay.clearHighlights();
+        DocTellAnalytics.pageChanged(this, currentBook, fromPage, toPage);
+        DocTellCrashlytics.setCurrentBookContext(currentBook, toPage);
     }
 
     private void showPage(int page) {
@@ -351,15 +367,18 @@ public class ReaderActivity extends AppCompatActivity implements HighlightListen
 
 
     private void toggleTTS() {
+        int pageIndex = currentBook.getLastPage();
         if (!isSpeaking) {
             getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
             isSpeaking = true;
             btnTTS.setText(getString(R.string.pref_pause));
             if (!ttsStartedOnPage) {
                 ttsStartedOnPage = true;
+                DocTellAnalytics.readingStarted(this, currentBook, pageIndex);
                 speakPage();
             } else {
                 if (isServiceBound && readerService != null) {
+                    DocTellAnalytics.readingResumed(this, currentBook, pageIndex);
                     readerService.play();
                 }
             }
@@ -368,6 +387,7 @@ public class ReaderActivity extends AppCompatActivity implements HighlightListen
             isSpeaking = false;
             btnTTS.setText(getString(R.string.pref_play));
             if (isServiceBound && readerService != null) {
+                DocTellAnalytics.readingPaused(this, currentBook, pageIndex);
                 readerService.pause();
             }
         }
@@ -504,6 +524,7 @@ public class ReaderActivity extends AppCompatActivity implements HighlightListen
     @Override
     protected void onDestroy() {
         BookStorage.updateBook(currentBook, this);
+        DocTellCrashlytics.clearBookContext();
         if (isServiceBound && readerService != null) {
             readerService.unregisterUiHighlightListener(this);
             readerService.unregisterUiMediaNav(this);
