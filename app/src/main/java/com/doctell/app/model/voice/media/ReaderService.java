@@ -48,6 +48,43 @@ public class ReaderService extends Service implements PlaybackControl, Highlight
     private ReaderController readerController;
     private ReaderMediaController mediaController;
     private AudioManager audioManager;
+    private AudioFocusRequest audioFocusRequest;
+    private final AudioManager.OnAudioFocusChangeListener audioFocusChangeListener =
+            focusChange -> {
+                switch (focusChange) {
+                    case AudioManager.AUDIOFOCUS_LOSS:
+                        Log.d("ReaderService", "AUDIOFOCUS_LOSS → pause/stop");
+                        pause();
+                        break;
+
+                    case AudioManager.AUDIOFOCUS_LOSS_TRANSIENT:
+                        Log.d("ReaderService", "AUDIOFOCUS_LOSS_TRANSIENT → pause");
+                        pause();
+                        break;
+                    case AudioManager.AUDIOFOCUS_LOSS_TRANSIENT_CAN_DUCK:
+                        if (readerController != null) {
+                            // need to implement setVolume in ReaderController/TtsEngine
+                            // Or just pause if TTS doesn't support volume scaling easily.
+                            // Ideally: readerController.setVolume(0.3f);
+                            Log.d("ReaderService", "Ducking volume (Not implemented yet, ensure TTS supports it)");
+                        }
+                        break;
+                    case AudioManager.AUDIOFOCUS_GAIN:
+                        Log.d("ReaderService", "AUDIOFOCUS_GAIN");
+                        // readerController.setVolume(1.0f);
+                        play();
+                        break;
+                }
+            };
+
+    private final android.content.BroadcastReceiver noisyReceiver = new android.content.BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            if (android.media.AudioManager.ACTION_AUDIO_BECOMING_NOISY.equals(intent.getAction())) {
+                pause(); // Pause immediately when headphones are unplugged
+            }
+        }
+    };
     private HighlightListener uiHighlightListener;
     private Book currentBook;
     private ReaderController.MediaNav uiMediaNav;
@@ -129,6 +166,8 @@ public class ReaderService extends Service implements PlaybackControl, Highlight
 
         Notification notification = mediaController.buildInitialNotification();
         startForeground(ReaderMediaController.NOTIFICATION_ID, notification);
+        registerReceiver(noisyReceiver, new android.content.IntentFilter(android.media.AudioManager.ACTION_AUDIO_BECOMING_NOISY));
+
     }
 
     public MediaSessionCompat.Token getMediaSessionToken() {
@@ -142,36 +181,46 @@ public class ReaderService extends Service implements PlaybackControl, Highlight
         if (audioManager == null) return;
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            // Android 8.0+ - use AudioFocusRequest
-            AudioFocusRequest focusRequest = new AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN)
-                    .setAudioAttributes(new android.media.AudioAttributes.Builder()
-                            .setUsage(android.media.AudioAttributes.USAGE_MEDIA)
-                            .setContentType(android.media.AudioAttributes.CONTENT_TYPE_SPEECH)
-                            .build())
-                    .setAcceptsDelayedFocusGain(false)
-                    .build();
-            audioManager.requestAudioFocus(focusRequest);
+            if (audioFocusRequest == null) {
+                audioFocusRequest = new AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN)
+                        .setAudioAttributes(new android.media.AudioAttributes.Builder()
+                                .setUsage(android.media.AudioAttributes.USAGE_MEDIA)
+                                .setContentType(android.media.AudioAttributes.CONTENT_TYPE_SPEECH)
+                                .build())
+                        .setAcceptsDelayedFocusGain(false)
+                        .setOnAudioFocusChangeListener(audioFocusChangeListener)
+                        .build();
+            }
+            int result = audioManager.requestAudioFocus(audioFocusRequest);
+            Log.d("ReaderService", "requestAudioFocus result = " + result);
         } else {
-            // Older Android versions
-            audioManager.requestAudioFocus(
-                    null,
+            int result = audioManager.requestAudioFocus(
+                    audioFocusChangeListener,
                     AudioManager.STREAM_MUSIC,
                     AudioManager.AUDIOFOCUS_GAIN
             );
+            Log.d("ReaderService", "requestAudioFocus (legacy) result = " + result);
         }
     }
 
+
     private void abandonAudioFocus() {
         if (audioManager == null) return;
+
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            audioManager.abandonAudioFocusRequest(new AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN).build());
+            if (audioFocusRequest != null) {
+                audioManager.abandonAudioFocusRequest(audioFocusRequest);
+            }
         } else {
-            audioManager.abandonAudioFocus(null);
+            audioManager.abandonAudioFocus(audioFocusChangeListener);
         }
     }
 
     @Override
     public void onDestroy() {
+        try {
+            unregisterReceiver(noisyReceiver);
+        }catch (Exception ignored){/*Receiver might not be registered*/}
         abandonAudioFocus();
         onReadingPositionChanged();
         super.onDestroy();
@@ -198,18 +247,15 @@ public class ReaderService extends Service implements PlaybackControl, Highlight
 
     @Override
     public void onTaskRemoved(Intent rootIntent) {
-        onReadingPositionChanged();
-        if (readerController != null) {
-            readerController.stop();
-            //readerController.shutdown();
-        }
+        if (readerController != null && mediaController != null) {
+            boolean isPlaying = mediaController.getMediaSession().getController().getPlaybackState().getState()
+                    == android.support.v4.media.session.PlaybackStateCompat.STATE_PLAYING;
 
-        if (mediaController != null) {
-            mediaController.stop();
-            mediaController.release();
+            if (!isPlaying) {
+                stopForeground(true);
+                stopSelf();
+            }
         }
-        stopForeground(true);
-        stopSelf();
         super.onTaskRemoved(rootIntent);
     }
 
@@ -228,6 +274,7 @@ public class ReaderService extends Service implements PlaybackControl, Highlight
     public void play() {
         safeExecuteAction(()->{
             autoReading = true;
+            requestAudioFocus();
             if (readerController != null) {
                 readerController.play();
             }
@@ -247,6 +294,7 @@ public class ReaderService extends Service implements PlaybackControl, Highlight
             autoReading = false;
             if (readerController != null)
                 readerController.stop();
+            abandonAudioFocus();
         });
     }
     @Override
@@ -390,13 +438,13 @@ public class ReaderService extends Service implements PlaybackControl, Highlight
             String action = intent.getAction();
 
             if (ReaderMediaController.ACTION_PLAY.equals(action)) {
-                safeExecuteAction(() -> play());
+                safeExecuteAction(this::play);
             } else if (ReaderMediaController.ACTION_PAUSE.equals(action)) {
-                safeExecuteAction(() -> pause());
+                safeExecuteAction(this::pause);
             } else if (ReaderMediaController.ACTION_NEXT.equals(action)) {
-                safeExecuteAction(() -> next());
+                safeExecuteAction(this::next);
             } else if (ReaderMediaController.ACTION_PREV.equals(action)) {
-                safeExecuteAction(() -> prev());
+                safeExecuteAction(this::prev);
             }
         }
 

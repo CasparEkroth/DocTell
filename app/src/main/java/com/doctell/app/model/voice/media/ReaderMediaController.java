@@ -50,17 +50,18 @@ public class ReaderMediaController {
                 MediaSessionCompat.FLAG_HANDLES_MEDIA_BUTTONS
                         | MediaSessionCompat.FLAG_HANDLES_TRANSPORT_CONTROLS
         );
-
         Intent mediaButtonIntent = new Intent(Intent.ACTION_MEDIA_BUTTON);
-        mediaButtonIntent.setClass(context, ReaderService.class);
-        int flags = 0;
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            flags |= PendingIntent.FLAG_IMMUTABLE;
-        }
-        PendingIntent mediaButtonPendingIntent =
-                PendingIntent.getService(context, 0, mediaButtonIntent, flags);
+        mediaButtonIntent.setClass(context, androidx.media.session.MediaButtonReceiver.class);
+
+        PendingIntent mediaButtonPendingIntent = PendingIntent.getBroadcast(
+                context,
+                0,
+                mediaButtonIntent,
+                PendingIntent.FLAG_IMMUTABLE // required for Android 12+
+        );
 
         mediaSession.setMediaButtonReceiver(mediaButtonPendingIntent);
+        mediaSession.setActive(true);
 
         // This is what the system media player talks to:
         mediaSession.setCallback(new MediaSessionCompat.Callback() {

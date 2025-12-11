@@ -74,6 +74,7 @@ public class ReaderActivity extends AppCompatActivity implements HighlightListen
     private boolean ttsStartedOnPage = false;
     private static final int REQ_SELECT_CHAPTER = 1001;
     private static final int REQ_POST_NOTIFICATIONS = 42;
+    private static final int REQ_BLUETOOTH_CONNECT = 43;
     private List<ChapterItem> chapters;
     private ChapterLoader chapterLoader;
     private HighlightOverlayView highlightOverlay;
@@ -168,6 +169,11 @@ public class ReaderActivity extends AppCompatActivity implements HighlightListen
         exec = Executors.newSingleThreadExecutor();
         main = new Handler(Looper.getMainLooper());
         ensureTtsInit();
+
+        // On API 31+ (Android 12), request BLUETOOTH_CONNECT permission at runtime. Without this
+        // permission, startBluetoothSco() and getCommunicationDevices() will fail. We avoid
+        // requesting on older devices where it's unnecessary or unavailable.
+        ensureBluetoothPermission();
         View root = findViewById(R.id.readerRoot);
         View bottomBar = findViewById(R.id.readerBottomBar);
 
@@ -337,6 +343,26 @@ public class ReaderActivity extends AppCompatActivity implements HighlightListen
                 REQ_POST_NOTIFICATIONS
         );
         return false;
+    }
+
+    /**
+     * Request BLUETOOTH_CONNECT permission on API 31+ (Android 12) if not already granted.
+     * This permission is required to connect to Bluetooth headsets for voice communication.
+     */
+    private void ensureBluetoothPermission() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) {
+            return;
+        }
+        if (ContextCompat.checkSelfPermission(
+                this,
+                Manifest.permission.BLUETOOTH_CONNECT
+        ) != PackageManager.PERMISSION_GRANTED) {
+            ActivityCompat.requestPermissions(
+                    this,
+                    new String[]{Manifest.permission.BLUETOOTH_CONNECT},
+                    REQ_BLUETOOTH_CONNECT
+            );
+        }
     }
 
     private void ensureServiceBound() {
