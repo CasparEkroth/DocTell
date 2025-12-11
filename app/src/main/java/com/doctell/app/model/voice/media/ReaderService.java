@@ -9,6 +9,8 @@ import android.content.Intent;
 import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.pdf.PdfRenderer;
+import android.media.AudioFocusRequest;
+import android.media.AudioManager;
 import android.net.Uri;
 import android.os.Binder;
 import android.os.Build;
@@ -16,10 +18,12 @@ import android.os.Handler;
 import android.os.IBinder;
 import android.os.Looper;
 import android.os.ParcelFileDescriptor;
+import android.support.v4.media.session.MediaSessionCompat;
 import android.util.DisplayMetrics;
 import android.util.Log;
 
 import androidx.annotation.Nullable;
+import androidx.media.session.MediaButtonReceiver;
 
 import com.doctell.app.model.analytics.DocTellCrashlytics;
 import com.doctell.app.model.entity.Book;
@@ -43,6 +47,7 @@ public class ReaderService extends Service implements PlaybackControl, Highlight
     private final IBinder binder = new LocalBinder();
     private ReaderController readerController;
     private ReaderMediaController mediaController;
+    private AudioManager audioManager;
     private HighlightListener uiHighlightListener;
     private Book currentBook;
     private ReaderController.MediaNav uiMediaNav;
@@ -50,6 +55,7 @@ public class ReaderService extends Service implements PlaybackControl, Highlight
     private ExecutorService executor;
     private Handler mainHandler;
     private Bitmap coverOfBook;
+    private boolean autoReading = false;
 
     private void createNotificationChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
@@ -113,16 +119,60 @@ public class ReaderService extends Service implements PlaybackControl, Highlight
     public void onCreate() {
         super.onCreate();
         Log.d("ReaderService", "onCreate");
+
+        audioManager = (AudioManager) getSystemService(Context.AUDIO_SERVICE);
         executor = Executors.newSingleThreadExecutor();
         mainHandler = new Handler(Looper.getMainLooper());
         createNotificationChannel();
+
         mediaController = new ReaderMediaController(this, this);
+
         Notification notification = mediaController.buildInitialNotification();
         startForeground(ReaderMediaController.NOTIFICATION_ID, notification);
     }
 
+    public MediaSessionCompat.Token getMediaSessionToken() {
+        if (mediaController != null) {
+            return mediaController.getMediaSession().getSessionToken();
+        }
+        return null;
+    }
+
+    private void requestAudioFocus() {
+        if (audioManager == null) return;
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            // Android 8.0+ - use AudioFocusRequest
+            AudioFocusRequest focusRequest = new AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN)
+                    .setAudioAttributes(new android.media.AudioAttributes.Builder()
+                            .setUsage(android.media.AudioAttributes.USAGE_MEDIA)
+                            .setContentType(android.media.AudioAttributes.CONTENT_TYPE_SPEECH)
+                            .build())
+                    .setAcceptsDelayedFocusGain(false)
+                    .build();
+            audioManager.requestAudioFocus(focusRequest);
+        } else {
+            // Older Android versions
+            audioManager.requestAudioFocus(
+                    null,
+                    AudioManager.STREAM_MUSIC,
+                    AudioManager.AUDIOFOCUS_GAIN
+            );
+        }
+    }
+
+    private void abandonAudioFocus() {
+        if (audioManager == null) return;
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            audioManager.abandonAudioFocusRequest(new AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN).build());
+        } else {
+            audioManager.abandonAudioFocus(null);
+        }
+    }
+
     @Override
     public void onDestroy() {
+        abandonAudioFocus();
         onReadingPositionChanged();
         super.onDestroy();
         Log.d("ReaderService", "onDestroy");
@@ -140,6 +190,10 @@ public class ReaderService extends Service implements PlaybackControl, Highlight
             executor.shutdownNow();
             executor = null;
         }
+
+        if (mediaController != null) {
+            mediaController.release();
+        }
     }
 
     @Override
@@ -152,6 +206,7 @@ public class ReaderService extends Service implements PlaybackControl, Highlight
 
         if (mediaController != null) {
             mediaController.stop();
+            mediaController.release();
         }
         stopForeground(true);
         stopSelf();
@@ -170,76 +225,99 @@ public class ReaderService extends Service implements PlaybackControl, Highlight
     // PUBLIC control API -----------------------------
 
     @Override
-    public void play()   { if (readerController != null) readerController.play(); }
+    public void play() {
+        safeExecuteAction(()->{
+            autoReading = true;
+            if (readerController != null) {
+                readerController.play();
+            }
+        });
+    }
     @Override
-    public void pause()  { if (readerController != null) readerController.pause(); }
+    public void pause() {
+        safeExecuteAction(()-> {
+            autoReading = false;
+            if (readerController != null)
+                readerController.pause();
+        });
+    }
     @Override
-    public void stop()   { if (readerController != null) readerController.stop(); }
+    public void stop() {
+        safeExecuteAction(()-> {
+            autoReading = false;
+            if (readerController != null)
+                readerController.stop();
+        });
+    }
     @Override
     public void next() {
-        if (currentBook == null || pdfManager == null) return;
-        try {
-            int pageCount = pdfManager.getPageCount();
+        safeExecuteAction(()->{
+            if (currentBook == null || pdfManager == null) return;
+            try {
+                int pageCount = pdfManager.getPageCount();
+                int currentPage = currentBook.getLastPage();
+                if (currentPage + 1 >= pageCount) return;
+                final int newPage = currentPage + 1;
+
+                currentBook.setLastPage(newPage);
+                currentBook.setSentence(0);
+                onReadingPositionChanged();
+                executor.execute(() -> {
+                    try {
+                        List<String> chunks = loadCurrentPageSentences();
+                        mainHandler.post(() -> {
+                            if (readerController != null) {
+                                readerController.setChunks(chunks, 0);
+                                readerController.startReading();
+                            }
+                            if (uiMediaNav != null) {
+                                uiMediaNav.navForward();
+                            }
+                        });
+                    } catch (IOException e) {
+                        Log.e("ReaderService", "next(): failed to load page text", e);
+                        DocTellCrashlytics.logPdfError(currentBook, newPage, "render_page", e);
+                    }
+                });
+
+            } catch (IOException e) {
+                Log.e("ReaderService", "next(): getPageCount failed", e);
+            }
+        });
+    }
+
+    @Override
+    public void prev() {
+        safeExecuteAction(()-> {
+            if (currentBook == null || pdfManager == null) return;
+
             int currentPage = currentBook.getLastPage();
-            if (currentPage + 1 >= pageCount) return;
-            final int newPage = currentPage + 1;
+            if (currentPage <= 0) return;
+
+            final int newPage = currentPage - 1;
 
             currentBook.setLastPage(newPage);
             currentBook.setSentence(0);
             onReadingPositionChanged();
+
             executor.execute(() -> {
                 try {
                     List<String> chunks = loadCurrentPageSentences();
+
                     mainHandler.post(() -> {
                         if (readerController != null) {
                             readerController.setChunks(chunks, 0);
                             readerController.startReading();
                         }
                         if (uiMediaNav != null) {
-                            uiMediaNav.navForward();
+                            uiMediaNav.navBackward();
                         }
                     });
                 } catch (IOException e) {
-                    Log.e("ReaderService", "next(): failed to load page text", e);
+                    Log.e("ReaderService", "prev(): failed to load page text", e);
                     DocTellCrashlytics.logPdfError(currentBook, newPage, "render_page", e);
                 }
             });
-
-        } catch (IOException e) {
-            Log.e("ReaderService", "next(): getPageCount failed", e);
-        }
-    }
-
-    @Override
-    public void prev() {
-        if (currentBook == null || pdfManager == null) return;
-
-        int currentPage = currentBook.getLastPage();
-        if (currentPage <= 0) return;
-
-        final int newPage = currentPage - 1;
-
-        currentBook.setLastPage(newPage);
-        currentBook.setSentence(0);
-        onReadingPositionChanged();
-
-        executor.execute(() -> {
-            try {
-                List<String> chunks = loadCurrentPageSentences();
-
-                mainHandler.post(() -> {
-                    if (readerController != null) {
-                        readerController.setChunks(chunks, 0);
-                        readerController.startReading();
-                    }
-                    if (uiMediaNav != null) {
-                        uiMediaNav.navBackward();
-                    }
-                });
-            } catch (IOException e) {
-                Log.e("ReaderService", "prev(): failed to load page text", e);
-                DocTellCrashlytics.logPdfError(currentBook, newPage, "render_page", e);
-            }
         });
     }
 
@@ -276,20 +354,68 @@ public class ReaderService extends Service implements PlaybackControl, Highlight
         if (uiHighlightListener != null) {
             uiHighlightListener.onPageFinished();
         }
+
+        if (autoReading) {
+            try {
+                int pageCount = pdfManager != null ? pdfManager.getPageCount() : 0;
+                if (currentBook != null && currentBook.getLastPage() + 1 < pageCount) {
+                    next();
+                } else {
+                    autoReading = false;
+                    if (readerController != null) {
+                        readerController.pause();
+                    }
+                }
+            } catch (Exception e) {
+                Log.e("ReaderService", "Failed to auto advance page", e);
+            }
+        }
     }
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
-        if (intent != null && intent.getAction() != null) {
-            switch (intent.getAction()) {
-                case ReaderMediaController.ACTION_PLAY:  play();  break;
-                case ReaderMediaController.ACTION_PAUSE: pause(); break;
-                case ReaderMediaController.ACTION_NEXT:  next();  break;
-                case ReaderMediaController.ACTION_PREV:  prev();  break;
+        if (intent != null) {
+            try {
+                if (mediaController != null && mediaController.getMediaSession() != null) {
+                    MediaButtonReceiver.handleIntent(
+                            mediaController.getMediaSession(),
+                            intent
+                    );
+                }
+            } catch (Exception ex) {
+                Log.w("ReaderService", "Failed to handle media button intent", ex);
             }
         }
+        if (intent != null) {
+            String action = intent.getAction();
+
+            if (ReaderMediaController.ACTION_PLAY.equals(action)) {
+                safeExecuteAction(() -> play());
+            } else if (ReaderMediaController.ACTION_PAUSE.equals(action)) {
+                safeExecuteAction(() -> pause());
+            } else if (ReaderMediaController.ACTION_NEXT.equals(action)) {
+                safeExecuteAction(() -> next());
+            } else if (ReaderMediaController.ACTION_PREV.equals(action)) {
+                safeExecuteAction(() -> prev());
+            }
+        }
+
         return START_STICKY;
     }
+
+
+    private void safeExecuteAction(Runnable action) {
+        try {
+            if (action != null) {
+                action.run();
+            }
+        } catch (Exception e) {
+            Log.e("ReaderService", "Error executing action", e);
+            DocTellCrashlytics.logException(e);
+        }
+    }
+
+
     public void initBook(Book book, PDDocument doc, ParcelFileDescriptor pdf, PdfRenderer renderer) {
         Context appCtx = getApplicationContext();
         if (book != null) {
@@ -334,13 +460,12 @@ public class ReaderService extends Service implements PlaybackControl, Highlight
                              PDDocument doc,
                              ParcelFileDescriptor pfd,
                              PdfRenderer renderer) {
+        requestAudioFocus();
+        autoReading = true;
         currentBook = book;
         Context appCtx = getApplicationContext();
         if (pdfManager == null) {
             pdfManager = new PdfManager(appCtx, currentBook.getLocalPath(),doc, pfd, renderer);
-        }
-        if (mediaController == null) {
-            mediaController = new ReaderMediaController(appCtx, this);
         }
         if(coverOfBook != null)
             mediaController.setCover(coverOfBook);

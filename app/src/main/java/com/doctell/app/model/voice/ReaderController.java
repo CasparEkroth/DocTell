@@ -32,7 +32,6 @@ public class ReaderController implements TtsEngineListener, PlaybackControl {
         this.engine = engine;
         this.chunks = chunks;
         this.highlightListener = highlightListener;
-        mediaController = new ReaderMediaController(ctx, this);
         this.mediaNav = mediaNav;
 
         engine.init(ctx);
@@ -181,12 +180,14 @@ public class ReaderController implements TtsEngineListener, PlaybackControl {
 
     @Override
     public void play() {
-        Log.d("ReaderController", "this works ");
+        Log.d("ReaderController", "play - isPaused=" + isPaused);
 
         if (isPaused) {
             resumeReading();
-        } else {
+        } else if (chunks != null && !chunks.isEmpty()) {
             startReadingFrom(currentIndex);
+        } else {
+            Log.w("ReaderController", "play called but no chunks loaded");
         }
     }
 

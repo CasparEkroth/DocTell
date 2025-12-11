@@ -7,9 +7,11 @@
     <!-- Generic FGS permission -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE"
         tools:ignore="ForegroundServicesPolicy" />
-
     <!-- Specific permission for mediaPlayback foreground services -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
+    <!-- BLUETOOTH -->
+    <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
+    <uses-permission android:name="android.permission.BLUETOOTH" android:maxSdkVersion="30" />
 
     <application
         android:allowBackup="true"
@@ -45,7 +47,6 @@
             android:launchMode="singleTop">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
-
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
@@ -53,7 +54,15 @@
             android:name=".model.voice.media.ReaderService"
             android:exported="false"
             android:foregroundServiceType="mediaPlayback"
-            tools:ignore="ForegroundServicePermission" />
+            tools:ignore="ForegroundServicePermission"/>
+        <!-- MediaButtonReceiver for headset/remote control events -->
+        <receiver
+            android:name="androidx.media.session.MediaButtonReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.intent.action.MEDIA_BUTTON" />
+            </intent-filter>
+        </receiver>
     </application>
 
 </manifest>
