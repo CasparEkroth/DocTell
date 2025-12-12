@@ -24,6 +24,7 @@ import android.os.ParcelFileDescriptor;
 import android.support.v4.media.session.MediaSessionCompat;
 import android.util.DisplayMetrics;
 import android.util.Log;
+import android.widget.Toast;
 
 import androidx.annotation.Nullable;
 import androidx.media.session.MediaButtonReceiver;
@@ -371,9 +372,12 @@ public class ReaderService extends Service implements PlaybackControl, Highlight
                     try {
                         List<String> chunks = loadCurrentPageSentences();
                         mainHandler.post(() -> {
-                            if (readerController != null) {
+                            if (readerController != null && !chunks.isEmpty()) {
                                 readerController.setChunks(chunks, 0);
                                 readerController.startReading();
+                            }else if(readerController != null){
+                                next();
+                                Toast.makeText(this,"illegible text",Toast.LENGTH_SHORT).show();
                             }
                             if (uiMediaNav != null) {
                                 uiMediaNav.navForward();

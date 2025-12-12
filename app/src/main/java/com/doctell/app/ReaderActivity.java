@@ -310,7 +310,6 @@ public class ReaderActivity extends AppCompatActivity implements HighlightListen
         }
     }
 
-
     private void useLoadedSession(PdfLoader.PdfSession session) {
         renderer = session.renderer;
         doc = session.doc;
