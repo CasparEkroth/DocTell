@@ -4,6 +4,7 @@ import static android.os.Looper.getMainLooper;
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.media.AudioAttributes;
+import android.os.Bundle;
 import android.os.Handler;
 import android.speech.tts.TextToSpeech;
 import android.speech.tts.UtteranceProgressListener;
@@ -31,6 +32,7 @@ public abstract class BaseTtsEngine implements TtsEngineStrategy {
     protected String currentLangCode;
     protected float currentRate;
     private static final int ERROR_CODE_GENERIC = 0;
+    Bundle params = new Bundle();
 
     protected abstract boolean acceptVoice(Voice v, Locale engineLanguage);
 
@@ -46,6 +48,7 @@ public abstract class BaseTtsEngine implements TtsEngineStrategy {
                 Locale.getDefault().toLanguageTag()
         );
         currentRate = prefs.getFloat(Prefs.TTS_SPEED.toString(), 1.0f);
+        params.putFloat(TextToSpeech.Engine.KEY_PARAM_VOLUME, 1.0f);
     }
 
     @Override
@@ -169,6 +172,11 @@ public abstract class BaseTtsEngine implements TtsEngineStrategy {
     }
 
     @Override
+    public void setVolume(float targetVolume){
+        params.putFloat(TextToSpeech.Engine.KEY_PARAM_VOLUME, targetVolume);
+    }
+
+    @Override
     public void setListener(TtsEngineListener listener) {
         this.engineListener = listener;
     }
@@ -190,7 +198,7 @@ public abstract class BaseTtsEngine implements TtsEngineStrategy {
         lastIndex = index;
 
         String utteranceId = "CHUNK_" + index;
-        tts.speak(text, TextToSpeech.QUEUE_FLUSH, null, utteranceId);
+        tts.speak(text, TextToSpeech.QUEUE_FLUSH, params, utteranceId);
     }
 
     @Override
@@ -206,7 +214,7 @@ public abstract class BaseTtsEngine implements TtsEngineStrategy {
         if (lastText == null || lastIndex < 0) return;
 
         String utteranceId = "CHUNK_" + lastIndex;
-        tts.speak(lastText, TextToSpeech.QUEUE_FLUSH, null, utteranceId);
+        tts.speak(lastText, TextToSpeech.QUEUE_FLUSH, params, utteranceId);
     }
 
     @Override

@@ -5,10 +5,13 @@ import android.app.Notification;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.app.Service;
+import android.content.BroadcastReceiver;
 import android.content.Intent;
 import android.content.Context;
+import android.content.IntentFilter;
 import android.graphics.Bitmap;
 import android.graphics.pdf.PdfRenderer;
+import android.media.AudioAttributes;
 import android.media.AudioFocusRequest;
 import android.media.AudioManager;
 import android.net.Uri;
@@ -49,42 +52,79 @@ public class ReaderService extends Service implements PlaybackControl, Highlight
     private ReaderMediaController mediaController;
     private AudioManager audioManager;
     private AudioFocusRequest audioFocusRequest;
+    private boolean resumeAfterFocusGain = false;
+    private boolean autoReading = false;
     private final AudioManager.OnAudioFocusChangeListener audioFocusChangeListener =
             focusChange -> {
                 switch (focusChange) {
                     case AudioManager.AUDIOFOCUS_LOSS:
                         Log.d("ReaderService", "AUDIOFOCUS_LOSS → pause/stop");
+                        resumeAfterFocusGain = false;   // full loss, don’t auto-resume
                         pause();
                         break;
 
                     case AudioManager.AUDIOFOCUS_LOSS_TRANSIENT:
-                        Log.d("ReaderService", "AUDIOFOCUS_LOSS_TRANSIENT → pause");
-                        pause();
-                        break;
-                    case AudioManager.AUDIOFOCUS_LOSS_TRANSIENT_CAN_DUCK:
-                        if (readerController != null) {
-                            // need to implement setVolume in ReaderController/TtsEngine
-                            // Or just pause if TTS doesn't support volume scaling easily.
-                            // Ideally: readerController.setVolume(0.3f);
-                            Log.d("ReaderService", "Ducking volume (Not implemented yet, ensure TTS supports it)");
+                        Log.d("ReaderService", "AUDIOFOCUS_LOSS_TRANSIENT → pause (remember to resume)");
+                        // Only remember to resume if we were actually reading
+                        if (autoReading) {
+                            resumeAfterFocusGain = true;
+                            pause();
                         }
                         break;
+
+                    case AudioManager.AUDIOFOCUS_LOSS_TRANSIENT_CAN_DUCK:
+                        Log.d("ReaderService", "AUDIOFOCUS_LOSS_TRANSIENT_CAN_DUCK");
+                        // For now just treat like transient loss, or implement real ducking if you want
+                        if (autoReading) {
+                            resumeAfterFocusGain = true;
+                            pause();
+                        }
+                        break;
+
                     case AudioManager.AUDIOFOCUS_GAIN:
-                        Log.d("ReaderService", "AUDIOFOCUS_GAIN");
-                        // readerController.setVolume(1.0f);
-                        play();
+                        Log.d("ReaderService", "AUDIOFOCUS_GAIN, resumeAfterFocusGain=" + resumeAfterFocusGain);
+                        if (resumeAfterFocusGain) {
+                            resumeAfterFocusGain = false;
+                            play();  // calls ReaderController.play() and updates MediaSession
+                        }
                         break;
                 }
             };
 
-    private final android.content.BroadcastReceiver noisyReceiver = new android.content.BroadcastReceiver() {
+
+    private final BroadcastReceiver headsetMonitor = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
-            if (android.media.AudioManager.ACTION_AUDIO_BECOMING_NOISY.equals(intent.getAction())) {
-                pause(); // Pause immediately when headphones are unplugged
+            String action = intent.getAction();
+            if (action == null) return;
+
+            switch (action) {
+                case AudioManager.ACTION_AUDIO_BECOMING_NOISY:
+                    // User unplugged headphones -> PAUSE immediately
+                    Log.d("ReaderService", "Headphones unplugged (Noisy) -> Pausing");
+                    pause();
+                    break;
+
+                case android.bluetooth.BluetoothDevice.ACTION_ACL_CONNECTED:
+                case android.media.AudioManager.ACTION_HEADSET_PLUG:
+                    // Headset connected (Bluetooth or Wired) -> REFRESH SESSION
+                    // This ensures the headset 'grabs' our app as the active media player
+                    Log.d("ReaderService", "Headset connected -> Refreshing MediaSession");
+                    if (mediaController != null) {
+                        mediaController.refreshSession();
+                    }
+                    if (autoReading) play();
+                    break;
+
+                case android.bluetooth.BluetoothDevice.ACTION_ACL_DISCONNECTED:
+                    // Bluetooth disconnected. 'Noisy' usually catches this, but this is a backup.
+                    Log.d("ReaderService", "Bluetooth disconnected");
+                    pause();
+                    break;
             }
         }
     };
+
     private HighlightListener uiHighlightListener;
     private Book currentBook;
     private ReaderController.MediaNav uiMediaNav;
@@ -92,7 +132,7 @@ public class ReaderService extends Service implements PlaybackControl, Highlight
     private ExecutorService executor;
     private Handler mainHandler;
     private Bitmap coverOfBook;
-    private boolean autoReading = false;
+
 
     private void createNotificationChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
@@ -166,8 +206,14 @@ public class ReaderService extends Service implements PlaybackControl, Highlight
 
         Notification notification = mediaController.buildInitialNotification();
         startForeground(ReaderMediaController.NOTIFICATION_ID, notification);
-        registerReceiver(noisyReceiver, new android.content.IntentFilter(android.media.AudioManager.ACTION_AUDIO_BECOMING_NOISY));
 
+        IntentFilter filter = new IntentFilter();
+        filter.addAction(AudioManager.ACTION_AUDIO_BECOMING_NOISY);
+        filter.addAction(AudioManager.ACTION_HEADSET_PLUG);
+        // Note: This requires BLUETOOTH_CONNECT permission on Android 12+
+        filter.addAction(android.bluetooth.BluetoothDevice.ACTION_ACL_CONNECTED);
+        filter.addAction(android.bluetooth.BluetoothDevice.ACTION_ACL_DISCONNECTED);
+        registerReceiver(headsetMonitor, filter);
     }
 
     public MediaSessionCompat.Token getMediaSessionToken() {
@@ -182,12 +228,12 @@ public class ReaderService extends Service implements PlaybackControl, Highlight
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             if (audioFocusRequest == null) {
+                AudioAttributes playbackAttributes = new AudioAttributes.Builder()
+                        .setUsage(AudioAttributes.USAGE_MEDIA)
+                        .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
+                        .build();
                 audioFocusRequest = new AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN)
-                        .setAudioAttributes(new android.media.AudioAttributes.Builder()
-                                .setUsage(android.media.AudioAttributes.USAGE_MEDIA)
-                                .setContentType(android.media.AudioAttributes.CONTENT_TYPE_SPEECH)
-                                .build())
-                        .setAcceptsDelayedFocusGain(false)
+                        .setAudioAttributes(playbackAttributes)
                         .setOnAudioFocusChangeListener(audioFocusChangeListener)
                         .build();
             }
@@ -219,7 +265,7 @@ public class ReaderService extends Service implements PlaybackControl, Highlight
     @Override
     public void onDestroy() {
         try {
-            unregisterReceiver(noisyReceiver);
+            unregisterReceiver(headsetMonitor);
         }catch (Exception ignored){/*Receiver might not be registered*/}
         abandonAudioFocus();
         onReadingPositionChanged();
@@ -273,8 +319,13 @@ public class ReaderService extends Service implements PlaybackControl, Highlight
     @Override
     public void play() {
         safeExecuteAction(()->{
+            Log.d("ReaderService","play was entered");
             autoReading = true;
             requestAudioFocus();
+            if (mediaController != null && mediaController.getMediaSession() != null) {
+                mediaController.getMediaSession().setActive(true);
+            }
+
             if (readerController != null) {
                 readerController.play();
             }
@@ -283,7 +334,12 @@ public class ReaderService extends Service implements PlaybackControl, Highlight
     @Override
     public void pause() {
         safeExecuteAction(()-> {
+            Log.d("ReaderService","pause was entered");
             autoReading = false;
+            if (mediaController != null && mediaController.getMediaSession() != null) {
+
+                mediaController.getMediaSession().setActive(true);
+            }
             if (readerController != null)
                 readerController.pause();
         });
@@ -291,6 +347,7 @@ public class ReaderService extends Service implements PlaybackControl, Highlight
     @Override
     public void stop() {
         safeExecuteAction(()-> {
+            Log.d("ReaderService","stop was entered");
             autoReading = false;
             if (readerController != null)
                 readerController.stop();
@@ -422,16 +479,14 @@ public class ReaderService extends Service implements PlaybackControl, Highlight
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
-        if (intent != null) {
-            try {
-                if (mediaController != null && mediaController.getMediaSession() != null) {
-                    MediaButtonReceiver.handleIntent(
-                            mediaController.getMediaSession(),
-                            intent
-                    );
-                }
-            } catch (Exception ex) {
-                Log.w("ReaderService", "Failed to handle media button intent", ex);
+        if (intent != null && Intent.ACTION_MEDIA_BUTTON.equals(intent.getAction())) {
+            if (mediaController != null && mediaController.getMediaSession() != null) {
+                MediaButtonReceiver.handleIntent(mediaController.getMediaSession(), intent);
+            } else {
+                // Edge Case: Service started by button, but controller not ready.
+                // You might need to re-initialize from storage here if you want
+                // "Play" to work from a cold dead state.
+                Log.w("ReaderService", "MediaButton received but Controller is null");
             }
         }
         if (intent != null) {
@@ -546,6 +601,9 @@ public class ReaderService extends Service implements PlaybackControl, Highlight
 
                     Notification n = mediaController.buildInitialNotification();
                     startForeground(1001, n);
+
+                    MediaSessionCompat session = mediaController.getMediaSession();
+                    if (session != null) session.setActive(true);
                 });
 
             } catch (IOException e) {

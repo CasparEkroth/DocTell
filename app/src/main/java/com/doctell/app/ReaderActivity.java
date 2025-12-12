@@ -155,7 +155,7 @@ public class ReaderActivity extends AppCompatActivity implements HighlightListen
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_reader);
-
+        ensureBluetoothPermission();
         pdfImage = findViewById(R.id.pdfImage);
         btnPrev = findViewById(R.id.btnPrev);
         btnNext = findViewById(R.id.btnNext);
@@ -170,10 +170,6 @@ public class ReaderActivity extends AppCompatActivity implements HighlightListen
         main = new Handler(Looper.getMainLooper());
         ensureTtsInit();
 
-        // On API 31+ (Android 12), request BLUETOOTH_CONNECT permission at runtime. Without this
-        // permission, startBluetoothSco() and getCommunicationDevices() will fail. We avoid
-        // requesting on older devices where it's unnecessary or unavailable.
-        ensureBluetoothPermission();
         View root = findViewById(R.id.readerRoot);
         View bottomBar = findViewById(R.id.readerBottomBar);
 

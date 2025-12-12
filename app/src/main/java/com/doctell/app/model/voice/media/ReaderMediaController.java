@@ -62,7 +62,6 @@ public class ReaderMediaController {
 
         mediaSession.setMediaButtonReceiver(mediaButtonPendingIntent);
         mediaSession.setActive(true);
-
         // This is what the system media player talks to:
         mediaSession.setCallback(new MediaSessionCompat.Callback() {
 
@@ -133,38 +132,39 @@ public class ReaderMediaController {
         updateMediaSession();
         updateNotification();
     }
+
     private void updateMediaSession() {
-        try {
-            String title = currentSentence != null && !currentSentence.isEmpty()
-                    ? currentSentence
-                    : "DocTell is reading";
+        if (mediaSession == null) return;
+        Log.d(TAG, "updating media session");
+        String title = (currentSentence != null && !currentSentence.isEmpty())
+                ? currentSentence : "DocTell is reading";
+        MediaMetadataCompat.Builder metaBuilder = new MediaMetadataCompat.Builder()
+                .putString(MediaMetadataCompat.METADATA_KEY_TITLE, title)
+                .putString(MediaMetadataCompat.METADATA_KEY_ARTIST, "DocTell");
+        if (coverBitmap != null) {
+            metaBuilder.putBitmap(MediaMetadataCompat.METADATA_KEY_ALBUM_ART, coverBitmap);
+        }
+        mediaSession.setMetadata(metaBuilder.build());
+        int state = isPlaying ? PlaybackStateCompat.STATE_PLAYING : PlaybackStateCompat.STATE_PAUSED;
 
-            MediaMetadataCompat metadata = new MediaMetadataCompat.Builder()
-                    .putString(MediaMetadataCompat.METADATA_KEY_TITLE, title)
-                    .putString(MediaMetadataCompat.METADATA_KEY_ARTIST, "DocTell")
-                    .putBitmap(MediaMetadataCompat.METADATA_KEY_ALBUM_ART, coverBitmap)
-                    .build();
+        long actions = PlaybackStateCompat.ACTION_PLAY |
+                PlaybackStateCompat.ACTION_PAUSE |
+                PlaybackStateCompat.ACTION_PLAY_PAUSE |
+                PlaybackStateCompat.ACTION_STOP |
+                PlaybackStateCompat.ACTION_SKIP_TO_NEXT |
+                PlaybackStateCompat.ACTION_SKIP_TO_PREVIOUS;
 
-            if (mediaSession != null) {
-                mediaSession.setMetadata(metadata);
+        PlaybackStateCompat playbackState = new PlaybackStateCompat.Builder()
+                .setActions(actions)
+                .setState(state, currentIndex, isPlaying ? 1.0f : 0f)
+                .build();
+
+        mediaSession.setPlaybackState(playbackState);
+
+        if (isPlaying) {
+            if (!mediaSession.isActive()) {
+                mediaSession.setActive(true);
             }
-
-            int state = isPlaying ? PlaybackStateCompat.STATE_PLAYING : PlaybackStateCompat.STATE_PAUSED;
-            PlaybackStateCompat playbackState = new PlaybackStateCompat.Builder()
-                    .setActions(PlaybackStateCompat.ACTION_PLAY
-                            | PlaybackStateCompat.ACTION_PAUSE
-                            | PlaybackStateCompat.ACTION_PLAY_PAUSE
-                            | PlaybackStateCompat.ACTION_STOP
-                            | PlaybackStateCompat.ACTION_SKIP_TO_NEXT
-                            | PlaybackStateCompat.ACTION_SKIP_TO_PREVIOUS)
-                    .setState(state, currentIndex, isPlaying ? 1.0f : 0f)
-                    .build();
-
-            if (mediaSession != null) {
-                mediaSession.setPlaybackState(playbackState);
-            }
-        } catch (Exception e) {
-            Log.e(TAG, "Error updating media session", e);
         }
     }
 
@@ -275,6 +275,13 @@ public class ReaderMediaController {
         }
 
         return PendingIntent.getService(context, requestCode, intent, flags);
+    }
+
+    public void refreshSession() {
+        if (mediaSession != null) {
+            mediaSession.setActive(true);
+            updateMediaSession();
+        }
     }
 
     public void stop() {
