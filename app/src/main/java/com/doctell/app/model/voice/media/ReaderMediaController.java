@@ -1,13 +1,11 @@
 package com.doctell.app.model.voice.media;
 
-import android.Manifest;
 import android.app.Notification;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.content.Context;
 import android.content.Intent;
-import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.os.Build;
 import android.support.v4.media.MediaMetadataCompat;
@@ -15,12 +13,9 @@ import android.support.v4.media.session.MediaSessionCompat;
 import android.support.v4.media.session.PlaybackStateCompat;
 import android.util.Log;
 
-import androidx.core.app.ActivityCompat;
 import androidx.core.app.NotificationCompat;
-import androidx.core.app.NotificationManagerCompat;
 import androidx.media.session.MediaButtonReceiver;
 
-import com.doctell.app.MainActivity;
 import com.doctell.app.R;
 import com.doctell.app.ReaderActivity;
 
@@ -55,7 +50,18 @@ public class ReaderMediaController {
                 MediaSessionCompat.FLAG_HANDLES_MEDIA_BUTTONS
                         | MediaSessionCompat.FLAG_HANDLES_TRANSPORT_CONTROLS
         );
+        Intent mediaButtonIntent = new Intent(Intent.ACTION_MEDIA_BUTTON);
+        mediaButtonIntent.setClass(context, androidx.media.session.MediaButtonReceiver.class);
 
+        PendingIntent mediaButtonPendingIntent = PendingIntent.getBroadcast(
+                context,
+                0,
+                mediaButtonIntent,
+                PendingIntent.FLAG_IMMUTABLE // required for Android 12+
+        );
+
+        mediaSession.setMediaButtonReceiver(mediaButtonPendingIntent);
+        mediaSession.setActive(true);
         // This is what the system media player talks to:
         mediaSession.setCallback(new MediaSessionCompat.Callback() {
 
@@ -64,6 +70,7 @@ public class ReaderMediaController {
                 Log.d(TAG, "onPlay from system controls");
                 playbackControl.play();
                 isPlaying = true;
+                mediaSession.setActive(true);
                 updateMediaSession();
                 updateNotification();
             }
@@ -73,6 +80,7 @@ public class ReaderMediaController {
                 Log.d(TAG, "onPause from system controls");
                 playbackControl.pause();
                 isPlaying = false;
+                mediaSession.setActive(true);
                 updateMediaSession();
                 updateNotification();
             }
@@ -124,37 +132,42 @@ public class ReaderMediaController {
         updateMediaSession();
         updateNotification();
     }
+
     private void updateMediaSession() {
-        String title = currentSentence.isEmpty()
-                ? "DocTell is reading…"
-                : currentSentence;
-
-        MediaMetadataCompat metadata = new MediaMetadataCompat.Builder()
+        if (mediaSession == null) return;
+        Log.d(TAG, "updating media session");
+        String title = (currentSentence != null && !currentSentence.isEmpty())
+                ? currentSentence : "DocTell is reading";
+        MediaMetadataCompat.Builder metaBuilder = new MediaMetadataCompat.Builder()
                 .putString(MediaMetadataCompat.METADATA_KEY_TITLE, title)
-                .putString(MediaMetadataCompat.METADATA_KEY_ARTIST, "DocTell")
-                .putBitmap(MediaMetadataCompat.METADATA_KEY_ALBUM_ART, coverBitmap)
-                .build();
-        mediaSession.setMetadata(metadata);
+                .putString(MediaMetadataCompat.METADATA_KEY_ARTIST, "DocTell");
+        if (coverBitmap != null) {
+            metaBuilder.putBitmap(MediaMetadataCompat.METADATA_KEY_ALBUM_ART, coverBitmap);
+        }
+        mediaSession.setMetadata(metaBuilder.build());
+        int state = isPlaying ? PlaybackStateCompat.STATE_PLAYING : PlaybackStateCompat.STATE_PAUSED;
 
-        int state = isPlaying
-                ? PlaybackStateCompat.STATE_PLAYING
-                : PlaybackStateCompat.STATE_PAUSED;
+        long actions = PlaybackStateCompat.ACTION_PLAY |
+                PlaybackStateCompat.ACTION_PAUSE |
+                PlaybackStateCompat.ACTION_PLAY_PAUSE |
+                PlaybackStateCompat.ACTION_STOP |
+                PlaybackStateCompat.ACTION_SKIP_TO_NEXT |
+                PlaybackStateCompat.ACTION_SKIP_TO_PREVIOUS;
 
         PlaybackStateCompat playbackState = new PlaybackStateCompat.Builder()
-                .setActions(
-                        PlaybackStateCompat.ACTION_PLAY
-                                | PlaybackStateCompat.ACTION_PAUSE
-                                | PlaybackStateCompat.ACTION_PLAY_PAUSE
-                                | PlaybackStateCompat.ACTION_STOP
-                                | PlaybackStateCompat.ACTION_SKIP_TO_NEXT
-                                | PlaybackStateCompat.ACTION_SKIP_TO_PREVIOUS
-                )
-                // we fake "position" with currentIndex; that’s fine
+                .setActions(actions)
                 .setState(state, currentIndex, isPlaying ? 1.0f : 0f)
                 .build();
 
         mediaSession.setPlaybackState(playbackState);
+
+        if (isPlaying) {
+            if (!mediaSession.isActive()) {
+                mediaSession.setActive(true);
+            }
+        }
     }
+
 
     private void updateNotification() {
         Notification n = buildNotification();
@@ -264,8 +277,22 @@ public class ReaderMediaController {
         return PendingIntent.getService(context, requestCode, intent, flags);
     }
 
+    public void refreshSession() {
+        if (mediaSession != null) {
+            mediaSession.setActive(true);
+            updateMediaSession();
+        }
+    }
+
     public void stop() {
         notificationManager.cancel(NOTIFICATION_ID);
+        isPlaying = false;
+        updateMediaSession();
+        mediaSession.setActive(false);
+    }
+
+    /** Fully release the session when the service is going away. */
+    public void release() {
         mediaSession.setActive(false);
         mediaSession.release();
     }

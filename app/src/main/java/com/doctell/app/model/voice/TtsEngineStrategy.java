@@ -13,5 +13,6 @@ public interface TtsEngineStrategy {
     void setLanguageByCode(String langCode);
     String getLanguage();
     void setRate(float rate);
+    void setVolume(float targetVolume);
     void shutdown();
 }

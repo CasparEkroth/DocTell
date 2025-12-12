@@ -2,6 +2,7 @@ package com.doctell.app.model.voice;
 
 import android.content.Context;
 import android.graphics.Bitmap;
+import android.media.AudioManager;
 import android.util.Log;
 
 import com.doctell.app.model.voice.media.PlaybackControl;
@@ -16,6 +17,9 @@ public class ReaderController implements TtsEngineListener, PlaybackControl {
     private TtsEngineStrategy engine;
     private HighlightListener highlightListener;
     private ReaderMediaController mediaController;
+
+    private float normalVolume = 1.0f;
+    private float duckVolume = 0.3f;
 
     public interface MediaNav {
         void navForward();
@@ -32,7 +36,6 @@ public class ReaderController implements TtsEngineListener, PlaybackControl {
         this.engine = engine;
         this.chunks = chunks;
         this.highlightListener = highlightListener;
-        mediaController = new ReaderMediaController(ctx, this);
         this.mediaNav = mediaNav;
 
         engine.init(ctx);
@@ -181,12 +184,14 @@ public class ReaderController implements TtsEngineListener, PlaybackControl {
 
     @Override
     public void play() {
-        Log.d("ReaderController", "this works ");
+        Log.d("ReaderController", "play - isPaused=" + isPaused);
 
         if (isPaused) {
             resumeReading();
-        } else {
+        } else if (chunks != null && !chunks.isEmpty()) {
             startReadingFrom(currentIndex);
+        } else {
+            Log.w("ReaderController", "play called but no chunks loaded");
         }
     }
 
@@ -203,9 +208,8 @@ public class ReaderController implements TtsEngineListener, PlaybackControl {
     @Override
     public void next() {
         Log.d("ReaderController", "next() from media controls");
-        //stopReading();
         if (mediaNav != null) {
-            mediaNav.navForward();   // ReaderActivity.showNextPage()
+            mediaNav.navForward();
         }
     }
 
@@ -213,11 +217,30 @@ public class ReaderController implements TtsEngineListener, PlaybackControl {
     public void prev() {
         //stopReading();
         if (mediaNav != null) {
-            mediaNav.navBackward();  // ReaderActivity.showPrevPage()
+            mediaNav.navBackward();
         }
     }
     // ----
     public ReaderMediaController getMediaController() {
         return mediaController;
+    }
+
+    /**
+     * Reduce volume for audio focus ducking (e.g., during incoming calls)
+     */
+    public void duckAudio(boolean duck) {
+        if (engine == null) return;
+
+        float targetVolume = duck ? duckVolume : normalVolume;
+        Log.d("ReaderController", "Duck audio: " + (duck ? "ON" : "OFF"));
+
+        // If TtsEngine has volume control, use it
+        // Otherwise, this is a placeholder for your TTS implementation
+        try {
+            // Example for TextToSpeech:
+            // ttsEngine.setVolume(targetVolume);
+        } catch (Exception e) {
+            Log.e("ReaderController", "Error ducking audio", e);
+        }
     }
 }

@@ -17,6 +17,9 @@ import android.os.ParcelFileDescriptor;
 import android.content.ComponentName;
 import android.content.ServiceConnection;
 import android.os.IBinder;
+import android.support.v4.media.session.MediaControllerCompat;
+import android.support.v4.media.session.MediaSessionCompat;
+import android.support.v4.media.session.PlaybackStateCompat;
 import android.util.Log;
 import android.view.View;
 import android.view.ViewGroup;
@@ -71,6 +74,7 @@ public class ReaderActivity extends AppCompatActivity implements HighlightListen
     private boolean ttsStartedOnPage = false;
     private static final int REQ_SELECT_CHAPTER = 1001;
     private static final int REQ_POST_NOTIFICATIONS = 42;
+    private static final int REQ_BLUETOOTH_CONNECT = 43;
     private List<ChapterItem> chapters;
     private ChapterLoader chapterLoader;
     private HighlightOverlayView highlightOverlay;
@@ -80,11 +84,39 @@ public class ReaderActivity extends AppCompatActivity implements HighlightListen
     private ParcelFileDescriptor pfd;
     private PDDocument doc;
     private TtsEngineStrategy ttsEngine;
+    private MediaControllerCompat mediaController;
+
+    private final MediaControllerCompat.Callback mediaCallback =
+            new MediaControllerCompat.Callback() {
+                @Override
+                public void onPlaybackStateChanged(PlaybackStateCompat state) {
+                    boolean playing = state != null
+                            && state.getState() == PlaybackStateCompat.STATE_PLAYING;
+                    runOnUiThread(() -> syncTtsUiWithPlayback(playing));
+                }
+            };
     private final ServiceConnection serviceConnection = new ServiceConnection() {
         @Override
         public void onServiceConnected(ComponentName name, IBinder service) {
             ReaderService.LocalBinder binder = (ReaderService.LocalBinder) service;
             readerService = binder.getService();
+            try {
+                MediaSessionCompat.Token token = readerService.getMediaSessionToken();
+                if (token != null) {
+                    mediaController = new MediaControllerCompat(ReaderActivity.this, token);
+                    MediaControllerCompat.setMediaController(ReaderActivity.this, mediaController);
+                    mediaController.registerCallback(mediaCallback);
+
+                    PlaybackStateCompat state = mediaController.getPlaybackState();
+                    if (state != null) {
+                        boolean playing = state.getState() == PlaybackStateCompat.STATE_PLAYING;
+                        syncTtsUiWithPlayback(playing);
+                    }
+                }
+            } catch (Exception e) {
+                Log.e("ReaderActivity", "Failed to attach media controller", e);
+            }
+
             isServiceBound = true;
 
             readerService.initBook(currentBook, doc, pfd, renderer);
@@ -123,7 +155,7 @@ public class ReaderActivity extends AppCompatActivity implements HighlightListen
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_reader);
-
+        ensureBluetoothPermission();
         pdfImage = findViewById(R.id.pdfImage);
         btnPrev = findViewById(R.id.btnPrev);
         btnNext = findViewById(R.id.btnNext);
@@ -137,6 +169,7 @@ public class ReaderActivity extends AppCompatActivity implements HighlightListen
         exec = Executors.newSingleThreadExecutor();
         main = new Handler(Looper.getMainLooper());
         ensureTtsInit();
+
         View root = findViewById(R.id.readerRoot);
         View bottomBar = findViewById(R.id.readerBottomBar);
 
@@ -231,16 +264,14 @@ public class ReaderActivity extends AppCompatActivity implements HighlightListen
         String path = currentBook.getLocalPath();
         PdfLoader loader = PdfLoader.getInstance(getApplicationContext());
 
-        // 1) Fast path: already loaded
+        //Fast path: already loaded
         if (loader.isReady(path)) {
             PdfLoader.PdfSession session = loader.getCurrentSession();
             if (session != null) {
                 useLoadedSession(session);
                 return;
             }
-            // if session is somehow null, just fall through and load again
         }
-        // 2) Slow path: not loaded yet, or no session => load on background thread
         loader.loadIfNeeded(path, new PdfLoader.Listener() {
             @Override
             public void onLoaded(PdfLoader.PdfSession session) {
@@ -266,6 +297,18 @@ public class ReaderActivity extends AppCompatActivity implements HighlightListen
             }
         });
     }
+
+    private void syncTtsUiWithPlayback(boolean playing) {
+        isSpeaking = playing;
+        if (playing) {
+            getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+            btnTTS.setText(getString(R.string.pref_pause));
+        } else {
+            getWindow().clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+            btnTTS.setText(getString(R.string.pref_play));
+        }
+    }
+
 
     private void useLoadedSession(PdfLoader.PdfSession session) {
         renderer = session.renderer;
@@ -298,6 +341,26 @@ public class ReaderActivity extends AppCompatActivity implements HighlightListen
         return false;
     }
 
+    /**
+     * Request BLUETOOTH_CONNECT permission on API 31+ (Android 12) if not already granted.
+     * This permission is required to connect to Bluetooth headsets for voice communication.
+     */
+    private void ensureBluetoothPermission() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) {
+            return;
+        }
+        if (ContextCompat.checkSelfPermission(
+                this,
+                Manifest.permission.BLUETOOTH_CONNECT
+        ) != PackageManager.PERMISSION_GRANTED) {
+            ActivityCompat.requestPermissions(
+                    this,
+                    new String[]{Manifest.permission.BLUETOOTH_CONNECT},
+                    REQ_BLUETOOTH_CONNECT
+            );
+        }
+    }
+
     private void ensureServiceBound() {
         if (isServiceBound && readerService != null) {
             return;
@@ -313,20 +376,26 @@ public class ReaderActivity extends AppCompatActivity implements HighlightListen
 
     @Override
     public void navForward() {
-        runOnUiThread(this::showNextPage);
+        runOnUiThread(() -> {
+            int page = currentBook.getLastPage();
+            showPageFromService(page);
+        });
     }
 
     @Override
     public void navBackward() {
-        runOnUiThread(this::showPrevPage);
+        runOnUiThread(() -> {
+            int page = currentBook.getLastPage();
+            showPageFromService(page);
+        });
     }
 
     private void showNextPage() {
         int fromPage = currentBook.getLastPage();
         currentBook.setSentence(0);
-        int toPage = fromPage++;
+        int toPage = currentBook.incrementPage();
+        showPage(toPage);
 
-        showPage(currentBook.incrementPage());
         highlightOverlay.clearHighlights();
         DocTellAnalytics.pageChanged(this, currentBook, fromPage, toPage);
         DocTellCrashlytics.setCurrentBookContext(currentBook, toPage);
@@ -335,15 +404,22 @@ public class ReaderActivity extends AppCompatActivity implements HighlightListen
     private void showPrevPage() {
         int fromPage = currentBook.getLastPage();
         currentBook.setSentence(0);
-        int toPage = fromPage--;
+        int toPage = currentBook.decrementPage();
+        showPage(toPage);
 
-        showPage(currentBook.decrementPage());
         highlightOverlay.clearHighlights();
         DocTellAnalytics.pageChanged(this, currentBook, fromPage, toPage);
         DocTellCrashlytics.setCurrentBookContext(currentBook, toPage);
     }
 
+
     private void showPage(int page) {
+        showPageInternal(page, true);
+    }
+    private void showPageFromService(int page) {
+        showPageInternal(page, false);
+    }
+    private void showPageInternal(int page, boolean autoSpeak) {
         if (page < 0 || page >= totalPages) return;
         ttsStartedOnPage = false;
         readerService.setPage(page);
@@ -359,19 +435,18 @@ public class ReaderActivity extends AppCompatActivity implements HighlightListen
                     showLoading(false);
                     pdfImage.setImageBitmap(bmp);
                     pageIndicator.setText((page + 1) + " / " + totalPages);
-                    if (isSpeaking) speakPage();
+                    if (autoSpeak && isSpeaking) {
+                        DocTellAnalytics.autoPageChanged(getApplicationContext(),currentBook,page);
+                        speakPage();
+                    }
                 });
             } catch (IOException e) { /* handle */ }
         });
     }
 
-
     private void toggleTTS() {
         int pageIndex = currentBook.getLastPage();
         if (!isSpeaking) {
-            getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
-            isSpeaking = true;
-            btnTTS.setText(getString(R.string.pref_pause));
             if (!ttsStartedOnPage) {
                 ttsStartedOnPage = true;
                 DocTellAnalytics.readingStarted(this, currentBook, pageIndex);
@@ -383,15 +458,13 @@ public class ReaderActivity extends AppCompatActivity implements HighlightListen
                 }
             }
         } else {
-            getWindow().clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
-            isSpeaking = false;
-            btnTTS.setText(getString(R.string.pref_play));
             if (isServiceBound && readerService != null) {
                 DocTellAnalytics.readingPaused(this, currentBook, pageIndex);
                 readerService.pause();
             }
         }
     }
+
 
     private void speakPage() {
         ensureServiceBound();
@@ -403,10 +476,7 @@ public class ReaderActivity extends AppCompatActivity implements HighlightListen
             return;
         }
         TtsEngineStrategy engine = TtsEngineProvider.getEngine(getApplicationContext());
-        isSpeaking = true;
-        btnTTS.setText(getString(R.string.pref_pause));
         showLoading(true);
-        // let the SERVICE do all heavy work (PDF + TTSBuffer + chunks)
         readerService.startReading(
                 currentBook,
                 engine,
@@ -498,16 +568,8 @@ public class ReaderActivity extends AppCompatActivity implements HighlightListen
     }
 
     @Override
-    public void onPageFinished() {
-        int nextPage = currentBook.getLastPage() + 1;
-        if (nextPage < totalPages) {
-            currentBook.setLastPage(nextPage);
-            currentBook.setSentence(0);
-            showPage(nextPage);
-        } else {
-            isSpeaking = false;
-            runOnUiThread(() -> btnTTS.setText(getString(R.string.pref_play)));
-        }
+    public void onPageFinished() {// not needed
+        // Auto page advance + auto read is now handled in ReaderService.
     }
 
     @Override
@@ -526,6 +588,10 @@ public class ReaderActivity extends AppCompatActivity implements HighlightListen
     protected void onDestroy() {
         BookStorage.updateBook(currentBook, this);
         DocTellCrashlytics.clearBookContext();
+        if (mediaController != null) {
+            mediaController.unregisterCallback(mediaCallback);
+            mediaController = null;
+        }
         if (isServiceBound && readerService != null) {
             readerService.unregisterUiHighlightListener(this);
             readerService.unregisterUiMediaNav(this);

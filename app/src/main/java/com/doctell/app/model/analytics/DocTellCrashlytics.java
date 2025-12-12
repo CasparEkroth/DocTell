@@ -85,5 +85,32 @@ public final class DocTellCrashlytics {
 
         get().recordException(t);
     }
+
+    /**
+     * Generic exception logging for Bluetooth/media control errors.
+     * Use this for non-fatal exceptions that don't fit other categories.
+     */
+    public static void logException(Exception e) {
+        logNonFatal("mediacontrol", e);
+    }
+
+    /**
+     * Helper for logging non-fatal exceptions with an error type.
+     */
+    private static void logNonFatal(String errorType, Exception e) {
+        if (e == null) {
+            return;
+        }
+
+        get().setCustomKey("errorType", errorType);
+
+        String message = e.getMessage();
+        if (message != null && !message.isEmpty()) {
+            get().log(message);
+        }
+
+        get().recordException(e);
+    }
+
 }
 

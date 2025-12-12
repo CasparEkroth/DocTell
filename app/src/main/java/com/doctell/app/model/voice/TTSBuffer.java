@@ -47,15 +47,15 @@ public class TTSBuffer {
 
     public java.util.List<String> getAllSentences() {
         String[] rawSentences = page.split("(?<=[.!?])\\s+");
-        Log.d("TTSBuffer","page content: " + page);
-        Log.d("TTSBuffer","the split meanings:");
+        //Log.d("TTSBuffer","page content: " + page);
+        //Log.d("TTSBuffer","the split meanings:");
         List<String> cleaned = new ArrayList<>();
         for (String s : rawSentences) {
             s = s.trim();
             if (s.isEmpty()) continue;
             s = s.replaceAll("\\s+", " ");
             if(Noise.isNoise(s))continue;
-            Log.d("TTSBuffer","sentence: " + s);
+            //Log.d("TTSBuffer","sentence: " + s);
             cleaned.add(s);
         }
         return cleaned;
