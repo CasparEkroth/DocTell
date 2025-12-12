@@ -15,6 +15,7 @@ import java.io.FileInputStream;
 import java.io.IOException;
 
 public class PdfManager {
+
     private final Context appContext;
     private final String bookLocalPath; // Book.getLocalPath()
 
@@ -35,7 +36,7 @@ public class PdfManager {
         this.pdfRenderer = renderer;
     }
 
-    private void openIfNeeded() throws IOException {
+    private synchronized void openIfNeeded() throws IOException {
         if (pdDocument == null) {
             pdDocument = PDDocument.load(new FileInputStream(bookLocalPath));
         }
@@ -49,7 +50,9 @@ public class PdfManager {
     }
 
     public void ensureOpened() throws IOException{
-        openIfNeeded();
+        synchronized(this){
+            openIfNeeded();
+        }
     }
 
     public synchronized int getPageCount() throws IOException {
@@ -72,7 +75,9 @@ public class PdfManager {
     }
 
     public synchronized void close() {
-        if (pdfRenderer != null) pdfRenderer.close();
+        try {
+            if (pdfRenderer != null) pdfRenderer.close();
+        } catch (Exception ignore) {}
         try {
             if (pdfFd != null) pdfFd.close();
         } catch (IOException ignored) {}

@@ -260,6 +260,7 @@ public class ReaderActivity extends AppCompatActivity implements HighlightListen
 
     private void loadPdfAsync() {
         showLoading(true);
+        if(readerService != null)readerService.pause();
 
         String path = currentBook.getLocalPath();
         PdfLoader loader = PdfLoader.getInstance(getApplicationContext());
