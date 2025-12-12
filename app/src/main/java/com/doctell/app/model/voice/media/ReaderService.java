@@ -14,6 +14,7 @@ import android.graphics.pdf.PdfRenderer;
 import android.media.AudioAttributes;
 import android.media.AudioFocusRequest;
 import android.media.AudioManager;
+import android.media.MediaPlayer;
 import android.net.Uri;
 import android.os.Binder;
 import android.os.Build;
@@ -29,6 +30,7 @@ import android.widget.Toast;
 import androidx.annotation.Nullable;
 import androidx.media.session.MediaButtonReceiver;
 
+import com.doctell.app.R;
 import com.doctell.app.model.analytics.DocTellCrashlytics;
 import com.doctell.app.model.entity.Book;
 import com.doctell.app.model.repository.BookStorage;
@@ -55,6 +57,7 @@ public class ReaderService extends Service implements PlaybackControl, Highlight
     private AudioFocusRequest audioFocusRequest;
     private boolean resumeAfterFocusGain = false;
     private boolean autoReading = false;
+    private MediaPlayer silentPlayer;
     private final AudioManager.OnAudioFocusChangeListener audioFocusChangeListener =
             focusChange -> {
                 switch (focusChange) {
@@ -101,25 +104,21 @@ public class ReaderService extends Service implements PlaybackControl, Highlight
 
             switch (action) {
                 case AudioManager.ACTION_AUDIO_BECOMING_NOISY:
-                    // User unplugged headphones -> PAUSE immediately
-                    Log.d("ReaderService", "Headphones unplugged (Noisy) -> Pausing");
+                    Log.d("ReaderService", "Headphones unplugged -> Pausing");
                     pause();
                     break;
-
                 case android.bluetooth.BluetoothDevice.ACTION_ACL_CONNECTED:
                 case android.media.AudioManager.ACTION_HEADSET_PLUG:
-                    // Headset connected (Bluetooth or Wired) -> REFRESH SESSION
-                    // This ensures the headset 'grabs' our app as the active media player
-                    Log.d("ReaderService", "Headset connected -> Refreshing MediaSession");
+                    Log.d("ReaderService", "Headset connected -> Reclaiming Priority");
                     if (mediaController != null) {
                         mediaController.refreshSession();
                     }
-                    if (autoReading) play();
+                    if (autoReading) {
+                        play();
+                    }
                     break;
-
                 case android.bluetooth.BluetoothDevice.ACTION_ACL_DISCONNECTED:
-                    // Bluetooth disconnected. 'Noisy' usually catches this, but this is a backup.
-                    Log.d("ReaderService", "Bluetooth disconnected");
+                    Log.d("ReaderService", "Headset disconnected");
                     pause();
                     break;
             }
@@ -269,6 +268,7 @@ public class ReaderService extends Service implements PlaybackControl, Highlight
             unregisterReceiver(headsetMonitor);
         }catch (Exception ignored){/*Receiver might not be registered*/}
         abandonAudioFocus();
+        stopSilentAudio();
         onReadingPositionChanged();
         super.onDestroy();
         Log.d("ReaderService", "onDestroy");
@@ -294,6 +294,7 @@ public class ReaderService extends Service implements PlaybackControl, Highlight
 
     @Override
     public void onTaskRemoved(Intent rootIntent) {
+        /*
         if (readerController != null && mediaController != null) {
             boolean isPlaying = mediaController.getMediaSession().getController().getPlaybackState().getState()
                     == android.support.v4.media.session.PlaybackStateCompat.STATE_PLAYING;
@@ -303,6 +304,7 @@ public class ReaderService extends Service implements PlaybackControl, Highlight
                 stopSelf();
             }
         }
+         */
         super.onTaskRemoved(rootIntent);
     }
 
@@ -323,6 +325,7 @@ public class ReaderService extends Service implements PlaybackControl, Highlight
             Log.d("ReaderService","play was entered");
             autoReading = true;
             requestAudioFocus();
+            startSilentAudio();
             if (mediaController != null && mediaController.getMediaSession() != null) {
                 mediaController.getMediaSession().setActive(true);
             }
@@ -337,12 +340,16 @@ public class ReaderService extends Service implements PlaybackControl, Highlight
         safeExecuteAction(()-> {
             Log.d("ReaderService","pause was entered");
             autoReading = false;
+            stopSilentAudio();
             if (mediaController != null && mediaController.getMediaSession() != null) {
-
                 mediaController.getMediaSession().setActive(true);
             }
-            if (readerController != null)
+            if (readerController != null){
                 readerController.pause();
+                Notification n = mediaController.buildNotification();
+                startForeground(ReaderMediaController.NOTIFICATION_ID, n);
+            }
+
         });
     }
     @Override
@@ -350,6 +357,7 @@ public class ReaderService extends Service implements PlaybackControl, Highlight
         safeExecuteAction(()-> {
             Log.d("ReaderService","stop was entered");
             autoReading = false;
+            stopSilentAudio();
             if (readerController != null)
                 readerController.stop();
             abandonAudioFocus();
@@ -391,6 +399,7 @@ public class ReaderService extends Service implements PlaybackControl, Highlight
 
             } catch (IOException e) {
                 Log.e("ReaderService", "next(): getPageCount failed", e);
+                DocTellCrashlytics.logPdfError(currentBook, currentBook.getLastPage(), "render_page", e);
             }
         });
     }
@@ -522,7 +531,30 @@ public class ReaderService extends Service implements PlaybackControl, Highlight
         }
     }
 
+    private void startSilentAudio() {
+        if (silentPlayer == null) {
+            silentPlayer = MediaPlayer.create(this, R.raw.silence_1s); // 1s silent WAV
+            silentPlayer.setLooping(true);
+            silentPlayer.setVolume(0f, 0f);
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+                silentPlayer.setAudioAttributes(
+                        new AudioAttributes.Builder()
+                                .setUsage(AudioAttributes.USAGE_MEDIA)
+                                .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
+                                .build()
+                );
+            }
+        }
+        if (!silentPlayer.isPlaying()) {
+            silentPlayer.start();
+        }
+    }
 
+    private void stopSilentAudio() {
+        if (silentPlayer != null && silentPlayer.isPlaying()) {
+            silentPlayer.pause();
+        }
+    }
     public void initBook(Book book, PDDocument doc, ParcelFileDescriptor pdf, PdfRenderer renderer) {
         Context appCtx = getApplicationContext();
         if (book != null) {
@@ -568,6 +600,7 @@ public class ReaderService extends Service implements PlaybackControl, Highlight
                              ParcelFileDescriptor pfd,
                              PdfRenderer renderer) {
         requestAudioFocus();
+        startSilentAudio();
         autoReading = true;
         currentBook = book;
         Context appCtx = getApplicationContext();
