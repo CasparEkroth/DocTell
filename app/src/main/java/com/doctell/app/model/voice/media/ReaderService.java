@@ -14,6 +14,7 @@ import android.graphics.pdf.PdfRenderer;
 import android.media.AudioAttributes;
 import android.media.AudioFocusRequest;
 import android.media.AudioManager;
+import android.media.MediaPlayer;
 import android.net.Uri;
 import android.os.Binder;
 import android.os.Build;
@@ -29,6 +30,7 @@ import android.widget.Toast;
 import androidx.annotation.Nullable;
 import androidx.media.session.MediaButtonReceiver;
 
+import com.doctell.app.R;
 import com.doctell.app.model.analytics.DocTellCrashlytics;
 import com.doctell.app.model.entity.Book;
 import com.doctell.app.model.repository.BookStorage;
@@ -55,6 +57,7 @@ public class ReaderService extends Service implements PlaybackControl, Highlight
     private AudioFocusRequest audioFocusRequest;
     private boolean resumeAfterFocusGain = false;
     private boolean autoReading = false;
+    private MediaPlayer silentPlayer;
     private final AudioManager.OnAudioFocusChangeListener audioFocusChangeListener =
             focusChange -> {
                 switch (focusChange) {
@@ -265,6 +268,7 @@ public class ReaderService extends Service implements PlaybackControl, Highlight
             unregisterReceiver(headsetMonitor);
         }catch (Exception ignored){/*Receiver might not be registered*/}
         abandonAudioFocus();
+        stopSilentAudio();
         onReadingPositionChanged();
         super.onDestroy();
         Log.d("ReaderService", "onDestroy");
@@ -321,6 +325,7 @@ public class ReaderService extends Service implements PlaybackControl, Highlight
             Log.d("ReaderService","play was entered");
             autoReading = true;
             requestAudioFocus();
+            startSilentAudio();
             if (mediaController != null && mediaController.getMediaSession() != null) {
                 mediaController.getMediaSession().setActive(true);
             }
@@ -335,6 +340,7 @@ public class ReaderService extends Service implements PlaybackControl, Highlight
         safeExecuteAction(()-> {
             Log.d("ReaderService","pause was entered");
             autoReading = false;
+            stopSilentAudio();
             if (mediaController != null && mediaController.getMediaSession() != null) {
                 mediaController.getMediaSession().setActive(true);
             }
@@ -351,6 +357,7 @@ public class ReaderService extends Service implements PlaybackControl, Highlight
         safeExecuteAction(()-> {
             Log.d("ReaderService","stop was entered");
             autoReading = false;
+            stopSilentAudio();
             if (readerController != null)
                 readerController.stop();
             abandonAudioFocus();
@@ -524,7 +531,30 @@ public class ReaderService extends Service implements PlaybackControl, Highlight
         }
     }
 
+    private void startSilentAudio() {
+        if (silentPlayer == null) {
+            silentPlayer = MediaPlayer.create(this, R.raw.silence_1s); // 1s silent WAV
+            silentPlayer.setLooping(true);
+            silentPlayer.setVolume(0f, 0f);
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+                silentPlayer.setAudioAttributes(
+                        new AudioAttributes.Builder()
+                                .setUsage(AudioAttributes.USAGE_MEDIA)
+                                .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
+                                .build()
+                );
+            }
+        }
+        if (!silentPlayer.isPlaying()) {
+            silentPlayer.start();
+        }
+    }
 
+    private void stopSilentAudio() {
+        if (silentPlayer != null && silentPlayer.isPlaying()) {
+            silentPlayer.pause();
+        }
+    }
     public void initBook(Book book, PDDocument doc, ParcelFileDescriptor pdf, PdfRenderer renderer) {
         Context appCtx = getApplicationContext();
         if (book != null) {
@@ -570,6 +600,7 @@ public class ReaderService extends Service implements PlaybackControl, Highlight
                              ParcelFileDescriptor pfd,
                              PdfRenderer renderer) {
         requestAudioFocus();
+        startSilentAudio();
         autoReading = true;
         currentBook = book;
         Context appCtx = getApplicationContext();
