@@ -12,6 +12,7 @@ import android.support.v4.media.MediaMetadataCompat;
 import android.support.v4.media.session.MediaSessionCompat;
 import android.support.v4.media.session.PlaybackStateCompat;
 import android.util.Log;
+import android.view.KeyEvent;
 
 import androidx.core.app.NotificationCompat;
 import androidx.media.session.MediaButtonReceiver;
@@ -50,16 +51,14 @@ public class ReaderMediaController {
                 MediaSessionCompat.FLAG_HANDLES_MEDIA_BUTTONS
                         | MediaSessionCompat.FLAG_HANDLES_TRANSPORT_CONTROLS
         );
-        Intent mediaButtonIntent = new Intent(Intent.ACTION_MEDIA_BUTTON);
-        mediaButtonIntent.setClass(context, androidx.media.session.MediaButtonReceiver.class);
 
-        PendingIntent mediaButtonPendingIntent = PendingIntent.getBroadcast(
+        Intent mediaButtonIntent = new Intent(Intent.ACTION_MEDIA_BUTTON);
+        mediaButtonIntent.setClass(context, ReaderService.class);
+        PendingIntent mediaButtonPendingIntent = PendingIntent.getService(
                 context,
                 0,
                 mediaButtonIntent,
-                PendingIntent.FLAG_IMMUTABLE // required for Android 12+
-        );
-
+                PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT);
         mediaSession.setMediaButtonReceiver(mediaButtonPendingIntent);
         mediaSession.setActive(true);
         // This is what the system media player talks to:
@@ -103,6 +102,28 @@ public class ReaderMediaController {
                 playbackControl.stop();
                 stop();
             }
+
+            @Override
+            public boolean onMediaButtonEvent(Intent intent) {
+                if (intent != null && Intent.ACTION_MEDIA_BUTTON.equals(intent.getAction())) {
+                    KeyEvent event = intent.getParcelableExtra(Intent.EXTRA_KEY_EVENT);
+                    if (event != null && event.getAction() == KeyEvent.ACTION_DOWN) {
+                        int code = event.getKeyCode();
+                        if (code == KeyEvent.KEYCODE_HEADSETHOOK ||
+                                code == KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE ||
+                                code == KeyEvent.KEYCODE_MEDIA_PLAY ||
+                                code == KeyEvent.KEYCODE_MEDIA_PAUSE) {
+                            if (isPlaying) {
+                                onPause();
+                            } else {
+                                onPlay();
+                            }
+                            return true;
+                        }
+                    }
+                }
+                return super.onMediaButtonEvent(intent);
+            }
         });
 
         mediaSession.setActive(true);
@@ -135,7 +156,6 @@ public class ReaderMediaController {
 
     private void updateMediaSession() {
         if (mediaSession == null) return;
-        Log.d(TAG, "updating media session");
         String title = (currentSentence != null && !currentSentence.isEmpty())
                 ? currentSentence : "DocTell is reading";
         MediaMetadataCompat.Builder metaBuilder = new MediaMetadataCompat.Builder()
@@ -161,10 +181,8 @@ public class ReaderMediaController {
 
         mediaSession.setPlaybackState(playbackState);
 
-        if (isPlaying) {
-            if (!mediaSession.isActive()) {
-                mediaSession.setActive(true);
-            }
+        if (!mediaSession.isActive()) {
+            mediaSession.setActive(true);
         }
     }
 
@@ -174,7 +192,7 @@ public class ReaderMediaController {
         notificationManager.notify(NOTIFICATION_ID, n);
     }
 
-    private Notification buildNotification() {
+    Notification buildNotification() {
         Intent openAppIntent = new Intent(context, ReaderActivity.class);
         PendingIntent contentIntent = PendingIntent.getActivity(
                 context, 0, openAppIntent,

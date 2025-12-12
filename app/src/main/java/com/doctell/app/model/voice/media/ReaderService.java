@@ -101,25 +101,21 @@ public class ReaderService extends Service implements PlaybackControl, Highlight
 
             switch (action) {
                 case AudioManager.ACTION_AUDIO_BECOMING_NOISY:
-                    // User unplugged headphones -> PAUSE immediately
-                    Log.d("ReaderService", "Headphones unplugged (Noisy) -> Pausing");
+                    Log.d("ReaderService", "Headphones unplugged -> Pausing");
                     pause();
                     break;
-
                 case android.bluetooth.BluetoothDevice.ACTION_ACL_CONNECTED:
                 case android.media.AudioManager.ACTION_HEADSET_PLUG:
-                    // Headset connected (Bluetooth or Wired) -> REFRESH SESSION
-                    // This ensures the headset 'grabs' our app as the active media player
-                    Log.d("ReaderService", "Headset connected -> Refreshing MediaSession");
+                    Log.d("ReaderService", "Headset connected -> Reclaiming Priority");
                     if (mediaController != null) {
                         mediaController.refreshSession();
                     }
-                    if (autoReading) play();
+                    if (autoReading) {
+                        play();
+                    }
                     break;
-
                 case android.bluetooth.BluetoothDevice.ACTION_ACL_DISCONNECTED:
-                    // Bluetooth disconnected. 'Noisy' usually catches this, but this is a backup.
-                    Log.d("ReaderService", "Bluetooth disconnected");
+                    Log.d("ReaderService", "Headset disconnected");
                     pause();
                     break;
             }
@@ -294,6 +290,7 @@ public class ReaderService extends Service implements PlaybackControl, Highlight
 
     @Override
     public void onTaskRemoved(Intent rootIntent) {
+        /*
         if (readerController != null && mediaController != null) {
             boolean isPlaying = mediaController.getMediaSession().getController().getPlaybackState().getState()
                     == android.support.v4.media.session.PlaybackStateCompat.STATE_PLAYING;
@@ -303,6 +300,7 @@ public class ReaderService extends Service implements PlaybackControl, Highlight
                 stopSelf();
             }
         }
+         */
         super.onTaskRemoved(rootIntent);
     }
 
@@ -338,11 +336,14 @@ public class ReaderService extends Service implements PlaybackControl, Highlight
             Log.d("ReaderService","pause was entered");
             autoReading = false;
             if (mediaController != null && mediaController.getMediaSession() != null) {
-
                 mediaController.getMediaSession().setActive(true);
             }
-            if (readerController != null)
+            if (readerController != null){
                 readerController.pause();
+                Notification n = mediaController.buildNotification();
+                startForeground(ReaderMediaController.NOTIFICATION_ID, n);
+            }
+
         });
     }
     @Override
@@ -391,6 +392,7 @@ public class ReaderService extends Service implements PlaybackControl, Highlight
 
             } catch (IOException e) {
                 Log.e("ReaderService", "next(): getPageCount failed", e);
+                DocTellCrashlytics.logPdfError(currentBook, currentBook.getLastPage(), "render_page", e);
             }
         });
     }

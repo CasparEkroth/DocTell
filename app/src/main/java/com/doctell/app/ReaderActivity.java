@@ -21,6 +21,7 @@ import android.support.v4.media.session.MediaControllerCompat;
 import android.support.v4.media.session.MediaSessionCompat;
 import android.support.v4.media.session.PlaybackStateCompat;
 import android.util.Log;
+import android.view.KeyEvent;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.WindowManager;
@@ -321,6 +322,22 @@ public class ReaderActivity extends AppCompatActivity implements HighlightListen
         bindService(intent, serviceConnection, BIND_AUTO_CREATE);
 
         showLoading(false);
+    }
+
+    @Override
+    public boolean onKeyDown(int keyCode, KeyEvent event) {
+        Log.e("ReaderActivity", "new keyEvent=" + event.toString() + " keyCode=" + keyCode);
+        if (event.getAction() == KeyEvent.ACTION_DOWN) {
+            switch (keyCode) {
+                case KeyEvent.KEYCODE_MEDIA_PLAY:
+                case KeyEvent.KEYCODE_MEDIA_PAUSE:
+                case KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE:
+                case KeyEvent.KEYCODE_HEADSETHOOK:
+                    toggleTTS();
+                    return true;
+            }
+        }
+        return super.onKeyDown(keyCode, event);
     }
 
     private boolean ensureNotificationPermission() {

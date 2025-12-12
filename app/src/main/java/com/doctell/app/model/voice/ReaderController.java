@@ -185,7 +185,6 @@ public class ReaderController implements TtsEngineListener, PlaybackControl {
     @Override
     public void play() {
         Log.d("ReaderController", "play - isPaused=" + isPaused);
-
         if (isPaused) {
             resumeReading();
         } else if (chunks != null && !chunks.isEmpty()) {
