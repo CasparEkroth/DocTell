@@ -33,6 +33,7 @@ import androidx.media.session.MediaButtonReceiver;
 import com.doctell.app.R;
 import com.doctell.app.model.analytics.DocTellCrashlytics;
 import com.doctell.app.model.entity.Book;
+import com.doctell.app.model.pdf.PageLifecycleManager;
 import com.doctell.app.model.repository.BookStorage;
 import com.doctell.app.model.pdf.PdfManager;
 import com.doctell.app.model.pdf.PdfPreviewHelper;
@@ -58,6 +59,7 @@ public class ReaderService extends Service implements PlaybackControl, Highlight
     private boolean resumeAfterFocusGain = false;
     private boolean autoReading = false;
     private MediaPlayer silentPlayer;
+    private PageLifecycleManager pageLifecycleManager;
     private final AudioManager.OnAudioFocusChangeListener audioFocusChangeListener =
             focusChange -> {
                 switch (focusChange) {
@@ -203,6 +205,7 @@ public class ReaderService extends Service implements PlaybackControl, Highlight
         createNotificationChannel();
 
         mediaController = new ReaderMediaController(this, this);
+        pageLifecycleManager = new PageLifecycleManager();
 
         Notification notification = mediaController.buildInitialNotification();
         startForeground(ReaderMediaController.NOTIFICATION_ID, notification);
@@ -294,17 +297,6 @@ public class ReaderService extends Service implements PlaybackControl, Highlight
 
     @Override
     public void onTaskRemoved(Intent rootIntent) {
-        /*
-        if (readerController != null && mediaController != null) {
-            boolean isPlaying = mediaController.getMediaSession().getController().getPlaybackState().getState()
-                    == android.support.v4.media.session.PlaybackStateCompat.STATE_PLAYING;
-
-            if (!isPlaying) {
-                stopForeground(true);
-                stopSelf();
-            }
-        }
-         */
         super.onTaskRemoved(rootIntent);
     }
 
@@ -519,7 +511,9 @@ public class ReaderService extends Service implements PlaybackControl, Highlight
         return START_STICKY;
     }
 
-
+    public PageLifecycleManager getPageLifecycleManager() {
+        return pageLifecycleManager;
+    }
     private void safeExecuteAction(Runnable action) {
         try {
             if (action != null) {

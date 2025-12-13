@@ -42,6 +42,7 @@ import com.doctell.app.model.analytics.DocTellAnalytics;
 import com.doctell.app.model.analytics.DocTellCrashlytics;
 import com.doctell.app.model.entity.ChapterItem;
 import com.doctell.app.model.entity.Book;
+import com.doctell.app.model.pdf.PageLifecycleManager;
 import com.doctell.app.model.repository.BookStorage;
 import com.doctell.app.model.utils.ChapterLoader;
 import com.doctell.app.model.pdf.PdfLoader;
@@ -436,13 +437,23 @@ public class ReaderActivity extends AppCompatActivity implements HighlightListen
     private void showPageFromService(int page) {
         showPageInternal(page, false);
     }
+
     private void showPageInternal(int page, boolean autoSpeak) {
         if (page < 0 || page >= totalPages) return;
+        if (!isServiceBound || readerService == null) {
+            Log.w("ReaderActivity", "Service not bound, cannot load page");
+            return;
+        }
+        PageLifecycleManager pageManager = readerService.getPageLifecycleManager();
+        if (!pageManager.canStartPageLoad(page)) {
+            Log.w("ReaderActivity", "Page load blocked: " + pageManager.getStateString());
+            return;
+        }
+        pageManager.startPageLoad(page);
         ttsStartedOnPage = false;
         readerService.setPage(page);
-
         showLoading(true);
-        Executors.newSingleThreadExecutor().execute(() -> {
+        exec.execute(() -> {
             try {
                 Bitmap bmp = readerService.getPageBitmap(
                         pdfImage.getResources().getDisplayMetrics(),
@@ -450,14 +461,23 @@ public class ReaderActivity extends AppCompatActivity implements HighlightListen
                 );
                 runOnUiThread(() -> {
                     showLoading(false);
+                    if (!pageManager.isCurrentPage(page)) {
+                        Log.w("ReaderActivity", "Page changed during render, skipping UI update");
+                        return;
+                    }
                     pdfImage.setImageBitmap(bmp);
                     pageIndicator.setText((page + 1) + " / " + totalPages);
+                    pageManager.markPageReady(page);
                     if (autoSpeak && isSpeaking) {
-                        DocTellAnalytics.autoPageChanged(getApplicationContext(),currentBook,page);
+                        DocTellAnalytics.autoPageChanged(getApplicationContext(), currentBook, page);
                         speakPage();
                     }
                 });
-            } catch (IOException e) { /* handle */ }
+            } catch (IOException e) {
+                Log.e("ReaderActivity", "Failed to render page", e);
+                pageManager.resetToIdle();
+                runOnUiThread(() -> showLoading(false));
+            }
         });
     }
 
@@ -544,6 +564,17 @@ public class ReaderActivity extends AppCompatActivity implements HighlightListen
     // ---- HighlightListener callbacks ----
     @Override
     public void onChunkStart(int index, String text) {
+        if (!isServiceBound || readerService == null) {
+            return;
+        }
+        PageLifecycleManager pageManager = readerService.getPageLifecycleManager();
+        int currentPage = currentBook.getLastPage();
+        if (!pageManager.canProcessChunkStart(currentPage, index)) {
+            Log.d("ReaderActivity", "Orphaned chunk dropped: page=" + currentPage +
+                    ", chunk=" + index + ". " + pageManager.getStateString());
+            return;
+        }
+        pageManager.startSpeakingChunk(currentPage, index);
         BitmapDrawable drawable = (BitmapDrawable) pdfImage.getDrawable();
         if (drawable == null) return;
         Bitmap bitmap = drawable.getBitmap();
@@ -551,9 +582,9 @@ public class ReaderActivity extends AppCompatActivity implements HighlightListen
 
         int bmpW = bitmap.getWidth();
         int bmpH = bitmap.getHeight();
-
         int pageW, pageH;
         PdfRenderer.Page page = null;
+
         try {
             page = renderer.openPage(currentBook.getLastPage());
             pageW = page.getWidth();
@@ -563,29 +594,33 @@ public class ReaderActivity extends AppCompatActivity implements HighlightListen
                 page.close();
             }
         }
-
         List<RectF> rects = PdfPreviewHelper.getRectsForSentence(
                 doc, currentBook.getLastPage(), text, bmpW, bmpH, pageW, pageH
         );
-
         for (RectF r : rects) {
             r.offset(0, -r.height());
         }
-
         currentBook.setSentence(index);
         highlightOverlay.setHighlights(rects);
     }
 
-
     @Override
     public void onChunkDone(int index, String text) {
+        if (isServiceBound && readerService != null) {
+            PageLifecycleManager pageManager = readerService.getPageLifecycleManager();
+            pageManager.finishSpeakingChunk(currentBook.getLastPage(), index);
+        }
         currentBook.setSentence(index);
         BookStorage.updateBook(currentBook, this);
         highlightOverlay.clearHighlights();
     }
 
     @Override
-    public void onPageFinished() {// not needed
+    public void onPageFinished() {
+        if (isServiceBound && readerService != null) {
+            PageLifecycleManager pageManager = readerService.getPageLifecycleManager();
+            pageManager.finishPage(currentBook.getLastPage());
+        }
         // Auto page advance + auto read is now handled in ReaderService.
     }
 
