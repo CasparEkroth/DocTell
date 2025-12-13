@@ -6,6 +6,8 @@ import android.os.Bundle;
 import com.google.firebase.analytics.FirebaseAnalytics;
 import com.doctell.app.model.entity.Book;
 
+import java.util.List;
+
 public class DocTellAnalytics {
 
     private DocTellAnalytics(){}
@@ -87,5 +89,20 @@ public class DocTellAnalytics {
         b.putString("book_id", bookId(book));
         b.putInt("to_page", toPage);
         get(ctx).logEvent("auto_page_changed", b);
+    }
+
+    public static void updatedBooks(Context ctx, Book book){
+        Bundle b = new Bundle();
+        b.putString("book_id", bookId(book));
+        get(ctx).logEvent("updated_book_storage", b);
+    }
+
+    public static void loadLibrary(Context ctx, List<Book> books){
+        Bundle b = new Bundle();
+        b.putInt("total_number_of_books", books.size());
+        for(int i = 0; i < books.size(); i++){
+            b.putString("book_id_" + i, bookId(books.get(i)));
+        }
+        get(ctx).logEvent("load_library", b);
     }
 }
