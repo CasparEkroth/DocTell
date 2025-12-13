@@ -5,6 +5,7 @@ import android.content.SharedPreferences;
 import android.net.Uri;
 import android.util.Log;
 
+import com.doctell.app.model.analytics.DocTellAnalytics;
 import com.doctell.app.model.entity.Book;
 
 import java.io.FileNotFoundException;
@@ -77,11 +78,16 @@ public class BookStorage {
 
         booksCache.clear();
         booksCache.addAll(list);
+        DocTellAnalytics.loadLibrary(ctx,list);
         return list;
     }
 
 
     public static boolean updateBook(Book updated, Context ctx) {
+        if (updated == null) {
+            Log.w("BookStorage", "updateBook called with null Book");
+            return false;
+        }
         for (int i = 0; i < booksCache.size(); i++) {
             Book b = booksCache.get(i);
             if (b.getUri().equals(updated.getUri())) {
@@ -95,6 +101,7 @@ public class BookStorage {
                 }
 
                 saveBooks(ctx, booksCache);
+                DocTellAnalytics.updatedBooks(ctx, updated);
                 return true;
             }
         }

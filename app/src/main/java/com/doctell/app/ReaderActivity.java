@@ -591,19 +591,25 @@ public class ReaderActivity extends AppCompatActivity implements HighlightListen
 
     @Override
     protected void onPause() {
-        BookStorage.updateBook(currentBook, this);
+        if (currentBook != null) {
+            BookStorage.updateBook(currentBook, this);
+        }
         super.onPause();
     }
 
     @Override
     protected void onStop() {
-        BookStorage.updateBook(currentBook, this);
+        if (currentBook != null) {
+            BookStorage.updateBook(currentBook, this);
+        }
         super.onStop();
     }
 
     @Override
     protected void onDestroy() {
-        BookStorage.updateBook(currentBook, this);
+        if (currentBook != null) {
+            BookStorage.updateBook(currentBook, this);
+        }
         DocTellCrashlytics.clearBookContext();
         if (mediaController != null) {
             mediaController.unregisterCallback(mediaCallback);
