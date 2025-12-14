@@ -598,22 +598,37 @@ public class ReaderService extends Service implements PlaybackControl, Highlight
         autoReading = true;
         currentBook = book;
         Context appCtx = getApplicationContext();
+
         if (pdfManager == null) {
-            pdfManager = new PdfManager(appCtx, currentBook.getLocalPath(),doc, pfd, renderer);
+            pdfManager = new PdfManager(appCtx, currentBook.getLocalPath(), doc, pfd, renderer);
         }
-        if(coverOfBook != null)
+
+        if (coverOfBook != null)
             mediaController.setCover(coverOfBook);
 
         executor.execute(() -> {
             try {
                 String text = pdfManager.getPageText(currentBook.getLastPage());
-
                 TTSBuffer buffer = TTSBuffer.getInstance();
                 buffer.setPage(text);
                 List<String> chunks = buffer.getAllSentences();
+
+                if (chunks == null || chunks.isEmpty()) {
+                    Log.w("ReaderService", "No text found on page " + currentBook.getLastPage());
+                    mainHandler.post(() -> {
+                        Toast.makeText(appCtx,
+                                "No readable text found on this page",
+                                Toast.LENGTH_SHORT).show();
+                        autoReading = false;
+                        stopSilentAudio();
+                    });
+                    return;
+                }
+
                 int startSentence = currentBook.getSentence();
 
                 mainHandler.post(() -> {
+                    // Initialize controller if needed
                     if (readerController == null) {
                         readerController = new ReaderController(
                                 engine,
@@ -622,12 +637,11 @@ public class ReaderService extends Service implements PlaybackControl, Highlight
                                 appCtx,
                                 uiMediaNav
                         );
-
                         readerController.setMediaController(mediaController);
                     } else {
                         readerController.setChunks(chunks, startSentence);
                     }
-                    readerController.setChunks(chunks, startSentence);
+                    Log.d("ReaderService", "Starting reading with " + chunks.size() + " chunks");
                     readerController.startReading();
 
                     Notification n = mediaController.buildInitialNotification();
@@ -640,10 +654,17 @@ public class ReaderService extends Service implements PlaybackControl, Highlight
             } catch (IOException e) {
                 e.printStackTrace();
                 DocTellCrashlytics.logPdfError(currentBook, currentBook.getLastPage(), "render_page", e);
-                // TODO: maybe notify UI or show a Toast via a callback
+                mainHandler.post(() -> {
+                    Toast.makeText(appCtx,
+                            "Failed to read page text",
+                            Toast.LENGTH_SHORT).show();
+                    autoReading = false;
+                    stopSilentAudio();
+                });
             }
         });
     }
+
 
 
 }

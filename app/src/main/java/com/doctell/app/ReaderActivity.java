@@ -484,6 +484,10 @@ public class ReaderActivity extends AppCompatActivity implements HighlightListen
     private void toggleTTS() {
         int pageIndex = currentBook.getLastPage();
         if (!isSpeaking) {
+            if (!ensureNotificationPermission()) {
+                return;
+            }
+            showLoading(true);
             if (!ttsStartedOnPage) {
                 ttsStartedOnPage = true;
                 DocTellAnalytics.readingStarted(this, currentBook, pageIndex);
@@ -493,6 +497,9 @@ public class ReaderActivity extends AppCompatActivity implements HighlightListen
                     DocTellAnalytics.readingResumed(this, currentBook, pageIndex);
                     readerService.play();
                 }
+                new Handler(Looper.getMainLooper()).postDelayed(() -> {
+                    showLoading(false);
+                }, 500);
             }
         } else {
             if (isServiceBound && readerService != null) {
