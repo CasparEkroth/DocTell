@@ -1,10 +1,17 @@
-package com.doctell.app.model;
+package com.doctell.app.model.entity;
 
 import androidx.annotation.NonNull;
 
 public enum Prefs {
 
-    DOCTELL_PREFS,TTS_SPEED,LANG,ENGINE,SORT_INDEX,ANALYTICS_ENABLED, CRASHLYTICS_ENABLED;
+    DOCTELL_PREFS,
+    TTS_SPEED,
+    LANG,
+    ENGINE,
+    SORT_INDEX,
+    ANALYTICS_ENABLED,
+    CRASHLYTICS_ENABLED,
+    PERMISSIONS_ON_START;
 
     @NonNull
     @Override
@@ -18,6 +25,7 @@ public enum Prefs {
              case SORT_INDEX: s = "book_sort_index"; break;
              case ANALYTICS_ENABLED: s = "firebase_analytics_enabled"; break;
              case CRASHLYTICS_ENABLED: s = "firebase_crashlytics_enabled"; break;
+             case PERMISSIONS_ON_START: s = "permissions_shown"; break;
         };
          return s;
     }

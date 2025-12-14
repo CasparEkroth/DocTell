@@ -1,5 +1,6 @@
 package com.doctell.app;
 
+import android.annotation.SuppressLint;
 import android.app.AlertDialog;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
@@ -25,13 +26,14 @@ import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowCompat;
 import androidx.core.view.WindowInsetsCompat;
 
-import com.doctell.app.model.Prefs;
+import com.doctell.app.model.entity.Prefs;
 import com.doctell.app.model.analytics.DocTellAnalytics;
 import com.doctell.app.model.analytics.DocTellCrashlytics;
 import com.doctell.app.model.entity.Book;
 import com.doctell.app.model.repository.BookStorage;
 import com.doctell.app.model.pdf.PdfPreviewHelper;
 import com.doctell.app.model.utils.BookSorter;
+import com.doctell.app.model.utils.PermissionHelper;
 import com.doctell.app.model.voice.LocalTtsEngine;
 import com.doctell.app.model.voice.TtsEngineStrategy;
 import com.doctell.app.view.ItemView;
@@ -71,7 +73,7 @@ public class MainActivity extends AppCompatActivity {
         selectedSortIndex = BookSorter.getIndex();
         refreshGrid();
         engine = LocalTtsEngine.getInstance(getApplicationContext());
-
+        askForPermissions();
         setPremonitionsForAnalytics();
 
         getOnBackPressedDispatcher().addCallback(this, new OnBackPressedCallback(true) {
@@ -298,6 +300,16 @@ public class MainActivity extends AppCompatActivity {
         DocTellAnalytics.setEnable(getApplicationContext(),
                 prefs.getBoolean(Prefs.ANALYTICS_ENABLED.toString(), true));
         DocTellCrashlytics.setEnabled(prefs.getBoolean(Prefs.CRASHLYTICS_ENABLED.toString(),true));
+    }
+
+    @SuppressLint("CommitPrefEdits")
+    private void askForPermissions(){
+        SharedPreferences prefs = getSharedPreferences(Prefs.DOCTELL_PREFS.toString(), MODE_PRIVATE);
+        boolean shown = prefs.getBoolean(Prefs.PERMISSIONS_ON_START.toString(),false);
+        if(shown)return;
+        PermissionHelper.ensureNotificationPermission(this, this);
+        PermissionHelper.ensureBluetoothPermission(this, this);
+        prefs.edit().putBoolean(Prefs.PERMISSIONS_ON_START.toString(), true).apply();
     }
 
     @Override

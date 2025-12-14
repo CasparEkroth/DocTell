@@ -6,6 +6,7 @@ import android.media.AudioManager;
 import android.util.Log;
 import android.widget.Toast;
 
+import com.doctell.app.model.utils.PermissionHelper;
 import com.doctell.app.model.voice.media.PlaybackControl;
 import com.doctell.app.model.voice.media.ReaderMediaController;
 
@@ -187,6 +188,9 @@ public class ReaderController implements TtsEngineListener, PlaybackControl {
     @Override
     public void play() {
         Log.d("ReaderController", "play - isPaused=" + isPaused);
+        if (!PermissionHelper.cheekNotificationPermission(ctx)) {
+            return;
+        }
         if (chunks == null || chunks.isEmpty()) {
             Log.w("ReaderController", "play() called but no chunks loaded");
             Toast.makeText(ctx,

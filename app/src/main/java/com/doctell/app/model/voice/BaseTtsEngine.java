@@ -10,9 +10,8 @@ import android.speech.tts.TextToSpeech;
 import android.speech.tts.UtteranceProgressListener;
 import android.speech.tts.Voice;
 import android.util.Log;
-import android.widget.Toast;
 
-import com.doctell.app.model.Prefs;
+import com.doctell.app.model.entity.Prefs;
 import com.doctell.app.model.voice.notPublic.TtsEngineType;
 
 import java.util.Locale;

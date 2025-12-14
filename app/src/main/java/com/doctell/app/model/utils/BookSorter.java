@@ -3,7 +3,7 @@ package com.doctell.app.model.utils;
 import android.content.Context;
 import android.content.SharedPreferences;
 
-import com.doctell.app.model.Prefs;
+import com.doctell.app.model.entity.Prefs;
 import com.doctell.app.model.entity.Book;
 import com.doctell.app.model.entity.SortOn;
 

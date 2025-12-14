@@ -37,6 +37,7 @@ import com.doctell.app.model.pdf.PageLifecycleManager;
 import com.doctell.app.model.repository.BookStorage;
 import com.doctell.app.model.pdf.PdfManager;
 import com.doctell.app.model.pdf.PdfPreviewHelper;
+import com.doctell.app.model.utils.PermissionHelper;
 import com.doctell.app.model.voice.HighlightListener;
 import com.doctell.app.model.voice.ReaderController;
 import com.doctell.app.model.voice.TTSBuffer;
@@ -210,13 +211,14 @@ public class ReaderService extends Service implements PlaybackControl, Highlight
         Notification notification = mediaController.buildInitialNotification();
         startForeground(ReaderMediaController.NOTIFICATION_ID, notification);
 
-        IntentFilter filter = new IntentFilter();
-        filter.addAction(AudioManager.ACTION_AUDIO_BECOMING_NOISY);
-        filter.addAction(AudioManager.ACTION_HEADSET_PLUG);
-        // Note: This requires BLUETOOTH_CONNECT permission on Android 12+
-        filter.addAction(android.bluetooth.BluetoothDevice.ACTION_ACL_CONNECTED);
-        filter.addAction(android.bluetooth.BluetoothDevice.ACTION_ACL_DISCONNECTED);
-        registerReceiver(headsetMonitor, filter);
+        if (PermissionHelper.cheekBluetoothPermission(getApplicationContext())) {
+            IntentFilter filter = new IntentFilter();
+            filter.addAction(AudioManager.ACTION_AUDIO_BECOMING_NOISY);
+            filter.addAction(AudioManager.ACTION_HEADSET_PLUG);
+            filter.addAction(android.bluetooth.BluetoothDevice.ACTION_ACL_CONNECTED);
+            filter.addAction(android.bluetooth.BluetoothDevice.ACTION_ACL_DISCONNECTED);
+            registerReceiver(headsetMonitor, filter);
+        }
     }
 
     public MediaSessionCompat.Token getMediaSessionToken() {

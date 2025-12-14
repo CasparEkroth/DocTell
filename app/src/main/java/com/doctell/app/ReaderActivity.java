@@ -2,6 +2,8 @@ package com.doctell.app;
 
 import android.Manifest;
 import android.annotation.SuppressLint;
+import android.app.Activity;
+import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
@@ -47,6 +49,7 @@ import com.doctell.app.model.repository.BookStorage;
 import com.doctell.app.model.utils.ChapterLoader;
 import com.doctell.app.model.pdf.PdfLoader;
 import com.doctell.app.model.pdf.PdfPreviewHelper;
+import com.doctell.app.model.utils.PermissionHelper;
 import com.doctell.app.model.voice.HighlightListener;
 import com.doctell.app.model.voice.ReaderController;
 import com.doctell.app.model.voice.TtsEngineStrategy;
@@ -75,8 +78,6 @@ public class ReaderActivity extends AppCompatActivity implements HighlightListen
     private boolean isSpeaking = false;
     private boolean ttsStartedOnPage = false;
     private static final int REQ_SELECT_CHAPTER = 1001;
-    private static final int REQ_POST_NOTIFICATIONS = 42;
-    private static final int REQ_BLUETOOTH_CONNECT = 43;
     private List<ChapterItem> chapters;
     private ChapterLoader chapterLoader;
     private HighlightOverlayView highlightOverlay;
@@ -157,7 +158,7 @@ public class ReaderActivity extends AppCompatActivity implements HighlightListen
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_reader);
-        ensureBluetoothPermission();
+        //PermissionHelper.ensureBluetoothPermission(this, this);
         pdfImage = findViewById(R.id.pdfImage);
         btnPrev = findViewById(R.id.btnPrev);
         btnNext = findViewById(R.id.btnNext);
@@ -341,44 +342,6 @@ public class ReaderActivity extends AppCompatActivity implements HighlightListen
         return super.onKeyDown(keyCode, event);
     }
 
-    private boolean ensureNotificationPermission() {
-        if (Build.VERSION.SDK_INT < 33) return true;
-
-        if (ContextCompat.checkSelfPermission(
-                this,
-                Manifest.permission.POST_NOTIFICATIONS
-        ) == PackageManager.PERMISSION_GRANTED) {
-            return true;
-        }
-
-        ActivityCompat.requestPermissions(
-                this,
-                new String[]{Manifest.permission.POST_NOTIFICATIONS},
-                REQ_POST_NOTIFICATIONS
-        );
-        return false;
-    }
-
-    /**
-     * Request BLUETOOTH_CONNECT permission on API 31+ (Android 12) if not already granted.
-     * This permission is required to connect to Bluetooth headsets for voice communication.
-     */
-    private void ensureBluetoothPermission() {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) {
-            return;
-        }
-        if (ContextCompat.checkSelfPermission(
-                this,
-                Manifest.permission.BLUETOOTH_CONNECT
-        ) != PackageManager.PERMISSION_GRANTED) {
-            ActivityCompat.requestPermissions(
-                    this,
-                    new String[]{Manifest.permission.BLUETOOTH_CONNECT},
-                    REQ_BLUETOOTH_CONNECT
-            );
-        }
-    }
-
     private void ensureServiceBound() {
         if (isServiceBound && readerService != null) {
             return;
@@ -484,7 +447,8 @@ public class ReaderActivity extends AppCompatActivity implements HighlightListen
     private void toggleTTS() {
         int pageIndex = currentBook.getLastPage();
         if (!isSpeaking) {
-            if (!ensureNotificationPermission()) {
+            if (!PermissionHelper.cheekNotificationPermission(this)) {
+                Toast.makeText(getApplicationContext(), "Notification permission required for playback", Toast.LENGTH_LONG).show();
                 return;
             }
             showLoading(true);
@@ -516,7 +480,7 @@ public class ReaderActivity extends AppCompatActivity implements HighlightListen
             Toast.makeText(this, "TTS service not connected", Toast.LENGTH_SHORT).show();
             return;
         }
-        if (!ensureNotificationPermission()) {
+        if (!PermissionHelper.cheekNotificationPermission(this)) {
             return;
         }
         TtsEngineStrategy engine = TtsEngineProvider.getEngine(getApplicationContext());

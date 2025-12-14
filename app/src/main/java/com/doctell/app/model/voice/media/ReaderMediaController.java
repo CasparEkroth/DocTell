@@ -19,6 +19,7 @@ import androidx.media.session.MediaButtonReceiver;
 
 import com.doctell.app.R;
 import com.doctell.app.ReaderActivity;
+import com.doctell.app.model.utils.PermissionHelper;
 
 public class ReaderMediaController {
 
@@ -236,26 +237,26 @@ public class ReaderMediaController {
             Log.d(TAG, "cover is null");
         }
 
-        // ADD ACTIONS FIRST, THEN SET COMPACT VIEW INDICES
-        builder.addAction(
-                new NotificationCompat.Action(
-                        android.R.drawable.ic_media_previous, "Previous", prevIntent));
+        if (PermissionHelper.cheekNotificationPermission(context)) {
+            // ADD ACTIONS FIRST, THEN SET COMPACT VIEW INDICES
+            builder.addAction(
+                    new NotificationCompat.Action(
+                            android.R.drawable.ic_media_previous, "Previous", prevIntent));
 
-        builder.addAction(
-                new NotificationCompat.Action(
-                        isPlaying ? android.R.drawable.ic_media_pause : android.R.drawable.ic_media_play,
-                        isPlaying ? "Pause" : "Play",
-                        isPlaying ? buildServicePendingIntent(ACTION_PAUSE, 2) : playIntent));
+            builder.addAction(
+                    new NotificationCompat.Action(
+                            isPlaying ? android.R.drawable.ic_media_pause : android.R.drawable.ic_media_play,
+                            isPlaying ? "Pause" : "Play",
+                            isPlaying ? buildServicePendingIntent(ACTION_PAUSE, 2) : playIntent));
 
-        builder.addAction(
-                new NotificationCompat.Action(
-                        android.R.drawable.ic_media_next, "Next", nextIntent));
+            builder.addAction(
+                    new NotificationCompat.Action(
+                            android.R.drawable.ic_media_next, "Next", nextIntent));
 
-        // NOW set the compact view - after actions are added
-        builder.setStyle(new androidx.media.app.NotificationCompat.MediaStyle()
-                .setMediaSession(mediaSession.getSessionToken())
-                .setShowActionsInCompactView(0, 1, 2)); // Indices 0, 1, 2 exist now!
-
+            builder.setStyle(new androidx.media.app.NotificationCompat.MediaStyle()
+                    .setMediaSession(mediaSession.getSessionToken())
+                    .setShowActionsInCompactView(0, 1, 2));
+        }
         return builder.build();
     }
 
