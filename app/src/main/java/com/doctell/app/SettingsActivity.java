@@ -15,17 +15,13 @@ import android.widget.TextView;
 
 import androidx.appcompat.app.AppCompatActivity;
 
-import com.doctell.app.model.Prefs;
+import com.doctell.app.model.entity.Prefs;
 import com.doctell.app.model.analytics.DocTellAnalytics;
 import com.doctell.app.model.analytics.DocTellCrashlytics;
 import com.doctell.app.model.voice.CloudTtsEngine;
-import com.doctell.app.model.voice.LocalTtsEngine;
 import com.doctell.app.model.voice.TtsEngineStrategy;
 import com.doctell.app.model.voice.notPublic.TtsEngineProvider;
 import com.doctell.app.model.voice.notPublic.TtsEngineType;
-import com.google.firebase.analytics.FirebaseAnalytics;
-
-import java.util.Objects;
 
 public class SettingsActivity extends AppCompatActivity {
 

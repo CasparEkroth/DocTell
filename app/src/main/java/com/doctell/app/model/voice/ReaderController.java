@@ -4,7 +4,9 @@ import android.content.Context;
 import android.graphics.Bitmap;
 import android.media.AudioManager;
 import android.util.Log;
+import android.widget.Toast;
 
+import com.doctell.app.model.utils.PermissionHelper;
 import com.doctell.app.model.voice.media.PlaybackControl;
 import com.doctell.app.model.voice.media.ReaderMediaController;
 
@@ -16,6 +18,7 @@ public class ReaderController implements TtsEngineListener, PlaybackControl {
     private boolean isPaused;
     private TtsEngineStrategy engine;
     private HighlightListener highlightListener;
+    private Context ctx;
     private ReaderMediaController mediaController;
 
     private float normalVolume = 1.0f;
@@ -37,7 +40,7 @@ public class ReaderController implements TtsEngineListener, PlaybackControl {
         this.chunks = chunks;
         this.highlightListener = highlightListener;
         this.mediaNav = mediaNav;
-
+        this.ctx = ctx;
         engine.init(ctx);
         engine.setListener(this);
     }
@@ -185,6 +188,17 @@ public class ReaderController implements TtsEngineListener, PlaybackControl {
     @Override
     public void play() {
         Log.d("ReaderController", "play - isPaused=" + isPaused);
+        if (!PermissionHelper.cheekNotificationPermission(ctx)) {
+            return;
+        }
+        if (chunks == null || chunks.isEmpty()) {
+            Log.w("ReaderController", "play() called but no chunks loaded");
+            Toast.makeText(ctx,
+                    "Please wait, loading page text...",
+                    Toast.LENGTH_SHORT).show();
+            return;
+        }
+
         if (isPaused) {
             resumeReading();
         } else if (chunks != null && !chunks.isEmpty()) {
