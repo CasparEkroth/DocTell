@@ -75,6 +75,12 @@ public class ReaderController implements TtsEngineListener, PlaybackControl {
     public void startReading() {
         isPaused = false;
         if (chunks == null || chunks.isEmpty()) return;
+
+        if (currentIndex < 0 || currentIndex >= chunks.size()) {
+            Log.e("ReaderController", "Invalid index " + currentIndex + " for chunks size " + chunks.size());
+            currentIndex = 0; // Reset to safe default
+        }
+
         speakCurrent();
 
         //String sentence = chunks.get(currentIndex);
@@ -174,7 +180,16 @@ public class ReaderController implements TtsEngineListener, PlaybackControl {
 
     @Override
     public void setStartSentence(int sentence) {
-        this.currentIndex = sentence;
+        if (chunks != null && !chunks.isEmpty()) {
+            if (sentence >= 0 && sentence < chunks.size()) {
+                this.currentIndex = sentence;
+            } else {
+                Log.w("ReaderController", "Ignored invalid start sentence: " + sentence);
+                this.currentIndex = 0; // Fallback
+            }
+        } else {
+            this.currentIndex = sentence;
+        }
     }
 
     private int parseIndex(String utteranceId) {
