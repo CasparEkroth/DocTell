@@ -38,7 +38,8 @@ public class ReaderMediaController {
 
     private boolean isPlaying = false;
     private int currentIndex = 0;
-    private String currentSentence = "";
+    //private String currentSentence = "";
+    private String currentTitle = "";
     private Bitmap coverBitmap = null;
 
     public ReaderMediaController(Context ctx, PlaybackControl playbackControl) {
@@ -136,15 +137,15 @@ public class ReaderMediaController {
         updateMediaSession();
     }
 
-    public void updateState(boolean playing, int index, String sentence) {
-        updateFromReader(playing, index, sentence, coverBitmap);
+    public void updateState(boolean playing, int index, String title) {
+        updateFromReader(playing, index, title, coverBitmap);
     }
 
     public void updateFromReader(boolean playing, int index,
-                                 String sentence, Bitmap cover) {
+                                 String title, Bitmap cover) {
         isPlaying = playing;
         currentIndex = index;
-        currentSentence = sentence != null ? sentence : "";
+        currentTitle = title != null ? title : "";
         coverBitmap = cover;
         if (cover == null)
             Log.d(TAG, "cover is null form the beginning");
@@ -162,8 +163,8 @@ public class ReaderMediaController {
     private void updateMediaSession() {
         if (mediaSession == null) return;
 
-        String title = (currentSentence != null && !currentSentence.isEmpty())
-                ? currentSentence : "DocTell is reading";
+        String title = (currentTitle != null && !currentTitle.isEmpty())
+                ? currentTitle : "DocTell is reading";
 
         MediaMetadataCompat.Builder metaBuilder = new MediaMetadataCompat.Builder()
                 .putString(MediaMetadataCompat.METADATA_KEY_TITLE, title)
@@ -226,7 +227,7 @@ public class ReaderMediaController {
         NotificationCompat.Builder builder = new NotificationCompat.Builder(context, ReaderService.CHANNEL_ID)
                 .setSmallIcon(R.drawable.doctell_notification)
                 .setContentTitle("DocTell")
-                .setContentText(currentSentence)
+                .setContentText(currentTitle)
                 .setContentIntent(contentIntent)
                 .setOngoing(isPlaying)
                 .setPriority(NotificationCompat.PRIORITY_LOW);

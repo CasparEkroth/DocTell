@@ -115,6 +115,7 @@ public class ReaderActivity extends AppCompatActivity implements HighlightListen
                         boolean playing = state.getState() == PlaybackStateCompat.STATE_PLAYING;
                         syncTtsUiWithPlayback(playing);
                     }
+                    readerService.setTitleInReaderController(currentBook.getTitle());
                 }
             } catch (Exception e) {
                 Log.e("ReaderActivity", "Failed to attach media controller", e);
@@ -286,7 +287,10 @@ public class ReaderActivity extends AppCompatActivity implements HighlightListen
 
     private void loadPdfAsync() {
         showLoading(true);
-        if(readerService != null)readerService.pause();
+        if(readerService != null){
+            readerService.pause();
+            readerService.setTitleInReaderController(currentBook.getTitle());
+        }
 
         String path = currentBook.getLocalPath();
         PdfLoader loader = PdfLoader.getInstance(getApplicationContext());

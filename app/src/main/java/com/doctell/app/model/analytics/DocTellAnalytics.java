@@ -105,4 +105,10 @@ public class DocTellAnalytics {
         }
         get(ctx).logEvent("load_library", b);
     }
+
+    public static void ttsError(Context ctx, String error){
+        Bundle b = new Bundle();
+        b.putString("tts_event_error", error);
+        get(ctx).logEvent("tts_error", b);
+    }
 }

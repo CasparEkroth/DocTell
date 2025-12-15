@@ -14,6 +14,7 @@ import java.util.List;
 
 public class ReaderController implements TtsEngineListener, PlaybackControl {
     private List<String> chunks;
+    private String title;
     private int currentIndex;
     private boolean isPaused;
     private TtsEngineStrategy engine;
@@ -33,11 +34,13 @@ public class ReaderController implements TtsEngineListener, PlaybackControl {
 
     public ReaderController(TtsEngineStrategy engine,
                             List<String> chunks,
+                            String title,
                             HighlightListener highlightListener,
                             Context ctx,
                             MediaNav mediaNav) {
         this.engine = engine;
         this.chunks = chunks;
+        this.title = title;
         this.highlightListener = highlightListener;
         this.mediaNav = mediaNav;
         this.ctx = ctx;
@@ -65,13 +68,23 @@ public class ReaderController implements TtsEngineListener, PlaybackControl {
         this.currentIndex = startSentence;
     }
 
+    public void  setTitle(String title){
+        this.title = title;
+    }
+
     public void startReading() {
         isPaused = false;
         if (chunks == null || chunks.isEmpty()) return;
+
+        if (currentIndex < 0 || currentIndex >= chunks.size()) {
+            Log.e("ReaderController", "Invalid index " + currentIndex + " for chunks size " + chunks.size());
+            currentIndex = 0; // Reset to safe default
+        }
+
         speakCurrent();
 
-        String sentence = chunks.get(currentIndex);
-        mediaController.updateState(true, currentIndex, sentence);
+        //String sentence = chunks.get(currentIndex);
+        mediaController.updateState(true, currentIndex, title);
     }
 
     public void startReadingFrom(int index) {
@@ -82,8 +95,8 @@ public class ReaderController implements TtsEngineListener, PlaybackControl {
         currentIndex = index;
         isPaused = false;
         speakCurrent();
-        String sentence = chunks.get(currentIndex);
-        mediaController.updateState(true, currentIndex, sentence);
+        //String sentence = chunks.get(currentIndex);
+        mediaController.updateState(true, currentIndex, title);
     }
 
     public void pauseReading() {
@@ -125,8 +138,8 @@ public class ReaderController implements TtsEngineListener, PlaybackControl {
         if (index < 0 || index >= chunks.size()) return;
         highlightListener.onChunkStart(index, chunks.get(index));
 
-        String sentence = chunks.get(index);
-        mediaController.updateState(!isPaused, index, sentence);
+        //String sentence = chunks.get(index);
+        mediaController.updateState(!isPaused, index, title);
     }
 
     @Override
@@ -145,8 +158,8 @@ public class ReaderController implements TtsEngineListener, PlaybackControl {
 
         if (currentIndex < chunks.size()) {
             speakCurrent();
-            String sentence = chunks.get(currentIndex);
-            mediaController.updateState(true, currentIndex, sentence);
+            //String sentence = chunks.get(currentIndex);
+            mediaController.updateState(true, currentIndex, title);
         } else {
             if (highlightListener != null) {
                 highlightListener.onPageFinished();
@@ -158,13 +171,25 @@ public class ReaderController implements TtsEngineListener, PlaybackControl {
 
     @Override
     public void onEngineError(String utteranceId) {
-        // TODO add if needed
-        // mediaController.stop();
+        Log.e("ReaderController", "Engine error for " + utteranceId);
+        new android.os.Handler(android.os.Looper.getMainLooper()).post(() -> {
+            pauseReading();
+            Toast.makeText(ctx, "TTS connection lost. Please press play to retry.", Toast.LENGTH_SHORT).show();
+        });
     }
 
     @Override
     public void setStartSentence(int sentence) {
-        this.currentIndex = sentence;
+        if (chunks != null && !chunks.isEmpty()) {
+            if (sentence >= 0 && sentence < chunks.size()) {
+                this.currentIndex = sentence;
+            } else {
+                Log.w("ReaderController", "Ignored invalid start sentence: " + sentence);
+                this.currentIndex = 0; // Fallback
+            }
+        } else {
+            this.currentIndex = sentence;
+        }
     }
 
     private int parseIndex(String utteranceId) {
@@ -247,11 +272,9 @@ public class ReaderController implements TtsEngineListener, PlaybackControl {
         float targetVolume = duck ? duckVolume : normalVolume;
         Log.d("ReaderController", "Duck audio: " + (duck ? "ON" : "OFF"));
 
-        // If TtsEngine has volume control, use it
-        // Otherwise, this is a placeholder for your TTS implementation
+        //this is a placeholder for TTS implementation
         try {
-            // Example for TextToSpeech:
-            // ttsEngine.setVolume(targetVolume);
+            engine.setVolume(targetVolume);
         } catch (Exception e) {
             Log.e("ReaderController", "Error ducking audio", e);
         }
