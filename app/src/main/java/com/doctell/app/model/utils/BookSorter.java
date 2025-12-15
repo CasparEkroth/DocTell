@@ -8,6 +8,7 @@ import com.doctell.app.model.entity.Book;
 import com.doctell.app.model.entity.SortOn;
 
 import java.text.Collator;
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
@@ -34,29 +35,42 @@ public class BookSorter {
         sortBooks(sort.getValue(), books);
     }
     private static void sortByTitleAsc(List<Book> books) {
-        books.sort((b1, b2) -> {
+        ArrayList<Book> mutableBooks = new ArrayList<>(books);
+        mutableBooks.sort((b1, b2) -> {
             String t1 = safeTitle(b1);
             String t2 = safeTitle(b2);
             return SV_COLLATOR.compare(t1, t2);
         });
+        books.clear();
+        books.addAll(mutableBooks);
     }
 
     private static void sortByTitleDesc(List<Book> books) {
-        books.sort((b1, b2) -> {
+        ArrayList<Book> mutableBooks = new ArrayList<>(books);
+        mutableBooks.sort((b1, b2) -> {
             String t1 = safeTitle(b1);
             String t2 = safeTitle(b2);
             return SV_COLLATOR.compare(t2, t1);
         });
+        books.clear();
+        books.addAll(mutableBooks);
     }
 
     private static void sortByDateNewest(List<Book> books) {
-        books.sort((b1, b2) ->
+        ArrayList<Book> mutableBooks = new ArrayList<>(books);
+        mutableBooks.sort((b1, b2) ->
                 Long.compare(b2.getLastOpenedAt(), b1.getLastOpenedAt()));
+        books.clear();
+        books.addAll(mutableBooks);
     }
 
     private static void sortByDateOldest(List<Book> books) {
-        books.sort(Comparator.comparingLong(Book::getLastOpenedAt));
+        ArrayList<Book> mutableBooks = new ArrayList<>(books);
+        mutableBooks.sort(Comparator.comparingLong(Book::getLastOpenedAt));
+        books.clear();
+        books.addAll(mutableBooks);
     }
+
 
     private static String safeTitle(Book b) {
         return b.getTitle() != null ? b.getTitle() : "";

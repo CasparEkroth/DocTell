@@ -15,10 +15,11 @@ import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 public class BookStorage {
 
-    public static List<Book> booksCache = new ArrayList<>();
+    public static List<Book> booksCache = new CopyOnWriteArrayList<>();
 
     // Single-threaded executor for serialized loading
     private static final Executor BOOK_LOADER_EXECUTOR = Executors.newSingleThreadExecutor(r -> {
