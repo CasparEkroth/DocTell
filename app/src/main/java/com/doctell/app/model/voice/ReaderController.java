@@ -158,8 +158,11 @@ public class ReaderController implements TtsEngineListener, PlaybackControl {
 
     @Override
     public void onEngineError(String utteranceId) {
-        // TODO add if needed
-        // mediaController.stop();
+        Log.e("ReaderController", "Engine error for " + utteranceId);
+        new android.os.Handler(android.os.Looper.getMainLooper()).post(() -> {
+            pauseReading();
+            Toast.makeText(ctx, "TTS connection lost. Please press play to retry.", Toast.LENGTH_SHORT).show();
+        });
     }
 
     @Override
@@ -247,11 +250,9 @@ public class ReaderController implements TtsEngineListener, PlaybackControl {
         float targetVolume = duck ? duckVolume : normalVolume;
         Log.d("ReaderController", "Duck audio: " + (duck ? "ON" : "OFF"));
 
-        // If TtsEngine has volume control, use it
-        // Otherwise, this is a placeholder for your TTS implementation
+        //this is a placeholder for TTS implementation
         try {
-            // Example for TextToSpeech:
-            // ttsEngine.setVolume(targetVolume);
+            engine.setVolume(targetVolume);
         } catch (Exception e) {
             Log.e("ReaderController", "Error ducking audio", e);
         }

@@ -11,6 +11,7 @@ import android.speech.tts.UtteranceProgressListener;
 import android.speech.tts.Voice;
 import android.util.Log;
 
+import com.doctell.app.model.analytics.DocTellAnalytics;
 import com.doctell.app.model.entity.Prefs;
 import com.doctell.app.model.voice.notPublic.TtsEngineType;
 
@@ -191,13 +192,39 @@ public abstract class BaseTtsEngine implements TtsEngineStrategy {
 
     @Override
     public void speakChunk(String text, int index) {
-        if (tts == null) return;
+        if (tts == null){
+            Log.w("BaseTtsEngine", "TTS was null during speakChunk, initializing...");
+            recreateTts();
+            if (engineListener != null) {
+                main.post(() -> engineListener.onEngineError("CHUNK|" + index));
+            }
+            return;
+        }
 
         lastText = text;
         lastIndex = index;
 
         String utteranceId = "CHUNK_" + index;
-        tts.speak(text, TextToSpeech.QUEUE_FLUSH, params, utteranceId);
+        int result = tts.speak(text, TextToSpeech.QUEUE_FLUSH, params, utteranceId);
+
+        if (result == TextToSpeech.ERROR) {
+            Log.e("BaseTtsEngine", "TTS speak failed (ERROR), attempting recovery...");
+            DocTellAnalytics.ttsError(app,"TextToSpeech.ERROR = tts.speak");
+            try {
+                tts.shutdown();
+            } catch (Exception ignored) {}
+            tts = null;
+            recreateTts();
+            if (engineListener != null) {
+                main.post(() -> engineListener.onEngineError(utteranceId));
+            }
+        }
+    }
+
+    protected void recreateTts() {
+        Log.d("BaseTtsEngine", "Recreating TTS instance...");
+        tts = null;
+        init(app);
     }
 
     @Override
