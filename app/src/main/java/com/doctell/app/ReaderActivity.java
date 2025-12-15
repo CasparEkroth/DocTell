@@ -150,6 +150,17 @@ public class ReaderActivity extends AppCompatActivity implements HighlightListen
             }
             readerService = null;
             isServiceBound = false;
+
+            new Handler(Looper.getMainLooper()).postDelayed(() -> {
+                if (!isFinishing()) {
+                    ensureServiceBound();
+                }
+            }, 500);
+
+            runOnUiThread(() -> {
+                isSpeaking = false;
+                syncTtsUiWithPlayback(false);
+            });
         }
     };
 
@@ -260,6 +271,18 @@ public class ReaderActivity extends AppCompatActivity implements HighlightListen
         float density = v.getResources().getDisplayMetrics().density;
         return (int) (value * density + 0.5f);
     }
+
+    private void ensureServiceAlive() {
+        if (!isServiceBound || readerService == null) {
+            Log.w("ReaderActivity", "Service not alive, forcing reconnect");
+            ensureServiceBound();
+            showLoading(true);
+            new Handler(Looper.getMainLooper()).postDelayed(() -> {
+                showLoading(false);
+            }, 2000);
+        }
+    }
+
 
     private void loadPdfAsync() {
         showLoading(true);
@@ -457,11 +480,16 @@ public class ReaderActivity extends AppCompatActivity implements HighlightListen
                 DocTellAnalytics.readingStarted(this, currentBook, pageIndex);
                 speakPage();
             } else {
-                if (isServiceBound && readerService != null) {
-                    DocTellAnalytics.readingResumed(this, currentBook, pageIndex);
-                    readerService.play();
-                }
+                ensureServiceAlive();
                 new Handler(Looper.getMainLooper()).postDelayed(() -> {
+                    if (isServiceBound && readerService != null) {
+                        DocTellAnalytics.readingResumed(this, currentBook, pageIndex);
+                        readerService.play();
+                    } else {
+                        Toast.makeText(this,
+                                "Claude not connect to TTS(try again)",
+                                Toast.LENGTH_SHORT).show();
+                    }
                     showLoading(false);
                 }, 500);
             }
