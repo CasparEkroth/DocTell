@@ -50,16 +50,6 @@ public class BookStorage {
         editor.apply();
     }
 
-    /**
-     * ✅ FIXED: Background thread version (PREFERRED)
-     * Load books asynchronously without blocking main thread
-     *
-     * Usage:
-     * BookStorage.loadBooksAsync(context, books -> {
-     *     BookStorage.booksCache = books;
-     *     refreshUI();
-     * });
-     */
     public static void loadBooksAsync(Context ctx, BookLoadCallback callback) {
         BOOK_LOADER_EXECUTOR.execute(() -> {
             try {
@@ -116,7 +106,7 @@ public class BookStorage {
     }
 
     /**
-     * ⚠️ DEPRECATED: Synchronous version (kept for compatibility, DO NOT CALL FROM MAIN THREAD)
+     * DEPRECATED: Synchronous version (kept for compatibility, DO NOT CALL FROM MAIN THREAD)
      * Only use from background threads!
      *
      * @deprecated Use {@link #loadBooksAsync(Context, BookLoadCallback)} instead
