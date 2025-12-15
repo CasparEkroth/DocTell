@@ -59,7 +59,10 @@ public class ReaderService extends Service implements PlaybackControl, Highlight
     private AudioFocusRequest audioFocusRequest;
     private boolean resumeAfterFocusGain = false;
     private boolean autoReading = false;
-    private MediaPlayer silentPlayer;
+    // field
+    private final Runnable watchdogRunnable =
+            SilentPlayer.makeWatchdog(() -> autoReading, this);
+
     private PageLifecycleManager pageLifecycleManager;
     private final AudioManager.OnAudioFocusChangeListener audioFocusChangeListener =
             focusChange -> {
@@ -204,7 +207,7 @@ public class ReaderService extends Service implements PlaybackControl, Highlight
         executor = Executors.newSingleThreadExecutor();
         mainHandler = new Handler(Looper.getMainLooper());
         createNotificationChannel();
-
+        SilentPlayer.getWatchdogHandler().post(watchdogRunnable);
         mediaController = new ReaderMediaController(this, this);
         pageLifecycleManager = new PageLifecycleManager();
 
@@ -273,7 +276,8 @@ public class ReaderService extends Service implements PlaybackControl, Highlight
             unregisterReceiver(headsetMonitor);
         }catch (Exception ignored){/*Receiver might not be registered*/}
         abandonAudioFocus();
-        stopSilentAudio();
+        SilentPlayer.stopSilentAudio();
+        SilentPlayer.getWatchdogHandler().removeCallbacksAndMessages(null);
         onReadingPositionChanged();
         super.onDestroy();
         Log.d("ReaderService", "onDestroy");
@@ -316,10 +320,10 @@ public class ReaderService extends Service implements PlaybackControl, Highlight
     @Override
     public void play() {
         safeExecuteAction(()->{
-            Log.d("ReaderService","play was entered");
+            Log.d("ReaderService","play(): autoReading=true");
             autoReading = true;
             requestAudioFocus();
-            startSilentAudio();
+            SilentPlayer.startSilentAudio(this);
             if (mediaController != null && mediaController.getMediaSession() != null) {
                 mediaController.getMediaSession().setActive(true);
             }
@@ -332,9 +336,9 @@ public class ReaderService extends Service implements PlaybackControl, Highlight
     @Override
     public void pause() {
         safeExecuteAction(()-> {
-            Log.d("ReaderService","pause was entered");
+            Log.d("ReaderService","pause(): autoReading=false");
             autoReading = false;
-            stopSilentAudio();
+            SilentPlayer.stopSilentAudio();
             if (mediaController != null && mediaController.getMediaSession() != null) {
                 mediaController.getMediaSession().setActive(true);
             }
@@ -349,9 +353,9 @@ public class ReaderService extends Service implements PlaybackControl, Highlight
     @Override
     public void stop() {
         safeExecuteAction(()-> {
-            Log.d("ReaderService","stop was entered");
+            Log.d("ReaderService","");
             autoReading = false;
-            stopSilentAudio();
+            SilentPlayer.stopSilentAudio();
             if (readerController != null)
                 readerController.stop();
             abandonAudioFocus();
@@ -527,30 +531,7 @@ public class ReaderService extends Service implements PlaybackControl, Highlight
         }
     }
 
-    private void startSilentAudio() {
-        if (silentPlayer == null) {
-            silentPlayer = MediaPlayer.create(this, R.raw.silence_1s); // 1s silent WAV
-            silentPlayer.setLooping(true);
-            silentPlayer.setVolume(0f, 0f);
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-                silentPlayer.setAudioAttributes(
-                        new AudioAttributes.Builder()
-                                .setUsage(AudioAttributes.USAGE_MEDIA)
-                                .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
-                                .build()
-                );
-            }
-        }
-        if (!silentPlayer.isPlaying()) {
-            silentPlayer.start();
-        }
-    }
 
-    private void stopSilentAudio() {
-        if (silentPlayer != null && silentPlayer.isPlaying()) {
-            silentPlayer.pause();
-        }
-    }
     public void initBook(Book book, PDDocument doc, ParcelFileDescriptor pdf, PdfRenderer renderer) {
         Context appCtx = getApplicationContext();
         if (book != null) {
@@ -596,7 +577,7 @@ public class ReaderService extends Service implements PlaybackControl, Highlight
                              ParcelFileDescriptor pfd,
                              PdfRenderer renderer) {
         requestAudioFocus();
-        startSilentAudio();
+        SilentPlayer.startSilentAudio(this);
         autoReading = true;
         currentBook = book;
         Context appCtx = getApplicationContext();
@@ -622,7 +603,7 @@ public class ReaderService extends Service implements PlaybackControl, Highlight
                                 "No readable text found on this page",
                                 Toast.LENGTH_SHORT).show();
                         autoReading = false;
-                        stopSilentAudio();
+                        SilentPlayer.stopSilentAudio();
                     });
                     return;
                 }
@@ -661,7 +642,7 @@ public class ReaderService extends Service implements PlaybackControl, Highlight
                             "Failed to read page text",
                             Toast.LENGTH_SHORT).show();
                     autoReading = false;
-                    stopSilentAudio();
+                    SilentPlayer.stopSilentAudio();
                 });
             }
         });

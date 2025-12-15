@@ -43,6 +43,7 @@ import com.tom_roush.pdfbox.pdmodel.PDDocumentInformation;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -57,6 +58,25 @@ public class MainActivity extends AppCompatActivity {
     private int selectedSortIndex = 0;
     private static final String READER_CHANNEL_ID = "reader_channel";
 
+    private BookStorage.BookLoadCallback bookLoadCallback = new BookStorage.BookLoadCallback() {
+        @Override
+        public void onBooksLoaded(List<Book> books) {
+            main.post(new Runnable() {
+                @Override
+                public void run() {
+                    BookSorter.sortBooksOnDefault(BookStorage.booksCache);
+                    selectedSortIndex = BookSorter.getIndex();
+                    refreshGrid();
+                }
+            });
+        }
+
+        @Override
+        public void onLoadFailed(Exception e) {
+            Log.e("BookStorage", "Load failed: " + e.getMessage());
+        }
+    };
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -65,13 +85,14 @@ public class MainActivity extends AppCompatActivity {
         //init pdfbox
         com.tom_roush.pdfbox.android.PDFBoxResourceLoader.init(getApplicationContext());
         //load books
-        BookStorage.booksCache = BookStorage.loadBooks(this);
+        //BookStorage.booksCache = BookStorage.loadBooks(this);
+        BookStorage.loadBooksAsync(this,bookLoadCallback);
+
         pdfGrid = findViewById(R.id.pdfGrid);
         loadingBar = findViewById(R.id.loadingMain);
+
+
         BookSorter.getSavedSort(getApplicationContext());
-        BookSorter.sortBooksOnDefault(BookStorage.booksCache);
-        selectedSortIndex = BookSorter.getIndex();
-        refreshGrid();
         engine = LocalTtsEngine.getInstance(getApplicationContext());
         askForPermissions();
         setPremonitionsForAnalytics();
@@ -244,7 +265,8 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onResume() {
         super.onResume();
-        BookStorage.loadBooks(this);
+        //BookStorage.loadBooks(this);
+        BookStorage.loadBooksAsync(this,bookLoadCallback);
         BookSorter.sortBooksOnDefault(BookStorage.booksCache);
         refreshGrid();
     }
