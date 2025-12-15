@@ -616,6 +616,7 @@ public class ReaderService extends Service implements PlaybackControl, Highlight
                         readerController = new ReaderController(
                                 engine,
                                 chunks,
+                                currentBook.getTitle(),
                                 this,
                                 appCtx,
                                 uiMediaNav
@@ -648,7 +649,10 @@ public class ReaderService extends Service implements PlaybackControl, Highlight
         });
     }
 
-
+    public void setTitleInReaderController(String title){
+        if(readerController == null) return;
+        readerController.setTitle(title);
+    }
 
 }
 

@@ -14,6 +14,7 @@ import java.util.List;
 
 public class ReaderController implements TtsEngineListener, PlaybackControl {
     private List<String> chunks;
+    private String title;
     private int currentIndex;
     private boolean isPaused;
     private TtsEngineStrategy engine;
@@ -33,11 +34,13 @@ public class ReaderController implements TtsEngineListener, PlaybackControl {
 
     public ReaderController(TtsEngineStrategy engine,
                             List<String> chunks,
+                            String title,
                             HighlightListener highlightListener,
                             Context ctx,
                             MediaNav mediaNav) {
         this.engine = engine;
         this.chunks = chunks;
+        this.title = title;
         this.highlightListener = highlightListener;
         this.mediaNav = mediaNav;
         this.ctx = ctx;
@@ -65,13 +68,17 @@ public class ReaderController implements TtsEngineListener, PlaybackControl {
         this.currentIndex = startSentence;
     }
 
+    public void  setTitle(String title){
+        this.title = title;
+    }
+
     public void startReading() {
         isPaused = false;
         if (chunks == null || chunks.isEmpty()) return;
         speakCurrent();
 
-        String sentence = chunks.get(currentIndex);
-        mediaController.updateState(true, currentIndex, sentence);
+        //String sentence = chunks.get(currentIndex);
+        mediaController.updateState(true, currentIndex, title);
     }
 
     public void startReadingFrom(int index) {
@@ -82,8 +89,8 @@ public class ReaderController implements TtsEngineListener, PlaybackControl {
         currentIndex = index;
         isPaused = false;
         speakCurrent();
-        String sentence = chunks.get(currentIndex);
-        mediaController.updateState(true, currentIndex, sentence);
+        //String sentence = chunks.get(currentIndex);
+        mediaController.updateState(true, currentIndex, title);
     }
 
     public void pauseReading() {
@@ -125,8 +132,8 @@ public class ReaderController implements TtsEngineListener, PlaybackControl {
         if (index < 0 || index >= chunks.size()) return;
         highlightListener.onChunkStart(index, chunks.get(index));
 
-        String sentence = chunks.get(index);
-        mediaController.updateState(!isPaused, index, sentence);
+        //String sentence = chunks.get(index);
+        mediaController.updateState(!isPaused, index, title);
     }
 
     @Override
@@ -145,8 +152,8 @@ public class ReaderController implements TtsEngineListener, PlaybackControl {
 
         if (currentIndex < chunks.size()) {
             speakCurrent();
-            String sentence = chunks.get(currentIndex);
-            mediaController.updateState(true, currentIndex, sentence);
+            //String sentence = chunks.get(currentIndex);
+            mediaController.updateState(true, currentIndex, title);
         } else {
             if (highlightListener != null) {
                 highlightListener.onPageFinished();
