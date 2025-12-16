@@ -11,6 +11,7 @@ import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
+import android.util.DisplayMetrics;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -89,6 +90,7 @@ public class MainActivity extends AppCompatActivity {
         BookStorage.loadBooksAsync(this,bookLoadCallback);
 
         pdfGrid = findViewById(R.id.pdfGrid);
+        setupGridColumns();
         loadingBar = findViewById(R.id.loadingMain);
 
 
@@ -294,11 +296,33 @@ public class MainActivity extends AppCompatActivity {
     private void refreshGrid(){
         Log.d("GRID", "Refreshing grid with " + BookStorage.booksCache.size() + " books");
         pdfGrid.removeAllViews();
+
         for(Book b : BookStorage.booksCache){
-            Log.d("GRID", "Adding book: " + b.getTitle() + " | URI=" + b.getUri());
             ItemView item = new ItemView(this, null, b);
+
+            GridLayout.LayoutParams gridParams = new GridLayout.LayoutParams();
+            gridParams.columnSpec = GridLayout.spec(GridLayout.UNDEFINED, 1f);
+            gridParams.width = 0; // 0 width + weight = equal distribution
+            int margin = (int) (8 * getResources().getDisplayMetrics().density);
+            gridParams.setMargins(margin, margin, margin, margin);
+
+            item.setLayoutParams(gridParams);
+
             pdfGrid.addView(item);
         }
+    }
+
+
+    private void setupGridColumns() {
+        DisplayMetrics displayMetrics = getResources().getDisplayMetrics();
+        float screenWidthDp = displayMetrics.widthPixels / displayMetrics.density;
+
+        float itemWidthDp = 180f;
+
+        int columns = (int) (screenWidthDp / itemWidthDp);
+        if (columns < 2) columns = 2; // Minimum 2
+
+        pdfGrid.setColumnCount(columns);
     }
 
     private void createReaderNotificationChannel() {
