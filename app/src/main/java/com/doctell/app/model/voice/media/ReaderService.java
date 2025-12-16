@@ -233,9 +233,9 @@ public class ReaderService extends Service implements PlaybackControl, Highlight
             registerReceiver(settingsReceiver, settingsFilter, Context.RECEIVER_NOT_EXPORTED);
         }
 
-
-        Notification notification = mediaController.buildInitialNotification();
-        startForeground(ReaderMediaController.NOTIFICATION_ID, notification);
+        //Restriction Violation: On Android 12+ (API 31+)
+        //Notification notification = mediaController.buildInitialNotification();
+        //startForeground(ReaderMediaController.NOTIFICATION_ID, notification);
 
         if (PermissionHelper.cheekBluetoothPermission(getApplicationContext())) {
             IntentFilter filter = new IntentFilter();
@@ -544,6 +544,8 @@ public class ReaderService extends Service implements PlaybackControl, Highlight
             } else if (ReaderMediaController.ACTION_PREV.equals(action)) {
                 safeExecuteAction(this::prev);
             }
+        }else {
+            return START_NOT_STICKY;
         }
 
         return START_STICKY;
