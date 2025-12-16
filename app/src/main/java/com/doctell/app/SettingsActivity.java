@@ -8,6 +8,7 @@ import android.content.IntentFilter;
 import android.content.SharedPreferences;
 import android.os.Build;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.View;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
@@ -89,6 +90,7 @@ public class SettingsActivity extends AppCompatActivity {
             public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
                 if(position == initIndex)return;
                 onLanguageSelected(values[position]);
+                Log.d("TEST9",values[position]);
                 setSpLangText(values,values[position]);
                 initIndex = position;
                 //switch tts engin
