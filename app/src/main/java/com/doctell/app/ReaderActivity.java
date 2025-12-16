@@ -589,41 +589,47 @@ public class ReaderActivity extends AppCompatActivity implements HighlightListen
         if (!isServiceBound || readerService == null) {
             return;
         }
-        PageLifecycleManager pageManager = readerService.getPageLifecycleManager();
-        int currentPage = currentBook.getLastPage();
-        if (!pageManager.canProcessChunkStart(currentPage, index)) {
-            Log.d("ReaderActivity", "Orphaned chunk dropped: page=" + currentPage +
-                    ", chunk=" + index + ". " + pageManager.getStateString());
-            return;
-        }
-        pageManager.startSpeakingChunk(currentPage, index);
-        BitmapDrawable drawable = (BitmapDrawable) pdfImage.getDrawable();
-        if (drawable == null) return;
-        Bitmap bitmap = drawable.getBitmap();
-        if (bitmap == null || renderer == null || doc == null) return;
-
-        int bmpW = bitmap.getWidth();
-        int bmpH = bitmap.getHeight();
-        int pageW, pageH;
-        PdfRenderer.Page page = null;
-
-        try {
-            page = renderer.openPage(currentBook.getLastPage());
-            pageW = page.getWidth();
-            pageH = page.getHeight();
-        } finally {
-            if (page != null) {
-                page.close();
+        exec.execute(() -> {
+            PageLifecycleManager pageManager = readerService.getPageLifecycleManager();
+            int currentPage = currentBook.getLastPage();
+            if (!pageManager.canProcessChunkStart(currentPage, index)) {
+                Log.d("ReaderActivity", "Orphaned chunk dropped: page=" + currentPage +
+                        ", chunk=" + index + ". " + pageManager.getStateString());
+                return;
             }
-        }
-        List<RectF> rects = PdfPreviewHelper.getRectsForSentence(
-                doc, currentBook.getLastPage(), text, bmpW, bmpH, pageW, pageH
-        );
-        for (RectF r : rects) {
-            r.offset(0, -r.height());
-        }
-        currentBook.setSentence(index);
-        highlightOverlay.setHighlights(rects);
+            pageManager.startSpeakingChunk(currentPage, index);
+            BitmapDrawable drawable = (BitmapDrawable) pdfImage.getDrawable();
+            if (drawable == null) return;
+            Bitmap bitmap = drawable.getBitmap();
+            if (bitmap == null || renderer == null || doc == null) return;
+
+            int bmpW = bitmap.getWidth();
+            int bmpH = bitmap.getHeight();
+            int pageW, pageH;
+            PdfRenderer.Page page = null;
+
+            try {
+                synchronized(renderer) {
+                    page = renderer.openPage(currentBook.getLastPage());
+                }
+                pageW = page.getWidth();
+                pageH = page.getHeight();
+            } finally {
+                if (page != null) {
+                    page.close();
+                }
+            }
+            List<RectF> rects = PdfPreviewHelper.getRectsForSentence(
+                    doc, currentBook.getLastPage(), text, bmpW, bmpH, pageW, pageH
+            );
+            for (RectF r : rects) {
+                r.offset(0, -r.height());
+            }
+            main.post(()->{
+                currentBook.setSentence(index);
+                highlightOverlay.setHighlights(rects);
+            });
+        });
     }
 
     @Override
