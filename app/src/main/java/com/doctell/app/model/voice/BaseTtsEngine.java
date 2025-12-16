@@ -73,6 +73,9 @@ public abstract class BaseTtsEngine implements TtsEngineStrategy {
                         for (Voice v : voices) {
                             if (acceptVoice(v, lang)) {
                                 tts.setVoice(v);
+                                Log.i("BaseTtsEngine", "SELECTED VOICE: "
+                                        + v.getName() + " | NetworkReq="
+                                        + v.isNetworkConnectionRequired());
                                 break;
                             }
                         }
@@ -120,6 +123,10 @@ public abstract class BaseTtsEngine implements TtsEngineStrategy {
                         onErrorInternal(id, errorCode);
                     }
                 });
+                if (engineListener != null) {
+                    Log.d("BaseTtsEngine", "sending onEngineReady");
+                    main.post(() -> engineListener.onEngineReady());
+                }
             } else {
                 Log.e("BaseTtsEngine", "TextToSpeech init failed: " + status);
             }
@@ -273,5 +280,6 @@ public abstract class BaseTtsEngine implements TtsEngineStrategy {
             try { tts.stop(); tts.shutdown(); } catch (Exception ignored) {}
             tts = null;
         }
+        engineListener = null;
     }
 }

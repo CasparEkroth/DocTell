@@ -3,6 +3,8 @@ package com.doctell.app.model.voice;
 import android.content.Context;
 import android.graphics.Bitmap;
 import android.media.AudioManager;
+import android.os.Handler;
+import android.os.Looper;
 import android.util.Log;
 import android.widget.Toast;
 
@@ -24,6 +26,7 @@ public class ReaderController implements TtsEngineListener, PlaybackControl {
 
     private float normalVolume = 1.0f;
     private float duckVolume = 0.3f;
+    private boolean pendingResume = false;
 
     public interface MediaNav {
         void navForward();
@@ -192,6 +195,22 @@ public class ReaderController implements TtsEngineListener, PlaybackControl {
         }
     }
 
+    @Override
+    public void onEngineReady() {
+        Log.d("ReaderController", "onEngineReady: pendingResume=" + pendingResume);
+
+        if (pendingResume) {
+            pendingResume = false;
+            new Handler(Looper.getMainLooper()).post(() -> {
+                speakCurrent();
+                if (mediaController != null) {
+
+                    mediaController.updateState(true, currentIndex, title);
+                }
+            });
+        }
+    }
+
     private int parseIndex(String utteranceId) {
         try {
             if (utteranceId != null && utteranceId.startsWith("CHUNK_")) {
@@ -200,6 +219,22 @@ public class ReaderController implements TtsEngineListener, PlaybackControl {
         } catch (NumberFormatException ignored) {}
         return -1;
     }
+
+    public void switchEngine(TtsEngineStrategy newEngine, boolean wasPlaying) {
+        Log.d("ReaderController", "switchEngine: pendingResume=" + wasPlaying);
+        if (this.engine != null) {
+            this.engine.stop();
+            this.engine.shutdown();
+        }
+        this.pendingResume = wasPlaying;
+        this.isPaused = !wasPlaying;
+
+        this.engine = newEngine;
+        this.engine.setListener(this);
+        this.engine.init(ctx);
+        this.engine.setVolume(normalVolume);
+    }
+
     public void shutdown() {
         if (engine != null) {
             engine.stop();

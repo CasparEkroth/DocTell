@@ -5,4 +5,6 @@ public interface TtsEngineListener {
     void onEngineChunkDone(String utteranceId);
     void onEngineError(String utteranceId);
     void setStartSentence(int sentence);
+
+    void onEngineReady();
 }

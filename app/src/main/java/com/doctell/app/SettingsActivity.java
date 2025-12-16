@@ -2,6 +2,7 @@ package com.doctell.app;
 
 import android.annotation.SuppressLint;
 import android.content.Context;
+import android.content.Intent;
 import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.view.View;
@@ -20,6 +21,7 @@ import com.doctell.app.model.analytics.DocTellAnalytics;
 import com.doctell.app.model.analytics.DocTellCrashlytics;
 import com.doctell.app.model.voice.CloudTtsEngine;
 import com.doctell.app.model.voice.TtsEngineStrategy;
+import com.doctell.app.model.voice.media.ReaderService;
 import com.doctell.app.model.voice.notPublic.TtsEngineProvider;
 import com.doctell.app.model.voice.notPublic.TtsEngineType;
 
@@ -72,6 +74,10 @@ public class SettingsActivity extends AppCompatActivity {
                 onLanguageSelected(values[position]);
                 setSpLangText(values,values[position]);
                 initIndex = position;
+                //switch tts engin
+                Intent intent = new Intent(ReaderService.ACTION_UPDATE_TTS_ENGINE);
+                intent.setPackage(getPackageName());
+                sendBroadcast(intent);
             }
             @Override
             public void onNothingSelected(AdapterView<?> parent) {}
@@ -84,6 +90,10 @@ public class SettingsActivity extends AppCompatActivity {
                 setSpVoiceText(voices,voices[position]);
                 TtsEngineProvider.saveEngineType(convert(voices[position]),app);
                 initVoice = position;
+                //switch tts engin
+                Intent intent = new Intent(ReaderService.ACTION_UPDATE_TTS_ENGINE);
+                intent.setPackage(getPackageName());
+                sendBroadcast(intent);
             }
             @Override
             public void onNothingSelected(AdapterView<?> parent) {}
@@ -102,6 +112,10 @@ public class SettingsActivity extends AppCompatActivity {
                 float r = 0.5f + (progress / 100f);
                 txtRateValue.setText(String.format("%.1fx", r));
                 if(fromUser) onRateChanged(r);
+                //switch tts engin
+                Intent intent = new Intent(ReaderService.ACTION_UPDATE_TTS_ENGINE);
+                intent.setPackage(getPackageName());
+                sendBroadcast(intent);
             }
             @Override
             public void onStartTrackingTouch(SeekBar seekBar) {}
@@ -161,7 +175,9 @@ public class SettingsActivity extends AppCompatActivity {
     }
 
     private void onLanguageSelected(String langCode) {
-        getEngine().setLanguageByCode(langCode);
+        //getEngine().setLanguageByCode(langCode); this is done by the service
+        SharedPreferences prefs = getSharedPreferences(Prefs.DOCTELL_PREFS.toString(), MODE_PRIVATE);
+        prefs.edit().putString(Prefs.LANG.toString(), langCode).apply();
     }
 
     private TtsEngineType getEnginType(){
@@ -174,7 +190,9 @@ public class SettingsActivity extends AppCompatActivity {
         return getEngine().getLanguage();
     }
     private void onRateChanged(float rate) {
-        getEngine().setRate(rate);
+        //getEngine().setRate(rate);
+        SharedPreferences prefs = getSharedPreferences(Prefs.DOCTELL_PREFS.toString(), MODE_PRIVATE);
+        prefs.edit().putFloat(Prefs.TTS_SPEED.toString(), rate).apply();
     }
 
     private TtsEngineStrategy getEngine(){

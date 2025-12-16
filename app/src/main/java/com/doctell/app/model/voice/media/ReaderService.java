@@ -28,6 +28,7 @@ import android.util.Log;
 import android.widget.Toast;
 
 import androidx.annotation.Nullable;
+import androidx.annotation.RequiresApi;
 import androidx.media.session.MediaButtonReceiver;
 
 import com.doctell.app.R;
@@ -42,6 +43,7 @@ import com.doctell.app.model.voice.HighlightListener;
 import com.doctell.app.model.voice.ReaderController;
 import com.doctell.app.model.voice.TTSBuffer;
 import com.doctell.app.model.voice.TtsEngineStrategy;
+import com.doctell.app.model.voice.notPublic.TtsEngineProvider;
 import com.tom_roush.pdfbox.pdmodel.PDDocument;
 
 import java.io.IOException;
@@ -52,6 +54,7 @@ import java.util.concurrent.Executors;
 public class ReaderService extends Service implements PlaybackControl, HighlightListener, ReaderController.MediaNav{
 
     public static final String CHANNEL_ID = "doctell_reader_service";
+    public static final String ACTION_UPDATE_TTS_ENGINE = "com.doctell.app.action.UPDATE_TTS_ENGINE";
     private final IBinder binder = new LocalBinder();
     private ReaderController readerController;
     private ReaderMediaController mediaController;
@@ -131,6 +134,15 @@ public class ReaderService extends Service implements PlaybackControl, Highlight
         }
     };
 
+    private final BroadcastReceiver settingsReceiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            if (ACTION_UPDATE_TTS_ENGINE.equals(intent.getAction())) {
+                updateTtsEngine();
+            }
+        }
+    };
+
     private HighlightListener uiHighlightListener;
     private Book currentBook;
     private ReaderController.MediaNav uiMediaNav;
@@ -198,6 +210,7 @@ public class ReaderService extends Service implements PlaybackControl, Highlight
         return binder;
     }
 
+    @RequiresApi(api = Build.VERSION_CODES.TIRAMISU)
     @Override
     public void onCreate() {
         super.onCreate();
@@ -210,6 +223,14 @@ public class ReaderService extends Service implements PlaybackControl, Highlight
         SilentPlayer.getWatchdogHandler().post(watchdogRunnable);
         mediaController = new ReaderMediaController(this, this);
         pageLifecycleManager = new PageLifecycleManager();
+
+        IntentFilter settingsFilter = new IntentFilter();
+        settingsFilter.addAction(ACTION_UPDATE_TTS_ENGINE);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            //NOT_EXPORTED for security on Android 14+
+            registerReceiver(settingsReceiver, settingsFilter, Context.RECEIVER_NOT_EXPORTED);
+        }
+
 
         Notification notification = mediaController.buildInitialNotification();
         startForeground(ReaderMediaController.NOTIFICATION_ID, notification);
@@ -270,6 +291,14 @@ public class ReaderService extends Service implements PlaybackControl, Highlight
         }
     }
 
+    private void updateTtsEngine() {
+        if (readerController == null) return;
+        boolean wasPlaying = autoReading;
+        Log.d("ReaderService", "Hot-swapping TTS engine...");
+        TtsEngineStrategy newEngine = TtsEngineProvider.getEngine(getApplicationContext());
+        readerController.switchEngine(newEngine, wasPlaying);
+    }
+
     @Override
     public void onDestroy() {
         try {
@@ -279,6 +308,7 @@ public class ReaderService extends Service implements PlaybackControl, Highlight
         SilentPlayer.stopSilentAudio();
         SilentPlayer.getWatchdogHandler().removeCallbacksAndMessages(null);
         onReadingPositionChanged();
+        unregisterReceiver(settingsReceiver);
         super.onDestroy();
         Log.d("ReaderService", "onDestroy");
         if (readerController != null) {
