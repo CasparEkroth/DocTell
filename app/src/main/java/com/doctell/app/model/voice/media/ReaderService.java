@@ -55,6 +55,8 @@ public class ReaderService extends Service implements PlaybackControl, Highlight
 
     public static final String CHANNEL_ID = "doctell_reader_service";
     public static final String ACTION_UPDATE_TTS_ENGINE = "com.doctell.app.action.UPDATE_TTS_ENGINE";
+    public static final String ACTION_TTS_LOADING = "com.doctell.app.TTS_LOADING";
+    public static final String ACTION_TTS_READY = "com.doctell.app.TTS_READY";
     private final IBinder binder = new LocalBinder();
     private ReaderController readerController;
     private ReaderMediaController mediaController;
@@ -682,6 +684,13 @@ public class ReaderService extends Service implements PlaybackControl, Highlight
     public void setTitleInReaderController(String title){
         if(readerController == null) return;
         readerController.setTitle(title);
+    }
+
+    public boolean isTtsLoading() {
+        if (readerController != null) {
+            return readerController.isEngineLoading();
+        }
+        return false; // Not loading if controller doesn't exist
     }
 
 }

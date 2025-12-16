@@ -1,14 +1,18 @@
 package com.doctell.app;
 
 import android.annotation.SuppressLint;
+import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.SharedPreferences;
+import android.os.Build;
 import android.os.Bundle;
 import android.view.View;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.CompoundButton;
+import android.widget.ProgressBar;
 import android.widget.SeekBar;
 import android.widget.Spinner;
 import android.widget.Switch;
@@ -31,9 +35,21 @@ public class SettingsActivity extends AppCompatActivity {
     private SeekBar seekRate;
     private TextView txtRateValue;
     private Switch swAnalytics, swCrashlytics;
+    private ProgressBar loadingBarSettings;
     private int initIndex = 0;
     private int initVoice = 0;
     private Context app;
+
+    private final BroadcastReceiver ttsStateReceiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            if (ReaderService.ACTION_TTS_LOADING.equals(intent.getAction())) {
+                showLoading(true);
+            } else if (ReaderService.ACTION_TTS_READY.equals(intent.getAction())) {
+                showLoading(false);
+            }
+        }
+    };
 
     @SuppressLint("DefaultLocale")
     @Override
@@ -47,6 +63,7 @@ public class SettingsActivity extends AppCompatActivity {
         txtRateValue = findViewById(R.id.txtRateValue);
         swAnalytics   = findViewById(R.id.swAnalytics);
         swCrashlytics = findViewById(R.id.swCrashlytics);
+        loadingBarSettings = findViewById(R.id.loadingSettings);
 
         ArrayAdapter<CharSequence> adapter = ArrayAdapter.createFromResource(
                 this, R.array.pref_lang_entries, android.R.layout.simple_spinner_item);
@@ -199,5 +216,32 @@ public class SettingsActivity extends AppCompatActivity {
         //return LocalTtsEngine.getInstance(getApplicationContext());
         return TtsEngineProvider.getEngine(getApplicationContext());
     }
+
+    private void showLoading(boolean on) {
+        if (loadingBarSettings != null) loadingBarSettings.setVisibility(on ? View.VISIBLE : View.GONE);
+    }
+
+    @Override
+    protected void onResume(){
+        super.onResume();
+        IntentFilter filter = new IntentFilter();
+        filter.addAction(ReaderService.ACTION_TTS_LOADING);
+        filter.addAction(ReaderService.ACTION_TTS_READY);
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            registerReceiver(ttsStateReceiver, filter, Context.RECEIVER_NOT_EXPORTED);
+        }
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        try {
+            unregisterReceiver(ttsStateReceiver);
+        } catch (IllegalArgumentException e) {
+            // Receiver not registered, ignore
+        }
+    }
+
 
 }

@@ -3,8 +3,10 @@ package com.doctell.app;
 import android.Manifest;
 import android.annotation.SuppressLint;
 import android.app.Activity;
+import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.graphics.RectF;
@@ -142,6 +144,12 @@ public class ReaderActivity extends AppCompatActivity implements HighlightListen
 
             showPage(currentBook.getLastPage());
             showLoading(false);
+
+            if (readerService.isTtsLoading()) {
+                showLoading(true);
+            } else {
+                showLoading(false);
+            }
         }
         @Override
         public void onServiceDisconnected(ComponentName name) {
@@ -162,6 +170,17 @@ public class ReaderActivity extends AppCompatActivity implements HighlightListen
                 isSpeaking = false;
                 syncTtsUiWithPlayback(false);
             });
+        }
+    };
+
+    private final BroadcastReceiver ttsStateReceiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            if (ReaderService.ACTION_TTS_LOADING.equals(intent.getAction())) {
+                showLoading(true);
+            } else if (ReaderService.ACTION_TTS_READY.equals(intent.getAction())) {
+                showLoading(false);
+            }
         }
     };
 
@@ -628,7 +647,24 @@ public class ReaderActivity extends AppCompatActivity implements HighlightListen
     }
 
     @Override
+    protected void onResume(){
+        super.onResume();
+        IntentFilter filter = new IntentFilter();
+        filter.addAction(ReaderService.ACTION_TTS_LOADING);
+        filter.addAction(ReaderService.ACTION_TTS_READY);
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            registerReceiver(ttsStateReceiver, filter, Context.RECEIVER_NOT_EXPORTED);
+        }
+    }
+
+    @Override
     protected void onPause() {
+        try {
+            unregisterReceiver(ttsStateReceiver);
+        } catch (IllegalArgumentException e) {
+            // Receiver not registered, ignore
+        }
         if (currentBook != null) {
             BookStorage.updateBook(currentBook, this);
         }

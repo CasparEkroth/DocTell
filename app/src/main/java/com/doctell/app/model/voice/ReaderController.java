@@ -1,6 +1,7 @@
 package com.doctell.app.model.voice;
 
 import android.content.Context;
+import android.content.Intent;
 import android.graphics.Bitmap;
 import android.media.AudioManager;
 import android.os.Handler;
@@ -11,6 +12,7 @@ import android.widget.Toast;
 import com.doctell.app.model.utils.PermissionHelper;
 import com.doctell.app.model.voice.media.PlaybackControl;
 import com.doctell.app.model.voice.media.ReaderMediaController;
+import com.doctell.app.model.voice.media.ReaderService;
 
 import java.util.List;
 
@@ -27,6 +29,7 @@ public class ReaderController implements TtsEngineListener, PlaybackControl {
     private float normalVolume = 1.0f;
     private float duckVolume = 0.3f;
     private boolean pendingResume = false;
+    private boolean isEngineLoading = false;
 
     public interface MediaNav {
         void navForward();
@@ -175,6 +178,8 @@ public class ReaderController implements TtsEngineListener, PlaybackControl {
     @Override
     public void onEngineError(String utteranceId) {
         Log.e("ReaderController", "Engine error for " + utteranceId);
+        this.isEngineLoading = false;
+        sendLoadingBroadcast(false);
         new android.os.Handler(android.os.Looper.getMainLooper()).post(() -> {
             pauseReading();
             Toast.makeText(ctx, "TTS connection lost. Please press play to retry.", Toast.LENGTH_SHORT).show();
@@ -198,7 +203,8 @@ public class ReaderController implements TtsEngineListener, PlaybackControl {
     @Override
     public void onEngineReady() {
         Log.d("ReaderController", "onEngineReady: pendingResume=" + pendingResume);
-
+        this.isEngineLoading = false;
+        sendLoadingBroadcast(false);
         if (pendingResume) {
             pendingResume = false;
             new Handler(Looper.getMainLooper()).post(() -> {
@@ -220,8 +226,19 @@ public class ReaderController implements TtsEngineListener, PlaybackControl {
         return -1;
     }
 
+    public boolean isEngineLoading() {
+        return this.isEngineLoading;
+    }
+
+    private void sendLoadingBroadcast(boolean isLoading) {
+        Intent intent = new Intent(isLoading ? ReaderService.ACTION_TTS_LOADING : ReaderService.ACTION_TTS_READY);
+        intent.setPackage(ctx.getPackageName());
+        ctx.sendBroadcast(intent);
+    }
+
     public void switchEngine(TtsEngineStrategy newEngine, boolean wasPlaying) {
         Log.d("ReaderController", "switchEngine: pendingResume=" + wasPlaying);
+        sendLoadingBroadcast(true);
         if (this.engine != null) {
             this.engine.stop();
             this.engine.shutdown();
