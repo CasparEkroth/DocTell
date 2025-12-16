@@ -103,7 +103,7 @@ public class ReaderController implements TtsEngineListener, PlaybackControl {
         isPaused = true;
         engine.pause();
         if (chunks != null && currentIndex >= 0 && currentIndex < chunks.size()) {
-            mediaController.updateState(false, currentIndex, chunks.get(currentIndex));
+            mediaController.updateState(false, currentIndex, title);
         }
     }
 
@@ -112,7 +112,7 @@ public class ReaderController implements TtsEngineListener, PlaybackControl {
         isPaused = false;
         engine.resume();
         if (chunks != null && currentIndex >= 0 && currentIndex < chunks.size()) {
-            mediaController.updateState(true, currentIndex, chunks.get(currentIndex));
+            mediaController.updateState(true, currentIndex, title);
         }
     }
 
