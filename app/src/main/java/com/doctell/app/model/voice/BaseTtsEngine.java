@@ -194,6 +194,7 @@ public abstract class BaseTtsEngine implements TtsEngineStrategy {
     public void speakChunk(String text, int index) {
         if (tts == null){
             Log.w("BaseTtsEngine", "TTS was null during speakChunk, initializing...");
+            DocTellAnalytics.ttsError(app,"tts == null");
             recreateTts();
             if (engineListener != null) {
                 main.post(() -> engineListener.onEngineError("CHUNK|" + index));
@@ -223,9 +224,24 @@ public abstract class BaseTtsEngine implements TtsEngineStrategy {
 
     protected void recreateTts() {
         Log.d("BaseTtsEngine", "Recreating TTS instance...");
+
+        if(tts != null){
+            try {
+                tts.shutdown();
+            } catch (Exception ignored) {}
+        }
         tts = null;
-        init(app);
+        try {
+            init(app);
+        } catch (Exception e) {
+            Log.e("BaseTtsEngine", "Failed to recreate TTS", e);
+            DocTellAnalytics.ttsError(app,"Failed to recreate TTS");
+            if (engineListener != null) {
+                main.post(() -> engineListener.onEngineError("INIT_FAILED"));
+            }
+        }
     }
+
 
     @Override
     public void pause() {
