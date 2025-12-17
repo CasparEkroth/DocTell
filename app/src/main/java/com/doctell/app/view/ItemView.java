@@ -18,6 +18,7 @@ import android.widget.LinearLayout;
 import android.widget.TextView;
 
 import androidx.appcompat.app.AlertDialog;
+import androidx.cardview.widget.CardView;
 
 import com.doctell.app.R;
 import com.doctell.app.ReaderActivity;
@@ -38,21 +39,18 @@ public class ItemView extends LinearLayout {
         imageView = findViewById(R.id.pdfPreviewImage);
         titleView = findViewById(R.id.title);
 
-        setClickable(true);
-        setLongClickable(true);
-        setFocusable(true);
-
-        setBackgroundResource(android.R.drawable.list_selector_background);
-
-        Bitmap bmp = PdfPreviewHelper.loadThumbBitmap(book.getThumbnailPath());
-        if (bmp != null) {
-            imageView.setImageBitmap(bmp);
-        } else {
-            imageView.setImageResource(android.R.drawable.ic_menu_report_image);
-        }
+        loadThumbnailAsync(book.getThumbnailPath());
 
         titleView.setText(book.getTitle() != null ? book.getTitle() : "Unknown");
 
+        CardView cardView = findViewById(R.id.cardContainer);
+        cardView.setOnClickListener(v -> openPdf(book));
+        cardView.setOnLongClickListener(v -> {
+            showDocumentOptionsDialog(getContext(), book);
+            return true;
+        });
+
+/*
         OnClickListener openReader = v -> {
             Log.d("ItemView", "onClick -> opening ReaderActivity");
             openPdf(book);
@@ -68,8 +66,22 @@ public class ItemView extends LinearLayout {
 
         setOnClickListener(openReader);
         imageView.setOnClickListener(openReader);
+
+ */
     }
 
+    private void loadThumbnailAsync(String thumbnailPath) {
+        new Thread(() -> {
+            Bitmap bmp = PdfPreviewHelper.loadThumbBitmap(thumbnailPath);
+            post(() -> {
+                if (bmp != null) {
+                    imageView.setImageBitmap(bmp);
+                } else {
+                    imageView.setImageResource(android.R.drawable.ic_menu_report_image);
+                }
+            });
+        }).start();
+    }
     // ---------- New dialog helpers ----------
 
     private void showDocumentOptionsDialog(Context ctx, Book book) {

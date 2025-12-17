@@ -84,19 +84,21 @@ public class PdfPreviewHelper {
         Log.d("TEST_THUMB", "Thumb exists = " + f.exists() + " | size = " + f.length());
         if (f.exists() && f.length() > 0) return path;
 
-        try (ParcelFileDescriptor pfd = ctx.getContentResolver().openFileDescriptor(uri, "r");
-             PdfRenderer renderer = new PdfRenderer(pfd);
-             PdfRenderer.Page page = renderer.openPage(0)) {
+        try (ParcelFileDescriptor pfd = ctx.getContentResolver().openFileDescriptor(uri, "r")) {
+            assert pfd != null;
+            try (PdfRenderer renderer = new PdfRenderer(pfd);
+                 PdfRenderer.Page page = renderer.openPage(0)) {
 
-            int w = Math.max(160, Math.min(targetWidthPx, 480));
-            int h = (int) (w * (float) page.getHeight() / page.getWidth());
-            Bitmap bmp = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888);
-            page.render(bmp, null, null, PdfRenderer.Page.RENDER_MODE_FOR_DISPLAY);
+                int w = Math.max(160, Math.min(targetWidthPx, 480));
+                int h = (int) (w * (float) page.getHeight() / page.getWidth());
+                Bitmap bmp = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888);
+                page.render(bmp, null, null, PdfRenderer.Page.RENDER_MODE_FOR_DISPLAY);
 
-            try (FileOutputStream out = new FileOutputStream(f)) {
-                bmp.compress(Bitmap.CompressFormat.PNG, 100, out);
+                try (FileOutputStream out = new FileOutputStream(f)) {
+                    bmp.compress(Bitmap.CompressFormat.PNG, 100, out);
+                }
+                bmp.recycle();
             }
-            bmp.recycle();
         }
         return path;
     }

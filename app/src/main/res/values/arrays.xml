@@ -1,6 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
 
+    <string-array name="pref_voice">
+        <item>Local</item>
+        <item>Cloud</item>
+    </string-array>
+    <!--api-->
 
     <string-array name="pref_lang_entries">
         <item>English</item>
@@ -8,16 +13,10 @@
         <item>Español</item>
     </string-array>
 
-    <string-array name="pref_voice">
-        <item>Local</item>
-        <item>Cloud</item>
-    </string-array>
-    <!--api-->
-
     <string-array name="pref_lang_values">
-        <item>eng</item>
-        <item>swe</item>
-        <item>spa</item>
+        <item>en-US</item>
+        <item>sv-SE</item>
+        <item>es-ES</item>
     </string-array>
 
     <string-array name="sort_options">

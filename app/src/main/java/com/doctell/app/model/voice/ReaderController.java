@@ -1,16 +1,23 @@
 package com.doctell.app.model.voice;
 
+import android.app.Activity;
+import android.app.AlertDialog;
 import android.content.Context;
+import android.content.Intent;
 import android.graphics.Bitmap;
 import android.media.AudioManager;
+import android.os.Handler;
+import android.os.Looper;
 import android.util.Log;
 import android.widget.Toast;
 
 import com.doctell.app.model.utils.PermissionHelper;
 import com.doctell.app.model.voice.media.PlaybackControl;
 import com.doctell.app.model.voice.media.ReaderMediaController;
+import com.doctell.app.model.voice.media.ReaderService;
 
 import java.util.List;
+import java.util.Locale;
 
 public class ReaderController implements TtsEngineListener, PlaybackControl {
     private List<String> chunks;
@@ -24,6 +31,8 @@ public class ReaderController implements TtsEngineListener, PlaybackControl {
 
     private float normalVolume = 1.0f;
     private float duckVolume = 0.3f;
+    private boolean pendingResume = false;
+    private boolean isEngineLoading = false;
 
     public interface MediaNav {
         void navForward();
@@ -103,7 +112,7 @@ public class ReaderController implements TtsEngineListener, PlaybackControl {
         isPaused = true;
         engine.pause();
         if (chunks != null && currentIndex >= 0 && currentIndex < chunks.size()) {
-            mediaController.updateState(false, currentIndex, chunks.get(currentIndex));
+            mediaController.updateState(false, currentIndex, title);
         }
     }
 
@@ -112,7 +121,7 @@ public class ReaderController implements TtsEngineListener, PlaybackControl {
         isPaused = false;
         engine.resume();
         if (chunks != null && currentIndex >= 0 && currentIndex < chunks.size()) {
-            mediaController.updateState(true, currentIndex, chunks.get(currentIndex));
+            mediaController.updateState(true, currentIndex, title);
         }
     }
 
@@ -172,6 +181,8 @@ public class ReaderController implements TtsEngineListener, PlaybackControl {
     @Override
     public void onEngineError(String utteranceId) {
         Log.e("ReaderController", "Engine error for " + utteranceId);
+        this.isEngineLoading = false;
+        sendLoadingBroadcast(false);
         new android.os.Handler(android.os.Looper.getMainLooper()).post(() -> {
             pauseReading();
             Toast.makeText(ctx, "TTS connection lost. Please press play to retry.", Toast.LENGTH_SHORT).show();
@@ -192,6 +203,36 @@ public class ReaderController implements TtsEngineListener, PlaybackControl {
         }
     }
 
+    @Override
+    public void onEngineReady() {
+        Log.d("ReaderController", "onEngineReady: pendingResume=" + pendingResume);
+        this.isEngineLoading = false;
+        sendLoadingBroadcast(false);
+        if (pendingResume) {
+            pendingResume = false;
+            new Handler(Looper.getMainLooper()).post(() -> {
+                speakCurrent();
+                if (mediaController != null) {
+
+                    mediaController.updateState(true, currentIndex, title);
+                }
+            });
+        }
+    }
+
+    @Override
+    public void onEngineMissingData(String langCode, String enginePackage) {
+        Log.d("ReaderController", "Missing TTS data for " + langCode + " -> requesting UI dialog");
+        new Handler(Looper.getMainLooper()).post(() -> {
+            pauseReading();
+            Intent intent = new Intent(ReaderService.ACTION_TTS_MISSING_DATA);
+            intent.putExtra("lang", langCode);
+            intent.putExtra("engine", enginePackage);
+            intent.setPackage(ctx.getPackageName());
+            ctx.sendBroadcast(intent);
+        });
+    }
+
     private int parseIndex(String utteranceId) {
         try {
             if (utteranceId != null && utteranceId.startsWith("CHUNK_")) {
@@ -200,6 +241,33 @@ public class ReaderController implements TtsEngineListener, PlaybackControl {
         } catch (NumberFormatException ignored) {}
         return -1;
     }
+
+    public boolean isEngineLoading() {
+        return this.isEngineLoading;
+    }
+
+    private void sendLoadingBroadcast(boolean isLoading) {
+        Intent intent = new Intent(isLoading ? ReaderService.ACTION_TTS_LOADING : ReaderService.ACTION_TTS_READY);
+        intent.setPackage(ctx.getPackageName());
+        ctx.sendBroadcast(intent);
+    }
+
+    public void switchEngine(TtsEngineStrategy newEngine, boolean wasPlaying) {
+        Log.d("ReaderController", "switchEngine: pendingResume=" + wasPlaying);
+        sendLoadingBroadcast(true);
+        if (this.engine != null) {
+            this.engine.stop();
+            this.engine.shutdown();
+        }
+        this.pendingResume = wasPlaying;
+        this.isPaused = !wasPlaying;
+
+        this.engine = newEngine;
+        this.engine.setListener(this);
+        this.engine.init(ctx);
+        this.engine.setVolume(normalVolume);
+    }
+
     public void shutdown() {
         if (engine != null) {
             engine.stop();

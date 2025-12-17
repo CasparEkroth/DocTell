@@ -1,17 +1,25 @@
 package com.doctell.app;
 
 import android.annotation.SuppressLint;
+import android.content.BroadcastReceiver;
 import android.content.Context;
+import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.SharedPreferences;
+import android.os.Build;
 import android.os.Bundle;
+import android.speech.tts.TextToSpeech;
+import android.util.Log;
 import android.view.View;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.CompoundButton;
+import android.widget.ProgressBar;
 import android.widget.SeekBar;
 import android.widget.Spinner;
 import android.widget.Switch;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
 
@@ -20,18 +28,42 @@ import com.doctell.app.model.analytics.DocTellAnalytics;
 import com.doctell.app.model.analytics.DocTellCrashlytics;
 import com.doctell.app.model.voice.CloudTtsEngine;
 import com.doctell.app.model.voice.TtsEngineStrategy;
+import com.doctell.app.model.voice.TtsWrapper;
+import com.doctell.app.model.voice.media.ReaderMediaController;
+import com.doctell.app.model.voice.media.ReaderService;
 import com.doctell.app.model.voice.notPublic.TtsEngineProvider;
 import com.doctell.app.model.voice.notPublic.TtsEngineType;
+
+import java.util.Locale;
 
 public class SettingsActivity extends AppCompatActivity {
 
     private Spinner spLang, spVoice;
+    private TtsWrapper ttsHelper;
     private SeekBar seekRate;
     private TextView txtRateValue;
     private Switch swAnalytics, swCrashlytics;
+    private ProgressBar loadingBarSettings;
     private int initIndex = 0;
     private int initVoice = 0;
     private Context app;
+
+    private final BroadcastReceiver ttsStateReceiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            String action = intent.getAction();
+            if (ReaderService.ACTION_TTS_LOADING.equals(action)) {
+                showLoading(true);
+            } else if (ReaderService.ACTION_TTS_READY.equals(action)) {
+                showLoading(false);
+            }
+            else if (ReaderService.ACTION_TTS_MISSING_DATA.equals(action)) {
+                String langCode = intent.getStringExtra("lang");
+                String enginePkg = intent.getStringExtra("engine");
+                TtsWrapper.showMissingDataDialog(app, enginePkg,langCode);
+            }
+        }
+    };
 
     @SuppressLint("DefaultLocale")
     @Override
@@ -45,6 +77,11 @@ public class SettingsActivity extends AppCompatActivity {
         txtRateValue = findViewById(R.id.txtRateValue);
         swAnalytics   = findViewById(R.id.swAnalytics);
         swCrashlytics = findViewById(R.id.swCrashlytics);
+        loadingBarSettings = findViewById(R.id.loadingSettings);
+
+        ttsHelper = new TtsWrapper(this, () -> {
+            Log.d("SettingsActivity", "TTS Helper ready");
+        });
 
         ArrayAdapter<CharSequence> adapter = ArrayAdapter.createFromResource(
                 this, R.array.pref_lang_entries, android.R.layout.simple_spinner_item);
@@ -63,15 +100,40 @@ public class SettingsActivity extends AppCompatActivity {
 
         String[] values = getResources().getStringArray(R.array.pref_lang_values);
         String saved = getLanguage();
+        if ("swe".equals(saved)) saved = "sv-SE";
+        if ("eng".equals(saved)) saved = "en-US";
+        if ("spa".equals(saved)) saved = "es-ES";
+
         setSpLangText(values,saved);
 
         spLang.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
             @Override
             public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
                 if(position == initIndex)return;
-                onLanguageSelected(values[position]);
-                setSpLangText(values,values[position]);
-                initIndex = position;
+                String selectedCode = values[position];
+                showLoading(true);
+                ttsHelper.checkVoiceData(selectedCode,
+                        () -> {
+                            // SUCCESS: Data is present
+                            showLoading(false);
+                            Log.d("SettingsActivity", "Language verified: " + selectedCode);
+
+                            onLanguageSelected(selectedCode);
+                            setSpLangText(values, selectedCode); // Update UI text if needed
+                            initIndex = position; // Update current index
+                            // Notify Service
+                            Intent intent = new Intent(ReaderService.ACTION_UPDATE_TTS_ENGINE);
+                            intent.setPackage(getPackageName());
+                            sendBroadcast(intent);
+                        },
+                        () -> {
+                            // FAILURE: Data is missing (-4 error caught)
+                            showLoading(false);
+                            Log.w("SettingsActivity", "Verification failed for: " + selectedCode);
+                            spLang.setSelection(initIndex);
+                            TtsWrapper.showMissingDataDialog(SettingsActivity.this,ttsHelper.getTts().getDefaultEngine() ,selectedCode);
+                        }
+                );
             }
             @Override
             public void onNothingSelected(AdapterView<?> parent) {}
@@ -84,6 +146,10 @@ public class SettingsActivity extends AppCompatActivity {
                 setSpVoiceText(voices,voices[position]);
                 TtsEngineProvider.saveEngineType(convert(voices[position]),app);
                 initVoice = position;
+                //switch tts engin
+                Intent intent = new Intent(ReaderService.ACTION_UPDATE_TTS_ENGINE);
+                intent.setPackage(getPackageName());
+                sendBroadcast(intent);
             }
             @Override
             public void onNothingSelected(AdapterView<?> parent) {}
@@ -102,6 +168,10 @@ public class SettingsActivity extends AppCompatActivity {
                 float r = 0.5f + (progress / 100f);
                 txtRateValue.setText(String.format("%.1fx", r));
                 if(fromUser) onRateChanged(r);
+                //switch tts engin
+                Intent intent = new Intent(ReaderService.ACTION_UPDATE_TTS_ENGINE);
+                intent.setPackage(getPackageName());
+                sendBroadcast(intent);
             }
             @Override
             public void onStartTrackingTouch(SeekBar seekBar) {}
@@ -161,7 +231,9 @@ public class SettingsActivity extends AppCompatActivity {
     }
 
     private void onLanguageSelected(String langCode) {
-        getEngine().setLanguageByCode(langCode);
+        //getEngine().setLanguageByCode(langCode); this is done by the service
+        SharedPreferences prefs = getSharedPreferences(Prefs.DOCTELL_PREFS.toString(), MODE_PRIVATE);
+        prefs.edit().putString(Prefs.LANG.toString(), langCode).apply();
     }
 
     private TtsEngineType getEnginType(){
@@ -174,12 +246,50 @@ public class SettingsActivity extends AppCompatActivity {
         return getEngine().getLanguage();
     }
     private void onRateChanged(float rate) {
-        getEngine().setRate(rate);
+        //getEngine().setRate(rate);
+        SharedPreferences prefs = getSharedPreferences(Prefs.DOCTELL_PREFS.toString(), MODE_PRIVATE);
+        prefs.edit().putFloat(Prefs.TTS_SPEED.toString(), rate).apply();
     }
 
     private TtsEngineStrategy getEngine(){
         //return LocalTtsEngine.getInstance(getApplicationContext());
         return TtsEngineProvider.getEngine(getApplicationContext());
     }
+
+    private void showLoading(boolean on) {
+        if (loadingBarSettings != null) loadingBarSettings.setVisibility(on ? View.VISIBLE : View.GONE);
+    }
+
+    @Override
+    protected void onResume(){
+        super.onResume();
+        IntentFilter filter = new IntentFilter();
+        filter.addAction(ReaderService.ACTION_TTS_LOADING);
+        filter.addAction(ReaderService.ACTION_TTS_READY);
+        filter.addAction(ReaderService.ACTION_TTS_MISSING_DATA);
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            registerReceiver(ttsStateReceiver, filter, Context.RECEIVER_NOT_EXPORTED);
+        }
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        try {
+            unregisterReceiver(ttsStateReceiver);
+        } catch (IllegalArgumentException e) {
+            // Receiver not registered, ignore
+        }
+    }
+
+    @Override
+    protected void onDestroy(){
+        if (ttsHelper != null) {
+            ttsHelper.shutdown();
+        }
+        super.onDestroy();
+    }
+
 
 }

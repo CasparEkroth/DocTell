@@ -22,13 +22,12 @@ public class CloudTtsEngine extends BaseTtsEngine {
 
     private CloudTtsEngine(Context app) {
         super(app);
-        this.app = app;
+        init(app);
     }
 
     @Override
     protected boolean acceptVoice(Voice v, Locale lang) {
-        return v.getQuality() == Voice.QUALITY_HIGH
-                && v.isNetworkConnectionRequired()
+        return  v.isNetworkConnectionRequired()
                 && v.getLocale().equals(lang);
     }
 

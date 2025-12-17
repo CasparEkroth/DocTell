@@ -3,8 +3,10 @@ package com.doctell.app;
 import android.Manifest;
 import android.annotation.SuppressLint;
 import android.app.Activity;
+import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.graphics.RectF;
@@ -53,6 +55,7 @@ import com.doctell.app.model.utils.PermissionHelper;
 import com.doctell.app.model.voice.HighlightListener;
 import com.doctell.app.model.voice.ReaderController;
 import com.doctell.app.model.voice.TtsEngineStrategy;
+import com.doctell.app.model.voice.TtsWrapper;
 import com.doctell.app.model.voice.media.ReaderService;
 import com.doctell.app.model.voice.notPublic.TtsEngineProvider;
 import com.doctell.app.view.HighlightOverlayView;
@@ -142,6 +145,12 @@ public class ReaderActivity extends AppCompatActivity implements HighlightListen
 
             showPage(currentBook.getLastPage());
             showLoading(false);
+
+            if (readerService.isTtsLoading()) {
+                showLoading(true);
+            } else {
+                showLoading(false);
+            }
         }
         @Override
         public void onServiceDisconnected(ComponentName name) {
@@ -162,6 +171,22 @@ public class ReaderActivity extends AppCompatActivity implements HighlightListen
                 isSpeaking = false;
                 syncTtsUiWithPlayback(false);
             });
+        }
+    };
+
+    private final BroadcastReceiver ttsStateReceiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            String action = intent.getAction();
+            if (ReaderService.ACTION_TTS_LOADING.equals(action)) {
+                showLoading(true);
+            } else if (ReaderService.ACTION_TTS_READY.equals(action)) {
+                showLoading(false);
+            } else if (ReaderService.ACTION_TTS_MISSING_DATA.equals(action)) {
+                String langCode = intent.getStringExtra("lang");
+                String enginePkg = intent.getStringExtra("engine");
+                TtsWrapper.showMissingDataDialog(ReaderActivity.this, enginePkg,langCode);
+            }
         }
     };
 
@@ -570,41 +595,47 @@ public class ReaderActivity extends AppCompatActivity implements HighlightListen
         if (!isServiceBound || readerService == null) {
             return;
         }
-        PageLifecycleManager pageManager = readerService.getPageLifecycleManager();
-        int currentPage = currentBook.getLastPage();
-        if (!pageManager.canProcessChunkStart(currentPage, index)) {
-            Log.d("ReaderActivity", "Orphaned chunk dropped: page=" + currentPage +
-                    ", chunk=" + index + ". " + pageManager.getStateString());
-            return;
-        }
-        pageManager.startSpeakingChunk(currentPage, index);
-        BitmapDrawable drawable = (BitmapDrawable) pdfImage.getDrawable();
-        if (drawable == null) return;
-        Bitmap bitmap = drawable.getBitmap();
-        if (bitmap == null || renderer == null || doc == null) return;
-
-        int bmpW = bitmap.getWidth();
-        int bmpH = bitmap.getHeight();
-        int pageW, pageH;
-        PdfRenderer.Page page = null;
-
-        try {
-            page = renderer.openPage(currentBook.getLastPage());
-            pageW = page.getWidth();
-            pageH = page.getHeight();
-        } finally {
-            if (page != null) {
-                page.close();
+        exec.execute(() -> {
+            PageLifecycleManager pageManager = readerService.getPageLifecycleManager();
+            int currentPage = currentBook.getLastPage();
+            if (!pageManager.canProcessChunkStart(currentPage, index)) {
+                Log.d("ReaderActivity", "Orphaned chunk dropped: page=" + currentPage +
+                        ", chunk=" + index + ". " + pageManager.getStateString());
+                return;
             }
-        }
-        List<RectF> rects = PdfPreviewHelper.getRectsForSentence(
-                doc, currentBook.getLastPage(), text, bmpW, bmpH, pageW, pageH
-        );
-        for (RectF r : rects) {
-            r.offset(0, -r.height());
-        }
-        currentBook.setSentence(index);
-        highlightOverlay.setHighlights(rects);
+            pageManager.startSpeakingChunk(currentPage, index);
+            BitmapDrawable drawable = (BitmapDrawable) pdfImage.getDrawable();
+            if (drawable == null) return;
+            Bitmap bitmap = drawable.getBitmap();
+            if (bitmap == null || renderer == null || doc == null) return;
+
+            int bmpW = bitmap.getWidth();
+            int bmpH = bitmap.getHeight();
+            int pageW, pageH;
+            PdfRenderer.Page page = null;
+
+            try {
+                synchronized(renderer) {
+                    page = renderer.openPage(currentBook.getLastPage());
+                }
+                pageW = page.getWidth();
+                pageH = page.getHeight();
+            } finally {
+                if (page != null) {
+                    page.close();
+                }
+            }
+            List<RectF> rects = PdfPreviewHelper.getRectsForSentence(
+                    doc, currentBook.getLastPage(), text, bmpW, bmpH, pageW, pageH
+            );
+            for (RectF r : rects) {
+                r.offset(0, -r.height());
+            }
+            main.post(()->{
+                currentBook.setSentence(index);
+                highlightOverlay.setHighlights(rects);
+            });
+        });
     }
 
     @Override
@@ -628,7 +659,25 @@ public class ReaderActivity extends AppCompatActivity implements HighlightListen
     }
 
     @Override
+    protected void onResume(){
+        super.onResume();
+        IntentFilter filter = new IntentFilter();
+        filter.addAction(ReaderService.ACTION_TTS_LOADING);
+        filter.addAction(ReaderService.ACTION_TTS_READY);
+        filter.addAction(ReaderService.ACTION_TTS_MISSING_DATA);
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            registerReceiver(ttsStateReceiver, filter, Context.RECEIVER_NOT_EXPORTED);
+        }
+    }
+
+    @Override
     protected void onPause() {
+        try {
+            unregisterReceiver(ttsStateReceiver);
+        } catch (IllegalArgumentException e) {
+            // Receiver not registered, ignore
+        }
         if (currentBook != null) {
             BookStorage.updateBook(currentBook, this);
         }

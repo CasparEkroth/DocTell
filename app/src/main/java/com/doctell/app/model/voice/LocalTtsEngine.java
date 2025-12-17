@@ -23,8 +23,7 @@ public class LocalTtsEngine extends BaseTtsEngine {
 
     @Override
     protected boolean acceptVoice(Voice v, Locale engineLanguage) {
-        return v.getQuality() == Voice.QUALITY_HIGH
-                && !v.isNetworkConnectionRequired()
+        return  !v.isNetworkConnectionRequired()
                 && v.getLocale().equals(engineLanguage);
     }
 }
