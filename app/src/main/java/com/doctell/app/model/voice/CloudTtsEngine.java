@@ -22,7 +22,7 @@ public class CloudTtsEngine extends BaseTtsEngine {
 
     private CloudTtsEngine(Context app) {
         super(app);
-        this.app = app;
+        init(app);
     }
 
     @Override

@@ -502,16 +502,15 @@ public class ReaderService extends Service implements PlaybackControl, Highlight
         if (uiHighlightListener != null) {
             uiHighlightListener.onPageFinished();
         }
-
         if (autoReading) {
             try {
                 int pageCount = pdfManager != null ? pdfManager.getPageCount() : 0;
                 if (currentBook != null && currentBook.getLastPage() + 1 < pageCount) {
                     next();
-                } else {
+                } else {//END OF BOOK
                     autoReading = false;
                     if (readerController != null) {
-                        readerController.pause();
+                        readerController.stop();
                     }
                 }
             } catch (Exception e) {

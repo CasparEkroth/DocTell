@@ -8,6 +8,7 @@ import android.content.IntentFilter;
 import android.content.SharedPreferences;
 import android.os.Build;
 import android.os.Bundle;
+import android.speech.tts.TextToSpeech;
 import android.util.Log;
 import android.view.View;
 import android.widget.AdapterView;
@@ -26,13 +27,18 @@ import com.doctell.app.model.analytics.DocTellAnalytics;
 import com.doctell.app.model.analytics.DocTellCrashlytics;
 import com.doctell.app.model.voice.CloudTtsEngine;
 import com.doctell.app.model.voice.TtsEngineStrategy;
+import com.doctell.app.model.voice.TtsWrapper;
+import com.doctell.app.model.voice.media.ReaderMediaController;
 import com.doctell.app.model.voice.media.ReaderService;
 import com.doctell.app.model.voice.notPublic.TtsEngineProvider;
 import com.doctell.app.model.voice.notPublic.TtsEngineType;
 
+import java.util.Locale;
+
 public class SettingsActivity extends AppCompatActivity {
 
     private Spinner spLang, spVoice;
+    private TtsWrapper ttsHelper;
     private SeekBar seekRate;
     private TextView txtRateValue;
     private Switch swAnalytics, swCrashlytics;
@@ -66,6 +72,10 @@ public class SettingsActivity extends AppCompatActivity {
         swCrashlytics = findViewById(R.id.swCrashlytics);
         loadingBarSettings = findViewById(R.id.loadingSettings);
 
+        ttsHelper = new TtsWrapper(this, () -> {
+            Log.d("SettingsActivity", "TTS Helper ready");
+        });
+
         ArrayAdapter<CharSequence> adapter = ArrayAdapter.createFromResource(
                 this, R.array.pref_lang_entries, android.R.layout.simple_spinner_item);
         adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
@@ -83,14 +93,35 @@ public class SettingsActivity extends AppCompatActivity {
 
         String[] values = getResources().getStringArray(R.array.pref_lang_values);
         String saved = getLanguage();
+        if ("swe".equals(saved)) saved = "sv-SE";
+        if ("eng".equals(saved)) saved = "en-US";
+        if ("spa".equals(saved)) saved = "es-ES";
+
         setSpLangText(values,saved);
 
         spLang.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
             @Override
             public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
                 if(position == initIndex)return;
-                onLanguageSelected(values[position]);
-                Log.d("TEST9",values[position]);
+                String selectedCode = values[position];
+
+                boolean isReady = ttsHelper.setLanguage(selectedCode);
+
+                if (!isReady) {
+
+                    // 1. Pause your player service
+                    Log.w("SettingsActivity", "Language missing: " + selectedCode);
+
+                    Intent pauseIntent = new Intent(SettingsActivity.this, ReaderService.class);
+                    pauseIntent.setAction(ReaderMediaController.ACTION_PAUSE);
+                    startService(pauseIntent);
+
+                    // 2. Reset spinner
+                    spLang.setSelection(initIndex);
+                    return;
+                }
+                onLanguageSelected(selectedCode);
+                Log.d("SettingsActivity",values[position]);
                 setSpLangText(values,values[position]);
                 initIndex = position;
                 //switch tts engin
@@ -243,6 +274,14 @@ public class SettingsActivity extends AppCompatActivity {
         } catch (IllegalArgumentException e) {
             // Receiver not registered, ignore
         }
+    }
+
+    @Override
+    protected void onDestroy(){
+        if (ttsHelper != null) {
+            ttsHelper.shutdown();
+        }
+        super.onDestroy();
     }
 
 

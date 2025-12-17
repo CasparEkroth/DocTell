@@ -217,6 +217,12 @@ public class ReaderController implements TtsEngineListener, PlaybackControl {
         }
     }
 
+    @Override
+    public void onEngineMissingData() {
+        Log.d("ReaderController", "Missing TTS data detected -> pausing");
+        new Handler(Looper.getMainLooper()).post(this::pauseReading);
+    }
+
     private int parseIndex(String utteranceId) {
         try {
             if (utteranceId != null && utteranceId.startsWith("CHUNK_")) {

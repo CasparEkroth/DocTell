@@ -2,6 +2,7 @@ package com.doctell.app.model.voice;
 
 import static android.os.Looper.getMainLooper;
 import android.content.Context;
+import android.content.Intent;
 import android.content.SharedPreferences;
 import android.media.AudioAttributes;
 import android.os.Bundle;
@@ -12,7 +13,9 @@ import android.speech.tts.Voice;
 import android.util.Log;
 
 import com.doctell.app.model.analytics.DocTellAnalytics;
+import com.doctell.app.model.analytics.DocTellCrashlytics;
 import com.doctell.app.model.entity.Prefs;
+import com.doctell.app.model.voice.notPublic.TtsEngineProvider;
 import com.doctell.app.model.voice.notPublic.TtsEngineType;
 
 import java.util.Locale;
@@ -62,50 +65,53 @@ public abstract class BaseTtsEngine implements TtsEngineStrategy {
                         .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
                         .build());
 
+                Log.i("BaseTtsEngine", "Initialized with engine: " + tts.getDefaultEngine());
+
                 applyLanguage();
                 applyRate();
 
-                //voice selection acceptVoice() from subclass
                 try {
                     Set<Voice> voices = tts.getVoices();
                     if (voices != null) {
-                        Locale lang = tts.getLanguage();
+                        Locale targetLocale = TtsWrapper.getLocaleFromTag(currentLangCode);
+
                         for (Voice v : voices) {
-                            if (acceptVoice(v, lang)) {
+                            if (acceptVoice(v, targetLocale)) {
                                 tts.setVoice(v);
                                 Log.i("BaseTtsEngine", "SELECTED VOICE: "
-                                        + v.getName() + " | NetworkReq="
-                                        + v.isNetworkConnectionRequired());
+                                        + v.getName() + " | NetworkReq=" + v.isNetworkConnectionRequired());
                                 break;
                             }
                         }
                     }
+
+                    Voice v = tts.getVoice();
+                    if (v != null) {
+                        TtsEngineType type = null;
+                        if(this instanceof CloudTtsEngine) type = TtsEngineType.CLOUD;
+                        if(this instanceof LocalTtsEngine) type = TtsEngineType.LOCAL;
+
+                        Log.d("BaseTtsEngine", "Final Voice: " + v.getName()
+                                + ", requiresNetwork=" + v.isNetworkConnectionRequired()
+                                + ", quality=" + v.getQuality()
+                                + ", engine type=" + (type != null ? type.toString() : "UNKNOWN"));
+                    }
+
                 } catch (Exception e) {
                     Log.w("BaseTtsEngine", "Failed selecting voice", e);
                 }
 
-                Voice v = tts.getVoice();
-                if (v != null) {
-                    TtsEngineType type = null;
-                    if(this instanceof CloudTtsEngine)type = TtsEngineType.CLOUD;
-                    if(this instanceof LocalTtsEngine)type = TtsEngineType.LOCAL;
-                    assert type != null;
-                    Log.d("TtsEngine", "Voice: " + v.getName()
-                            + ", requiresNetwork=" + v.isNetworkConnectionRequired()
-                            + ", latency=" + v.getLatency()
-                            + ", quality=" + v.getQuality()
-                            + ", engine type=" + type.toString());
-                }
-
                 tts.setOnUtteranceProgressListener(new UtteranceProgressListener() {
-                    @Override public void onStart(String id) {
+                    @Override
+                    public void onStart(String id) {
                         speaking = true;
                         if (engineListener != null) {
                             main.post(() -> engineListener.onEngineChunkStart(id));
                         }
                     }
 
-                    @Override public void onDone(String id) {
+                    @Override
+                    public void onDone(String id) {
                         Log.d("BaseTtsEngine", "onDone id=" + id);
                         speaking = false;
                         if (engineListener != null) {
@@ -123,15 +129,19 @@ public abstract class BaseTtsEngine implements TtsEngineStrategy {
                         onErrorInternal(id, errorCode);
                     }
                 });
+
+                // Signal ready
                 if (engineListener != null) {
                     Log.d("BaseTtsEngine", "sending onEngineReady");
                     main.post(() -> engineListener.onEngineReady());
                 }
+
             } else {
                 Log.e("BaseTtsEngine", "TextToSpeech init failed: " + status);
             }
         });
     }
+
 
     protected void onErrorInternal(String utteranceId, int errorCode) {
         speaking = false;
@@ -143,7 +153,8 @@ public abstract class BaseTtsEngine implements TtsEngineStrategy {
 
     protected void applyLanguage() {
         if (tts == null) return;
-        Locale locale = Locale.forLanguageTag(currentLangCode);
+        Locale locale = TtsWrapper.getLocaleFromTag(currentLangCode);
+        tts.setLanguage(locale);
         tts.setLanguage(locale);
     }
 
