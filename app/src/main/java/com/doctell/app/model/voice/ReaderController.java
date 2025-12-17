@@ -1,5 +1,7 @@
 package com.doctell.app.model.voice;
 
+import android.app.Activity;
+import android.app.AlertDialog;
 import android.content.Context;
 import android.content.Intent;
 import android.graphics.Bitmap;
@@ -15,6 +17,7 @@ import com.doctell.app.model.voice.media.ReaderMediaController;
 import com.doctell.app.model.voice.media.ReaderService;
 
 import java.util.List;
+import java.util.Locale;
 
 public class ReaderController implements TtsEngineListener, PlaybackControl {
     private List<String> chunks;
@@ -218,9 +221,16 @@ public class ReaderController implements TtsEngineListener, PlaybackControl {
     }
 
     @Override
-    public void onEngineMissingData() {
-        Log.d("ReaderController", "Missing TTS data detected -> pausing");
-        new Handler(Looper.getMainLooper()).post(this::pauseReading);
+    public void onEngineMissingData(String langCode, String enginePackage) {
+        Log.d("ReaderController", "Missing TTS data for " + langCode + " -> requesting UI dialog");
+        new Handler(Looper.getMainLooper()).post(() -> {
+            pauseReading();
+            Intent intent = new Intent(ReaderService.ACTION_TTS_MISSING_DATA);
+            intent.putExtra("lang", langCode);
+            intent.putExtra("engine", enginePackage);
+            intent.setPackage(ctx.getPackageName());
+            ctx.sendBroadcast(intent);
+        });
     }
 
     private int parseIndex(String utteranceId) {

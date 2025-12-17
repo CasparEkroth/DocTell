@@ -7,5 +7,5 @@ public interface TtsEngineListener {
     void setStartSentence(int sentence);
 
     void onEngineReady();
-    void onEngineMissingData();
+    void onEngineMissingData(String langCode, String enginePackage);
 }

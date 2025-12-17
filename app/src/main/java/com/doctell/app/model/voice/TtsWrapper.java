@@ -2,19 +2,26 @@ package com.doctell.app.model.voice;
 
 import android.content.Context;
 import android.content.Intent;
+import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
 import android.speech.tts.TextToSpeech;
+import android.speech.tts.UtteranceProgressListener;
 import android.util.Log;
+import android.widget.Toast;
+
 import java.util.Locale;
 
 public class TtsWrapper {
     private TextToSpeech tts;
     private final Context context;
     private final Runnable onInitSuccess;
+    private UtteranceProgressListener checkListener;
+
 
     public TtsWrapper(Context context, Runnable onInitSuccess) {
         this.context = context;
         this.onInitSuccess = onInitSuccess;
-        // Use default constructor -> Respects user's system preference (Samsung/Google/etc)
         this.tts = new TextToSpeech(context, status -> {
             if (status == TextToSpeech.SUCCESS) {
                 if (onInitSuccess != null) onInitSuccess.run();
@@ -31,15 +38,12 @@ public class TtsWrapper {
      */
     public boolean setLanguage(String langCode) {
         if (tts == null) return false;
-
-        Locale targetLocale = parseLocale(langCode);
+        Locale targetLocale = getLocaleFromTag(langCode);
         int availability = tts.isLanguageAvailable(targetLocale);
 
         if (availability == TextToSpeech.LANG_MISSING_DATA ||
                 availability == TextToSpeech.LANG_NOT_SUPPORTED) {
-
-            Log.w("TtsWrapper", "Language missing for: " + tts.getDefaultEngine());
-            launchInstallDataIntent();
+            Log.w("TtsWrapper", "Language data missing for: " + langCode);
             return false;
         }
 
@@ -51,16 +55,11 @@ public class TtsWrapper {
      * Smart intent launcher.
      * It specifically targets the SETTINGS of the ACTIVE engine.
      */
-    private void launchInstallDataIntent() {
+    public static void launchInstallDataIntent(Context context,String defaultEngine) {
         Intent intent = new Intent();
         intent.setAction(TextToSpeech.Engine.ACTION_INSTALL_TTS_DATA);
 
-        // CRITICAL: Force the intent to open settings for the CURRENT engine only
-        // This prevents opening Google settings when Samsung is active (and vice versa)
-        if (tts.getDefaultEngine() != null) {
-            intent.setPackage(tts.getDefaultEngine());
-        }
-
+        intent.setPackage(defaultEngine);
         intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
         try {
             context.startActivity(intent);
@@ -85,9 +84,6 @@ public class TtsWrapper {
 
     public static Locale getLocaleFromTag(String tag) {
         if (tag == null) return Locale.getDefault();
-
-        // Manual parsing is often safer for TTS matching than forLanguageTag
-        // because TTS engines expect simple (Language, Country) pairs.
         String[] parts = tag.split("-");
 
         if (parts.length == 1) {
@@ -105,6 +101,74 @@ public class TtsWrapper {
     public TextToSpeech getTts() {
         return tts;
     }
+
+    public static void showMissingDataDialog(Context ctx, String defaultEngine, String langCode) {
+        String langName = langCode;
+        try {
+            java.util.Locale loc = java.util.Locale.forLanguageTag(langCode);
+            langName = loc.getDisplayName();
+        } catch (Exception ignored) {}
+
+        new androidx.appcompat.app.AlertDialog.Builder(ctx)
+                .setTitle("Voice Data Missing")
+                .setMessage("The voice data for " + langName + " is missing. You need to download it to hear the audio.")
+                .setCancelable(false)
+                .setNegativeButton("Cancel", (dialog, which) -> {
+                    dialog.dismiss();
+                })
+                .setPositiveButton("Download", (dialog, which) -> {
+                    try {
+                        TtsWrapper.launchInstallDataIntent(ctx, defaultEngine);
+                    } catch (Exception e) {
+                        Toast.makeText(ctx, "Could not open TTS settings", Toast.LENGTH_SHORT).show();
+                    }
+                })
+                .show();
+    }
+
+    public void checkVoiceData(String langCode, Runnable onSuccess, Runnable onError) {
+        if (tts == null) {
+            onError.run();
+            return;
+        }
+
+        Locale locale = getLocaleFromTag(langCode);
+        int result = tts.setLanguage(locale); // First rough check
+
+        if (result == TextToSpeech.LANG_MISSING_DATA || result == TextToSpeech.LANG_NOT_SUPPORTED) {
+            onError.run();
+            return;
+        }
+
+        //attach a temporary listener to catch the -4 error.
+        tts.setOnUtteranceProgressListener(new UtteranceProgressListener() {
+            @Override
+            public void onStart(String utteranceId) {}
+
+            @Override
+            public void onDone(String utteranceId) {
+                if ("CHECK_VOICE".equals(utteranceId)) {
+                    new Handler(Looper.getMainLooper()).post(onSuccess);
+                }
+            }
+            @Override
+            public void onError(String utteranceId) {
+                // Generic error
+                new Handler(Looper.getMainLooper()).post(onError);
+            }
+
+            @Override
+            public void onError(String utteranceId, int errorCode) {
+                // This captures the -4 (ERROR_NOT_INSTALLED_YET)
+                Log.e("TtsWrapper", "Check failed with error: " + errorCode);
+                new Handler(Looper.getMainLooper()).post(onError);
+            }
+        });
+        Bundle params = new Bundle();
+        params.putFloat(TextToSpeech.Engine.KEY_PARAM_VOLUME, 0); // Silent
+        tts.speak(" ", TextToSpeech.QUEUE_FLUSH, params, "CHECK_VOICE");
+    }
+
 
     public void shutdown() {
         if (tts != null) {

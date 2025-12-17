@@ -35,6 +35,8 @@ public abstract class BaseTtsEngine implements TtsEngineStrategy {
     protected String currentLangCode;
     protected float currentRate;
     private static final int ERROR_CODE_GENERIC = 0;
+    private static final int ERROR_NOT_INSTALLED_YET = -4;
+    private boolean isFallbackAttempted = false;
     Bundle params = new Bundle();
 
     protected abstract boolean acceptVoice(Voice v, Locale engineLanguage);
@@ -64,7 +66,6 @@ public abstract class BaseTtsEngine implements TtsEngineStrategy {
                         .setUsage(AudioAttributes.USAGE_MEDIA)
                         .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
                         .build());
-
                 Log.i("BaseTtsEngine", "Initialized with engine: " + tts.getDefaultEngine());
 
                 applyLanguage();
@@ -121,12 +122,19 @@ public abstract class BaseTtsEngine implements TtsEngineStrategy {
 
                     @Override
                     public void onError(String id) {
+                        Log.d("BaseTtsEngine","onErrorInternal form onError in UtteranceProgressListener G");
                         onErrorInternal(id, ERROR_CODE_GENERIC);
                     }
 
                     @Override
                     public void onError(String id, int errorCode) {
+                        Log.d("BaseTtsEngine","onErrorInternal form onError in UtteranceProgressListener "+ errorCode);
+                        if (errorCode == ERROR_NOT_INSTALLED_YET) {
+                            handleMissingVoiceData();
+                            return;
+                        }
                         onErrorInternal(id, errorCode);
+
                     }
                 });
 
@@ -146,6 +154,7 @@ public abstract class BaseTtsEngine implements TtsEngineStrategy {
     protected void onErrorInternal(String utteranceId, int errorCode) {
         speaking = false;
         if (engineListener != null) {
+            Log.w("BaseTtsEngine", "generated onEngineError in onErrorInternal");
             // If you later want to pass errorCode through, you can extend TtsEngineListener.
             main.post(() -> engineListener.onEngineError(utteranceId));
         }
@@ -260,6 +269,15 @@ public abstract class BaseTtsEngine implements TtsEngineStrategy {
         }
     }
 
+    private void handleMissingVoiceData() {
+        Log.w("BaseTtsEngine", "Detected missing voice data for: " + currentLangCode);
+        if (engineListener != null) {
+            final String failedLang = currentLangCode;
+            main.post(() -> engineListener.onEngineMissingData(failedLang, tts.getDefaultEngine()));
+        }
+    }
+
+
 
     @Override
     public void pause() {
@@ -272,7 +290,6 @@ public abstract class BaseTtsEngine implements TtsEngineStrategy {
     public void resume() {
         if (tts == null) return;
         if (lastText == null || lastIndex < 0) return;
-
         String utteranceId = "CHUNK_" + lastIndex;
         tts.speak(lastText, TextToSpeech.QUEUE_FLUSH, params, utteranceId);
     }

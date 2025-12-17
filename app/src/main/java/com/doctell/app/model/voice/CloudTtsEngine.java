@@ -27,8 +27,7 @@ public class CloudTtsEngine extends BaseTtsEngine {
 
     @Override
     protected boolean acceptVoice(Voice v, Locale lang) {
-        return v.getQuality() == Voice.QUALITY_HIGH
-                && v.isNetworkConnectionRequired()
+        return  v.isNetworkConnectionRequired()
                 && v.getLocale().equals(lang);
     }
 

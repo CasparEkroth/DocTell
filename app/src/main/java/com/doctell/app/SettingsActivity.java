@@ -19,6 +19,7 @@ import android.widget.SeekBar;
 import android.widget.Spinner;
 import android.widget.Switch;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
 
@@ -50,10 +51,16 @@ public class SettingsActivity extends AppCompatActivity {
     private final BroadcastReceiver ttsStateReceiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
-            if (ReaderService.ACTION_TTS_LOADING.equals(intent.getAction())) {
+            String action = intent.getAction();
+            if (ReaderService.ACTION_TTS_LOADING.equals(action)) {
                 showLoading(true);
-            } else if (ReaderService.ACTION_TTS_READY.equals(intent.getAction())) {
+            } else if (ReaderService.ACTION_TTS_READY.equals(action)) {
                 showLoading(false);
+            }
+            else if (ReaderService.ACTION_TTS_MISSING_DATA.equals(action)) {
+                String langCode = intent.getStringExtra("lang");
+                String enginePkg = intent.getStringExtra("engine");
+                TtsWrapper.showMissingDataDialog(app, enginePkg,langCode);
             }
         }
     };
@@ -104,30 +111,29 @@ public class SettingsActivity extends AppCompatActivity {
             public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
                 if(position == initIndex)return;
                 String selectedCode = values[position];
+                showLoading(true);
+                ttsHelper.checkVoiceData(selectedCode,
+                        () -> {
+                            // SUCCESS: Data is present
+                            showLoading(false);
+                            Log.d("SettingsActivity", "Language verified: " + selectedCode);
 
-                boolean isReady = ttsHelper.setLanguage(selectedCode);
-
-                if (!isReady) {
-
-                    // 1. Pause your player service
-                    Log.w("SettingsActivity", "Language missing: " + selectedCode);
-
-                    Intent pauseIntent = new Intent(SettingsActivity.this, ReaderService.class);
-                    pauseIntent.setAction(ReaderMediaController.ACTION_PAUSE);
-                    startService(pauseIntent);
-
-                    // 2. Reset spinner
-                    spLang.setSelection(initIndex);
-                    return;
-                }
-                onLanguageSelected(selectedCode);
-                Log.d("SettingsActivity",values[position]);
-                setSpLangText(values,values[position]);
-                initIndex = position;
-                //switch tts engin
-                Intent intent = new Intent(ReaderService.ACTION_UPDATE_TTS_ENGINE);
-                intent.setPackage(getPackageName());
-                sendBroadcast(intent);
+                            onLanguageSelected(selectedCode);
+                            setSpLangText(values, selectedCode); // Update UI text if needed
+                            initIndex = position; // Update current index
+                            // Notify Service
+                            Intent intent = new Intent(ReaderService.ACTION_UPDATE_TTS_ENGINE);
+                            intent.setPackage(getPackageName());
+                            sendBroadcast(intent);
+                        },
+                        () -> {
+                            // FAILURE: Data is missing (-4 error caught)
+                            showLoading(false);
+                            Log.w("SettingsActivity", "Verification failed for: " + selectedCode);
+                            spLang.setSelection(initIndex);
+                            TtsWrapper.showMissingDataDialog(SettingsActivity.this,ttsHelper.getTts().getDefaultEngine() ,selectedCode);
+                        }
+                );
             }
             @Override
             public void onNothingSelected(AdapterView<?> parent) {}
@@ -260,6 +266,7 @@ public class SettingsActivity extends AppCompatActivity {
         IntentFilter filter = new IntentFilter();
         filter.addAction(ReaderService.ACTION_TTS_LOADING);
         filter.addAction(ReaderService.ACTION_TTS_READY);
+        filter.addAction(ReaderService.ACTION_TTS_MISSING_DATA);
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             registerReceiver(ttsStateReceiver, filter, Context.RECEIVER_NOT_EXPORTED);

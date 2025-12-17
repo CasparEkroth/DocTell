@@ -55,6 +55,7 @@ import com.doctell.app.model.utils.PermissionHelper;
 import com.doctell.app.model.voice.HighlightListener;
 import com.doctell.app.model.voice.ReaderController;
 import com.doctell.app.model.voice.TtsEngineStrategy;
+import com.doctell.app.model.voice.TtsWrapper;
 import com.doctell.app.model.voice.media.ReaderService;
 import com.doctell.app.model.voice.notPublic.TtsEngineProvider;
 import com.doctell.app.view.HighlightOverlayView;
@@ -176,10 +177,15 @@ public class ReaderActivity extends AppCompatActivity implements HighlightListen
     private final BroadcastReceiver ttsStateReceiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
-            if (ReaderService.ACTION_TTS_LOADING.equals(intent.getAction())) {
+            String action = intent.getAction();
+            if (ReaderService.ACTION_TTS_LOADING.equals(action)) {
                 showLoading(true);
-            } else if (ReaderService.ACTION_TTS_READY.equals(intent.getAction())) {
+            } else if (ReaderService.ACTION_TTS_READY.equals(action)) {
                 showLoading(false);
+            } else if (ReaderService.ACTION_TTS_MISSING_DATA.equals(action)) {
+                String langCode = intent.getStringExtra("lang");
+                String enginePkg = intent.getStringExtra("engine");
+                TtsWrapper.showMissingDataDialog(ReaderActivity.this, enginePkg,langCode);
             }
         }
     };
@@ -658,6 +664,7 @@ public class ReaderActivity extends AppCompatActivity implements HighlightListen
         IntentFilter filter = new IntentFilter();
         filter.addAction(ReaderService.ACTION_TTS_LOADING);
         filter.addAction(ReaderService.ACTION_TTS_READY);
+        filter.addAction(ReaderService.ACTION_TTS_MISSING_DATA);
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             registerReceiver(ttsStateReceiver, filter, Context.RECEIVER_NOT_EXPORTED);

@@ -57,6 +57,7 @@ public class ReaderService extends Service implements PlaybackControl, Highlight
     public static final String ACTION_UPDATE_TTS_ENGINE = "com.doctell.app.action.UPDATE_TTS_ENGINE";
     public static final String ACTION_TTS_LOADING = "com.doctell.app.TTS_LOADING";
     public static final String ACTION_TTS_READY = "com.doctell.app.TTS_READY";
+    public static final String ACTION_TTS_MISSING_DATA = "com.doctell.app.TTS_MISSING_DATA";
     private final IBinder binder = new LocalBinder();
     private ReaderController readerController;
     private ReaderMediaController mediaController;
