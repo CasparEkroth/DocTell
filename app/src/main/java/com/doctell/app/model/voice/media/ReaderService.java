@@ -59,6 +59,7 @@ public class ReaderService extends Service implements PlaybackControl, Highlight
     public static final String ACTION_TTS_READY = "com.doctell.app.TTS_READY";
     public static final String ACTION_TTS_MISSING_DATA = "com.doctell.app.TTS_MISSING_DATA";
     public static final String ACTION_PAUSE_PLAYBACK = "com.doctell.app.ACTION_PAUSE_PLAYBACK";
+    public static final String ACTION_PAUSE_PLAYBACK_ON_CONDITION = "com.doctell.app.ACTION_PAUSE_PLAYBACK_ON_CONDITION";
     private final IBinder binder = new LocalBinder();
     private ReaderController readerController;
     private ReaderMediaController mediaController;
@@ -146,6 +147,11 @@ public class ReaderService extends Service implements PlaybackControl, Highlight
                 updateTtsEngine();
             }else if (ACTION_PAUSE_PLAYBACK.equals(action)) {
                 pause();
+            } else if (ACTION_PAUSE_PLAYBACK_ON_CONDITION.equals(action)) {
+                String condition = intent.getStringExtra("condition");
+                if(currentBook.getUri().toString().equals(condition)){
+                    pause();
+                }
             }
         }
     };
