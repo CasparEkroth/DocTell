@@ -16,6 +16,7 @@ import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import androidx.appcompat.app.AlertDialog;
 import androidx.cardview.widget.CardView;
@@ -50,24 +51,6 @@ public class ItemView extends LinearLayout {
             return true;
         });
 
-/*
-        OnClickListener openReader = v -> {
-            Log.d("ItemView", "onClick -> opening ReaderActivity");
-            openPdf(book);
-        };
-
-        OnLongClickListener openPopUp = v -> {
-            showDocumentOptionsDialog(getContext(), book);
-            return true;
-        };
-
-        setOnLongClickListener(openPopUp);
-        imageView.setOnLongClickListener(openPopUp);
-
-        setOnClickListener(openReader);
-        imageView.setOnClickListener(openReader);
-
- */
     }
 
     private void loadThumbnailAsync(String thumbnailPath) {
@@ -166,6 +149,21 @@ public class ItemView extends LinearLayout {
     // ---------- Existing helpers ----------
 
     private void openPdf(Book book) {
+        try {
+            if (getContext().getContentResolver().openInputStream(book.getUri()) == null) {
+                throw new java.io.FileNotFoundException("Stream is null");
+            }
+        } catch (Exception e) {
+            Toast.makeText(
+                    getContext(),
+                    "File not found. It may have been moved or deleted.",
+                    android.widget.Toast.LENGTH_LONG
+            ).show();
+
+            Log.e("ItemView", "Cannot open book: " + book.getUri(), e);
+            return;
+        }
+
         Intent i = new Intent(getContext(), ReaderActivity.class);
         i.putExtra("uri", book.getUri().toString());
 

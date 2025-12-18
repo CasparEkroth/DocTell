@@ -5,6 +5,7 @@ import android.content.Intent;
 import android.content.SharedPreferences;
 import android.net.Uri;
 import android.util.Log;
+import android.widget.Toast;
 
 import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 
@@ -84,29 +85,29 @@ public class BookStorage {
             if (uriString == null) continue;
 
             Uri uri = Uri.parse(uriString);
+            int lastPage = pref.getInt("lastPage_" + i, 0);
+            int sentence = pref.getInt("sentence_" + i, 0);
+            String thumbPath = pref.getString("thumb_" + i, null);
+            String localPath = pref.getString("local_" + i, null);
+            long lastOpened = pref.getLong("lastOpened_" + i, System.currentTimeMillis());
+            Book b = new Book(
+                    uri,
+                    title,
+                    lastPage,
+                    sentence,
+                    thumbPath,
+                    localPath,
+                    lastOpened
+            );
+            list.add(b);
             try {
-                Objects.requireNonNull(ctx.getContentResolver().openInputStream(uri)).close();
-
-                int lastPage = pref.getInt("lastPage_" + i, 0);
-                int sentence = pref.getInt("sentence_" + i, 0);
-                String thumbPath = pref.getString("thumb_" + i, null);
-                String localPath = pref.getString("local_" + i, null);
-                long lastOpened = pref.getLong("lastOpened_" + i, System.currentTimeMillis());
-                Book b = new Book(
-                        uri,
-                        title,
-                        lastPage,
-                        sentence,
-                        thumbPath,
-                        localPath,
-                        lastOpened
-                );
-                list.add(b);
-
-            } catch (SecurityException | FileNotFoundException e) {
-                Log.w("BookStorage", "Skipping invalid or revoked URI: " + uri);
-            } catch (IOException e) {
-                Log.w("BookStorage", "IO error: " + e.getMessage());
+                if (ctx.getContentResolver().openInputStream(uri) == null) {
+                    Log.w("BookStorage", "Stream was null for URI: " + uri);
+                } else {
+                    Objects.requireNonNull(ctx.getContentResolver().openInputStream(uri)).close();
+                }
+            } catch (Exception e) {
+                Log.w("BookStorage", "File currently inaccessible: " + uri);
             }
         }
 
