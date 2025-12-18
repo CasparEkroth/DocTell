@@ -144,15 +144,11 @@ public class ReaderService extends Service implements PlaybackControl, Highlight
         @Override
         public void onReceive(Context context, Intent intent) {
             String action = intent.getAction();
+            Log.d("ReaderService", "BroadcastReceiver: action=" + action);
             if (ACTION_UPDATE_TTS_ENGINE.equals(action)) {
                 updateTtsEngine();
             }else if (ACTION_PAUSE_PLAYBACK.equals(action)) {
                 pause();
-            } else if (ACTION_PAUSE_PLAYBACK_ON_CONDITION.equals(action)) {
-                String condition = intent.getStringExtra("condition");
-                if(currentBook.getUri().toString().equals(condition)){
-                    pause();
-                }
             }
         }
     };
@@ -564,6 +560,14 @@ public class ReaderService extends Service implements PlaybackControl, Highlight
                 safeExecuteAction(this::next);
             } else if (ReaderMediaController.ACTION_PREV.equals(action)) {
                 safeExecuteAction(this::prev);
+            }else if (ACTION_PAUSE_PLAYBACK_ON_CONDITION.equals(action)) {
+                String conditionUri = intent.getStringExtra("condition");
+                Log.d("ReaderService", "Condition URI: " + conditionUri);
+                if (currentBook != null && currentBook.getUri().toString().equals(conditionUri)) {
+                    Log.d("ReaderService", "Stopping playback for deleted book");
+                    pause();
+                    //stopSelf();
+                }
             }
         }else {
             return START_NOT_STICKY;

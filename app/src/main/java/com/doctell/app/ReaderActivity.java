@@ -716,6 +716,7 @@ public class ReaderActivity extends AppCompatActivity implements HighlightListen
         if (exec != null) exec.shutdownNow();
         if (chapterLoader != null) chapterLoader.shutdown();
 
+        PdfLoader.getInstance(this).closeCurrent();
         super.onDestroy();
     }
 }

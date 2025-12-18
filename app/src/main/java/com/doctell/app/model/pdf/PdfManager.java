@@ -23,6 +23,7 @@ public class PdfManager {
     private PdfRenderer pdfRenderer;
     private ParcelFileDescriptor pdfFd;
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
+    private boolean ownsResources = true;
 
     public PdfManager(Context ctx,
                       String bookLocalPath,
@@ -34,6 +35,7 @@ public class PdfManager {
         this.pdDocument = doc;
         this.pdfFd = pdfFd;
         this.pdfRenderer = renderer;
+        this.ownsResources = false;
     }
 
     private synchronized void openIfNeeded() throws IOException {
@@ -75,15 +77,17 @@ public class PdfManager {
     }
 
     public synchronized void close() {
-        try {
-            if (pdfRenderer != null) pdfRenderer.close();
-        } catch (Exception ignore) {}
-        try {
-            if (pdfFd != null) pdfFd.close();
-        } catch (IOException ignored) {}
-        try {
-            if (pdDocument != null) pdDocument.close();
-        } catch (IOException ignored) {}
+        if (ownsResources) {
+            try {
+                if (pdfRenderer != null) pdfRenderer.close();
+            } catch (Exception ignore) {}
+            try {
+                if (pdfFd != null) pdfFd.close();
+            } catch (IOException ignored) {}
+            try {
+                if (pdDocument != null) pdDocument.close();
+            } catch (IOException ignored) {}
+        }
         pdfRenderer = null;
         pdfFd = null;
         pdDocument = null;

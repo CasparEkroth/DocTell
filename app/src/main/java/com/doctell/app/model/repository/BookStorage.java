@@ -10,11 +10,14 @@ import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 
 import com.doctell.app.model.analytics.DocTellAnalytics;
 import com.doctell.app.model.entity.Book;
+import com.doctell.app.model.utils.FileUtils;
 import com.doctell.app.model.voice.media.ReaderService;
 
+import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.Executor;
@@ -59,6 +62,9 @@ public class BookStorage {
         BOOK_LOADER_EXECUTOR.execute(() -> {
             try {
                 List<Book> books = loadBooksInternal(ctx);
+                //Clean dir
+                FileUtils.cleanOrphanedFiles(ctx,books);
+
                 callback.onBooksLoaded(books);
             } catch (Exception e) {
                 Log.e("BookStorage", "Failed to load books", e);
@@ -147,20 +153,33 @@ public class BookStorage {
     }
 
     public static boolean delete(Context ctx, Book target) {
-        for (int i = 0; i < booksCache.size(); i++) {
-            Book b = booksCache.get(i);
+        Book bookToRemove = null;
+        for (Book b : booksCache) {
             if (b.equals(target)) {
-                booksCache.remove(i);
-                saveBooks(ctx, booksCache);
-
-                Intent intent = new Intent(ReaderService.ACTION_PAUSE_PLAYBACK_ON_CONDITION);
-                intent.putExtra("condition", target.getUri().toString());
-                intent.setPackage(ctx.getPackageName());
-                ctx.sendBroadcast(intent);
-
-                return true;
+                bookToRemove = b;
+                break;
             }
         }
+        if (bookToRemove != null) {
+            // Delete physical files
+            if (bookToRemove.getLocalPath() != null) {
+                new File(bookToRemove.getLocalPath()).delete();
+            }
+            if (bookToRemove.getThumbnailPath() != null) {
+                new File(bookToRemove.getThumbnailPath()).delete();
+            }
+            Intent intent = new Intent(ctx, ReaderService.class);
+            intent.setAction(ReaderService.ACTION_PAUSE_PLAYBACK_ON_CONDITION);
+            intent.putExtra("condition", bookToRemove.getUri().toString());
+            Log.d("BookStorage", "seeding ACTION_PAUSE_PLAYBACK_ON_CONDITION");
+            ctx.startService(intent);
+
+            booksCache.remove(bookToRemove);
+
+            saveBooks(ctx, booksCache);
+            return true;
+        }
+
         return false;
     }
 
