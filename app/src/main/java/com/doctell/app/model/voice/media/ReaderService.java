@@ -58,6 +58,7 @@ public class ReaderService extends Service implements PlaybackControl, Highlight
     public static final String ACTION_TTS_LOADING = "com.doctell.app.TTS_LOADING";
     public static final String ACTION_TTS_READY = "com.doctell.app.TTS_READY";
     public static final String ACTION_TTS_MISSING_DATA = "com.doctell.app.TTS_MISSING_DATA";
+    public static final String ACTION_PAUSE_PLAYBACK = "com.doctell.app.ACTION_PAUSE_PLAYBACK";
     private final IBinder binder = new LocalBinder();
     private ReaderController readerController;
     private ReaderMediaController mediaController;
@@ -140,8 +141,11 @@ public class ReaderService extends Service implements PlaybackControl, Highlight
     private final BroadcastReceiver settingsReceiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
-            if (ACTION_UPDATE_TTS_ENGINE.equals(intent.getAction())) {
+            String action = intent.getAction();
+            if (ACTION_UPDATE_TTS_ENGINE.equals(action)) {
                 updateTtsEngine();
+            }else if (ACTION_PAUSE_PLAYBACK.equals(action)) {
+                pause();
             }
         }
     };
@@ -229,6 +233,7 @@ public class ReaderService extends Service implements PlaybackControl, Highlight
 
         IntentFilter settingsFilter = new IntentFilter();
         settingsFilter.addAction(ACTION_UPDATE_TTS_ENGINE);
+        settingsFilter.addAction(ACTION_PAUSE_PLAYBACK);
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             //NOT_EXPORTED for security on Android 14+
             registerReceiver(settingsReceiver, settingsFilter, Context.RECEIVER_NOT_EXPORTED);

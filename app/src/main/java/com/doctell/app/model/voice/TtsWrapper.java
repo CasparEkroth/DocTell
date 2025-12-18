@@ -10,6 +10,8 @@ import android.speech.tts.UtteranceProgressListener;
 import android.util.Log;
 import android.widget.Toast;
 
+import com.doctell.app.model.voice.media.ReaderService;
+
 import java.util.Locale;
 
 public class TtsWrapper {
@@ -103,6 +105,10 @@ public class TtsWrapper {
     }
 
     public static void showMissingDataDialog(Context ctx, String defaultEngine, String langCode) {
+        Intent pauseIntent = new Intent(ReaderService.ACTION_PAUSE_PLAYBACK);
+        pauseIntent.setPackage(ctx.getPackageName());
+        ctx.sendBroadcast(pauseIntent);
+
         String langName = langCode;
         try {
             java.util.Locale loc = java.util.Locale.forLanguageTag(langCode);
