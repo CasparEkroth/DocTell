@@ -7,6 +7,7 @@ import android.content.SharedPreferences;
 import android.media.AudioAttributes;
 import android.os.Bundle;
 import android.os.Handler;
+import android.os.Looper;
 import android.speech.tts.TextToSpeech;
 import android.speech.tts.UtteranceProgressListener;
 import android.speech.tts.Voice;
@@ -102,41 +103,7 @@ public abstract class BaseTtsEngine implements TtsEngineStrategy {
                     Log.w("BaseTtsEngine", "Failed selecting voice", e);
                 }
 
-                tts.setOnUtteranceProgressListener(new UtteranceProgressListener() {
-                    @Override
-                    public void onStart(String id) {
-                        speaking = true;
-                        if (engineListener != null) {
-                            main.post(() -> engineListener.onEngineChunkStart(id));
-                        }
-                    }
-
-                    @Override
-                    public void onDone(String id) {
-                        Log.d("BaseTtsEngine", "onDone id=" + id);
-                        speaking = false;
-                        if (engineListener != null) {
-                            main.post(() -> engineListener.onEngineChunkDone(id));
-                        }
-                    }
-
-                    @Override
-                    public void onError(String id) {
-                        Log.d("BaseTtsEngine","onErrorInternal form onError in UtteranceProgressListener G");
-                        onErrorInternal(id, ERROR_CODE_GENERIC);
-                    }
-
-                    @Override
-                    public void onError(String id, int errorCode) {
-                        Log.d("BaseTtsEngine","onErrorInternal form onError in UtteranceProgressListener "+ errorCode);
-                        if (errorCode == ERROR_NOT_INSTALLED_YET) {
-                            handleMissingVoiceData();
-                            return;
-                        }
-                        onErrorInternal(id, errorCode);
-
-                    }
-                });
+                tts.setOnUtteranceProgressListener(getStandardListener());
 
                 // Signal ready
                 if (engineListener != null) {
@@ -150,6 +117,42 @@ public abstract class BaseTtsEngine implements TtsEngineStrategy {
         });
     }
 
+    protected UtteranceProgressListener getStandardListener() {
+        return new UtteranceProgressListener() {
+            @Override
+            public void onStart(String id) {
+                speaking = true;
+                if (engineListener != null) {
+                    main.post(() -> engineListener.onEngineChunkStart(id));
+                }
+            }
+
+            @Override
+            public void onDone(String id) {
+                Log.d("BaseTtsEngine", "onDone id=" + id);
+                speaking = false;
+                if (engineListener != null) {
+                    main.post(() -> engineListener.onEngineChunkDone(id));
+                }
+            }
+
+            @Override
+            public void onError(String id) {
+                Log.d("BaseTtsEngine","onErrorInternal form onError in UtteranceProgressListener G");
+                onErrorInternal(id, ERROR_CODE_GENERIC);
+            }
+
+            @Override
+            public void onError(String id, int errorCode) {
+                Log.d("BaseTtsEngine","onErrorInternal form onError in UtteranceProgressListener "+ errorCode);
+                if (errorCode == ERROR_NOT_INSTALLED_YET) {
+                    handleMissingVoiceData();
+                    return;
+                }
+                onErrorInternal(id, errorCode);
+            }
+        };
+    }
 
     protected void onErrorInternal(String utteranceId, int errorCode) {
         speaking = false;
@@ -206,6 +209,10 @@ public abstract class BaseTtsEngine implements TtsEngineStrategy {
     @Override
     public void setListener(TtsEngineListener listener) {
         this.engineListener = listener;
+        // This fixes the "Lost Listener" bug
+        if (tts != null) {
+            tts.setOnUtteranceProgressListener(getStandardListener());
+        }
     }
 
     @Override
@@ -277,7 +284,57 @@ public abstract class BaseTtsEngine implements TtsEngineStrategy {
         }
     }
 
+    public void checkEngineHealth(Runnable onAlive, Runnable onDead) {
+        Log.w("BaseTtsEngine", "running a checkEngineHealth");
+        if (tts == null) {
+            onDead.run();
+            return;
+        }
 
+        if (tts.isSpeaking()) {
+            Log.d("BaseTtsEngine", "Engine is already speaking - skipping health check");
+            onAlive.run();
+            return;
+        }
+
+        final String CHECK_ID = "PING_" + System.currentTimeMillis();
+        final Handler handler = new Handler(Looper.getMainLooper());
+
+        //Timeout Runnable
+        final Runnable timeoutRunnable = () -> {
+            Log.w("BaseTtsEngine", "TTS Heartbeat timed out");
+            if (tts != null) tts.setOnUtteranceProgressListener(getStandardListener());
+            onDead.run();
+        };
+        handler.postDelayed(timeoutRunnable, 2000); // 2 seconds timeout
+
+        //Temporary Listener
+        tts.setOnUtteranceProgressListener(new UtteranceProgressListener() {
+            @Override
+            public void onStart(String utteranceId) { /* no-op */ }
+
+            @Override
+            public void onDone(String utteranceId) {
+                if (CHECK_ID.equals(utteranceId)) {
+                    handler.removeCallbacks(timeoutRunnable);
+                    tts.setOnUtteranceProgressListener(getStandardListener());
+                    handler.post(onAlive);
+                }
+            }
+
+            @Override
+            public void onError(String utteranceId) {
+                if (CHECK_ID.equals(utteranceId)) {
+                    handler.removeCallbacks(timeoutRunnable);
+                    tts.setOnUtteranceProgressListener(getStandardListener());
+                    handler.post(onDead);
+                }
+            }
+        });
+        Bundle silentParams = new Bundle();
+        silentParams.putFloat(TextToSpeech.Engine.KEY_PARAM_VOLUME, 0.0f);
+        tts.speak(" ", TextToSpeech.QUEUE_FLUSH, silentParams, CHECK_ID);
+    }
 
     @Override
     public void pause() {

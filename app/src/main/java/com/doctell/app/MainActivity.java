@@ -42,6 +42,7 @@ import com.tom_roush.pdfbox.io.MemoryUsageSetting;
 import com.tom_roush.pdfbox.pdmodel.PDDocument;
 import com.tom_roush.pdfbox.pdmodel.PDDocumentInformation;
 
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.List;
@@ -227,6 +228,16 @@ public class MainActivity extends AppCompatActivity {
             
             exec.execute(() -> {
                 try {
+                    for (Book b : BookStorage.booksCache) {
+                        if(b.getUri().equals(uri)){
+                            main.post(() -> {
+                                Toast.makeText(this, "Book already in library!", Toast.LENGTH_SHORT).show();
+                                showLoading(false);
+                            });
+                            return;
+                        }
+                    }
+
                     String title = safeTitleFromPdfOrName(uri);
                     String localPath = PdfPreviewHelper.ensureLocalCopy(this,uri);
                     int screenW = getResources().getDisplayMetrics().widthPixels;

@@ -242,6 +242,24 @@ public class ReaderController implements TtsEngineListener, PlaybackControl {
         return -1;
     }
 
+    public void checkHealth() {
+        if (engine instanceof BaseTtsEngine) {
+            ((BaseTtsEngine) engine).checkEngineHealth(
+                    () -> android.util.Log.d("ReaderController", "TTS is healthy"),
+                    () -> {
+                        android.util.Log.w("ReaderController", "TTS was dead. Recreating...");
+                        ((BaseTtsEngine) engine).recreateTts();
+                    }
+            );
+        }
+    }
+
+    public void reattachListener() {
+        if (engine != null) {
+            engine.setListener(this);
+        }
+    }
+
     public boolean isEngineLoading() {
         return this.isEngineLoading;
     }

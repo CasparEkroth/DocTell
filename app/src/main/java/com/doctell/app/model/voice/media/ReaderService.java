@@ -59,9 +59,11 @@ public class ReaderService extends Service implements PlaybackControl, Highlight
     public static final String ACTION_TTS_READY = "com.doctell.app.TTS_READY";
     public static final String ACTION_TTS_MISSING_DATA = "com.doctell.app.TTS_MISSING_DATA";
     public static final String ACTION_PAUSE_PLAYBACK = "com.doctell.app.ACTION_PAUSE_PLAYBACK";
+    public static final String ACTION_PAUSE_PLAYBACK_ON_CONDITION = "com.doctell.app.ACTION_PAUSE_PLAYBACK_ON_CONDITION";
     private final IBinder binder = new LocalBinder();
     private ReaderController readerController;
     private ReaderMediaController mediaController;
+    private long lastPauseTime = 0;
     private AudioManager audioManager;
     private AudioFocusRequest audioFocusRequest;
     private boolean resumeAfterFocusGain = false;
@@ -146,6 +148,11 @@ public class ReaderService extends Service implements PlaybackControl, Highlight
                 updateTtsEngine();
             }else if (ACTION_PAUSE_PLAYBACK.equals(action)) {
                 pause();
+            } else if (ACTION_PAUSE_PLAYBACK_ON_CONDITION.equals(action)) {
+                String condition = intent.getStringExtra("condition");
+                if(currentBook.getUri().toString().equals(condition)){
+                    pause();
+                }
             }
         }
     };
@@ -358,6 +365,14 @@ public class ReaderService extends Service implements PlaybackControl, Highlight
     @Override
     public void play() {
         safeExecuteAction(()->{
+            long idleTime = System.currentTimeMillis() - lastPauseTime;
+            if (lastPauseTime > 0 && idleTime > 5 * 60 * 1000) {
+                Log.w("ReaderService", "Long pause detected (" + (idleTime/1000) + "s). Checking engine...");
+                if (readerController != null) {
+                    readerController.checkHealth();
+                    /* timing issues can occur, may skipp one sentence */
+                }
+            }
             Log.d("ReaderService","play(): autoReading=true");
             autoReading = true;
             requestAudioFocus();
@@ -374,6 +389,7 @@ public class ReaderService extends Service implements PlaybackControl, Highlight
     @Override
     public void pause() {
         safeExecuteAction(()-> {
+            lastPauseTime = System.currentTimeMillis();
             Log.d("ReaderService","pause(): autoReading=false");
             autoReading = false;
             SilentPlayer.stopSilentAudio();
@@ -698,6 +714,10 @@ public class ReaderService extends Service implements PlaybackControl, Highlight
             return readerController.isEngineLoading();
         }
         return false; // Not loading if controller doesn't exist
+    }
+
+    public ReaderController getReaderController(){
+        return readerController;
     }
 
 }

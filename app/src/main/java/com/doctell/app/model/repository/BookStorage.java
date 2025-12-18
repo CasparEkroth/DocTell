@@ -1,12 +1,16 @@
 package com.doctell.app.model.repository;
 
 import android.content.Context;
+import android.content.Intent;
 import android.content.SharedPreferences;
 import android.net.Uri;
 import android.util.Log;
 
+import androidx.localbroadcastmanager.content.LocalBroadcastManager;
+
 import com.doctell.app.model.analytics.DocTellAnalytics;
 import com.doctell.app.model.entity.Book;
+import com.doctell.app.model.voice.media.ReaderService;
 
 import java.io.FileNotFoundException;
 import java.io.IOException;
@@ -148,6 +152,12 @@ public class BookStorage {
             if (b.equals(target)) {
                 booksCache.remove(i);
                 saveBooks(ctx, booksCache);
+
+                Intent intent = new Intent(ReaderService.ACTION_PAUSE_PLAYBACK_ON_CONDITION);
+                intent.putExtra("condition", target.getUri().toString());
+                intent.setPackage(ctx.getPackageName());
+                ctx.sendBroadcast(intent);
+
                 return true;
             }
         }
