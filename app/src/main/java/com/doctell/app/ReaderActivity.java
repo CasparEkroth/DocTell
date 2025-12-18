@@ -669,6 +669,11 @@ public class ReaderActivity extends AppCompatActivity implements HighlightListen
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             registerReceiver(ttsStateReceiver, filter, Context.RECEIVER_NOT_EXPORTED);
         }
+
+        if (readerService != null && readerService.getReaderController() != null) {
+            readerService.getReaderController().checkHealth();
+            readerService.getReaderController().reattachListener();
+        }
     }
 
     @Override
