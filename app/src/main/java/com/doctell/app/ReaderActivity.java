@@ -118,6 +118,9 @@ public class ReaderActivity extends AppCompatActivity implements HighlightListen
                         boolean playing = state.getState() == PlaybackStateCompat.STATE_PLAYING;
                         syncTtsUiWithPlayback(playing);
                     }
+                    if (readerService.getReaderController() != null) {
+                        readerService.getReaderController().reattachListener();
+                    }
                     readerService.setTitleInReaderController(currentBook.getTitle());
                 }
             } catch (Exception e) {
@@ -253,7 +256,12 @@ public class ReaderActivity extends AppCompatActivity implements HighlightListen
 
         btnNext.setOnClickListener(v -> showNextPage());
         btnPrev.setOnClickListener(v -> showPrevPage());
-        btnTTS.setOnClickListener(v -> toggleTTS());
+        btnTTS.setOnClickListener(v ->{
+            if (readerService != null && readerService.getReaderController() != null) {
+                readerService.getReaderController().reattachListener();
+            }
+            toggleTTS();
+        });
         btnChapter.setOnClickListener(v -> openChapterActivity());
         btnChapter.setEnabled(false);
 

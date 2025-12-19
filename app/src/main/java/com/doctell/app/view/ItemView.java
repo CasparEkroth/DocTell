@@ -27,6 +27,8 @@ import com.doctell.app.model.entity.Book;
 import com.doctell.app.model.repository.BookStorage;
 import com.doctell.app.model.pdf.PdfPreviewHelper;
 
+import java.io.File;
+
 @SuppressLint("ViewConstructor")
 public class ItemView extends LinearLayout {
 
@@ -149,6 +151,15 @@ public class ItemView extends LinearLayout {
     // ---------- Existing helpers ----------
 
     private void openPdf(Book book) {
+        if (book.getLocalPath() != null && new File(book.getLocalPath()).exists()) {
+            Intent i = new Intent(getContext(), ReaderActivity.class);
+            i.putExtra("uri", book.getUri().toString());
+            if (!(getContext() instanceof android.app.Activity)) {
+                i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            }
+            getContext().startActivity(i);
+            return;
+        }
         try {
             if (getContext().getContentResolver().openInputStream(book.getUri()) == null) {
                 throw new java.io.FileNotFoundException("Stream is null");
@@ -160,13 +171,11 @@ public class ItemView extends LinearLayout {
                     android.widget.Toast.LENGTH_LONG
             ).show();
 
-            Log.e("ItemView", "Cannot open book: " + book.getUri(), e);
-            return;
+            Log.e("ItemView", "Cannot open book: " + book.getUri(), e);return;
         }
 
         Intent i = new Intent(getContext(), ReaderActivity.class);
         i.putExtra("uri", book.getUri().toString());
-
         if (!(getContext() instanceof android.app.Activity)) {
             i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
         }
