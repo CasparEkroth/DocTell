@@ -31,7 +31,7 @@
 
         <TextView
             android:id="@+id/readerTitle"
-            android:layout_width="190dp"
+            android:layout_width="195dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
             android:text="DocTell"
@@ -40,14 +40,15 @@
             android:textStyle="bold" />
 
         <!-- Keep same id: used in ReaderActivity -->
+        <!-- make to options -->
         <Button
-            android:id="@+id/chapterBtn"
+            android:id="@+id/optionsBtn"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:backgroundTint="@color/dt_accent"
             android:paddingStart="20dp"
             android:paddingEnd="20dp"
-            android:text="@string/chapters"
+            android:text="@string/btn_options"
             android:textAllCaps="false"
             android:textColor="@android:color/black" />
     </LinearLayout>

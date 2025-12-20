@@ -1,0 +1,104 @@
+<?xml version="1.0" encoding="utf-8"?>
+<com.google.android.material.card.MaterialCardView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_margin="20dp"
+    app:cardCornerRadius="18dp"
+    app:cardUseCompatPadding="true"
+    app:cardElevation="6dp"
+    app:strokeWidth="1dp"
+    app:strokeColor="?attr/colorOutline"
+    app:cardBackgroundColor="?attr/colorSurface">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:paddingHorizontal="20dp"
+        android:paddingTop="18dp"
+        android:paddingBottom="16dp">
+
+        <!-- 1. Chapters Button -->
+        <!-- Takes user to different view -->
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnChapters"
+            style="@style/Widget.MaterialComponents.Button.TextButton"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/chapters"
+            android:textAllCaps="true"
+            android:gravity="start|center_vertical" />
+
+        <!-- 2. Step Length Header/Separator -->
+        <!-- Visual separator for the next section -->
+        <TextView
+            android:id="@+id/tvStepLengthHeader"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/step_text"
+            android:textAppearance="?attr/textAppearanceSubtitle2"
+            android:textColor="?android:attr/textColorSecondary"
+            android:layout_marginTop="12dp"
+            android:layout_marginBottom="4dp"
+            android:paddingStart="4dp" />
+
+        <!-- Toggle Group: Handles the "Highlighting" Logic -->
+        <com.google.android.material.button.MaterialButtonToggleGroup
+            android:id="@+id/toggleGroupStep"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            app:singleSelection="true"
+            app:selectionRequired="true">
+
+            <!-- Sentences Button -->
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnStepSentences"
+                style="@style/Widget.MaterialComponents.Button.TextButton"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/btn_step_sentences"
+                android:textAllCaps="true"
+                android:gravity="start|center_vertical"
+                app:backgroundTint="@color/selector_button_highlight"
+                android:checkable="true" />
+
+            <!-- Page Button -->
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnStepPage"
+                style="@style/Widget.MaterialComponents.Button.TextButton"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/btn_step_page"
+                android:textAllCaps="true"
+                android:gravity="start|center_vertical"
+                app:backgroundTint="@color/selector_button_highlight"
+                android:checkable="true" />
+
+        </com.google.android.material.button.MaterialButtonToggleGroup>
+
+        <!-- Divider (Optional, adds a little space before exit) -->
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:background="?attr/colorOutline"
+            android:layout_marginTop="12dp"
+            android:layout_marginBottom="12dp"
+            android:alpha="0.5" />
+
+        <!-- 5. Exit Button -->
+        <!-- Closes the popup -->
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnExit"
+            style="@style/Widget.MaterialComponents.Button.TextButton"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/close"
+            android:textAllCaps="true"
+            android:textColor="?attr/colorError"
+            android:gravity="start|center_vertical" />
+
+    </LinearLayout>
+
+</com.google.android.material.card.MaterialCardView>

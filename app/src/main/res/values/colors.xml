@@ -10,4 +10,5 @@
     <color name="dt_onSurface">#FFFFFF</color>         <!-- Text on cards -->
     <color name="dt_onSurfaceSecondary">#CCFFFFFF</color> <!-- Slightly dimmer secondary text -->
 
+    <color name="selector_button_highlight">#26FFFFFF</color>
 </resources>
