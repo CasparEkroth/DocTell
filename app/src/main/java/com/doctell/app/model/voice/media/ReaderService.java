@@ -34,10 +34,12 @@ import androidx.media.session.MediaButtonReceiver;
 import com.doctell.app.R;
 import com.doctell.app.model.analytics.DocTellCrashlytics;
 import com.doctell.app.model.entity.Book;
+import com.doctell.app.model.entity.StepLength;
 import com.doctell.app.model.pdf.PageLifecycleManager;
 import com.doctell.app.model.repository.BookStorage;
 import com.doctell.app.model.pdf.PdfManager;
 import com.doctell.app.model.pdf.PdfPreviewHelper;
+import com.doctell.app.model.repository.StepPrefs;
 import com.doctell.app.model.utils.PermissionHelper;
 import com.doctell.app.model.voice.HighlightListener;
 import com.doctell.app.model.voice.ReaderController;
@@ -157,7 +159,7 @@ public class ReaderService extends Service implements PlaybackControl, Highlight
     private Book currentBook;
     private ReaderController.MediaNav uiMediaNav;
     private PdfManager pdfManager;
-    private ExecutorService executor;
+    ExecutorService executor;
     private Handler mainHandler;
     private Bitmap coverOfBook;
 
@@ -347,7 +349,7 @@ public class ReaderService extends Service implements PlaybackControl, Highlight
         super.onTaskRemoved(rootIntent);
     }
 
-    private void onReadingPositionChanged() {
+    void onReadingPositionChanged() {
         if (currentBook == null) return;
         BookStorage.updateBook(currentBook, getApplicationContext());
     }
@@ -415,40 +417,14 @@ public class ReaderService extends Service implements PlaybackControl, Highlight
     public void next() {
         safeExecuteAction(()->{
             if (currentBook == null || pdfManager == null) return;
-            try {
-                int pageCount = pdfManager.getPageCount();
-                int currentPage = currentBook.getLastPage();
-                if (currentPage + 1 >= pageCount) return;
-                final int newPage = currentPage + 1;
-
-                currentBook.setLastPage(newPage);
-                currentBook.setSentence(0);
-                onReadingPositionChanged();
-                executor.execute(() -> {
-                    try {
-                        List<String> chunks = loadCurrentPageSentences();
-                        mainHandler.post(() -> {
-                            if (readerController != null && !chunks.isEmpty()) {
-                                readerController.setChunks(chunks, 0);
-                                readerController.startReading();
-                            }else if(readerController != null){
-                                next();
-                                Toast.makeText(this,"illegible text",Toast.LENGTH_SHORT).show();
-                            }
-                            if (uiMediaNav != null) {
-                                uiMediaNav.navForward();
-                            }
-                        });
-                    } catch (IOException e) {
-                        Log.e("ReaderService", "next(): failed to load page text", e);
-                        DocTellCrashlytics.logPdfError(currentBook, newPage, "render_page", e);
-                    }
-                });
-
-            } catch (IOException e) {
-                Log.e("ReaderService", "next(): getPageCount failed", e);
-                DocTellCrashlytics.logPdfError(currentBook, currentBook.getLastPage(), "render_page", e);
-            }
+            StepNavigator.handleNextSentenceOrPage(
+                    this,
+                    currentBook,
+                    pdfManager,
+                    readerController,
+                    uiMediaNav,
+                    mainHandler
+            );
         });
     }
 
@@ -456,34 +432,14 @@ public class ReaderService extends Service implements PlaybackControl, Highlight
     public void prev() {
         safeExecuteAction(()-> {
             if (currentBook == null || pdfManager == null) return;
-
-            int currentPage = currentBook.getLastPage();
-            if (currentPage <= 0) return;
-
-            final int newPage = currentPage - 1;
-
-            currentBook.setLastPage(newPage);
-            currentBook.setSentence(0);
-            onReadingPositionChanged();
-
-            executor.execute(() -> {
-                try {
-                    List<String> chunks = loadCurrentPageSentences();
-
-                    mainHandler.post(() -> {
-                        if (readerController != null) {
-                            readerController.setChunks(chunks, 0);
-                            readerController.startReading();
-                        }
-                        if (uiMediaNav != null) {
-                            uiMediaNav.navBackward();
-                        }
-                    });
-                } catch (IOException e) {
-                    Log.e("ReaderService", "prev(): failed to load page text", e);
-                    DocTellCrashlytics.logPdfError(currentBook, newPage, "render_page", e);
-                }
-            });
+            StepNavigator.handlePrevSentenceOrPage(
+                    this,
+                    currentBook,
+                    pdfManager,
+                    readerController,
+                    uiMediaNav,
+                    mainHandler
+            );
         });
     }
 

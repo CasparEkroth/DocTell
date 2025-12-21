@@ -255,8 +255,27 @@ public class ReaderActivity extends AppCompatActivity implements HighlightListen
         DocTellCrashlytics.setCurrentBookContext(currentBook, currentBook.getLastPage());
         currentBook.setLastOpenedAt();
 
-        btnNext.setOnClickListener(v -> showNextPage());
-        btnPrev.setOnClickListener(v -> showPrevPage());
+        btnNext.setOnClickListener(v -> {
+            if (readerService != null && isServiceBound) {
+                highlightOverlay.clearHighlights();
+                showLoading(true);
+                readerService.next();
+            } else {
+                showNextPage();
+            }
+            showLoading(false);
+        });
+        btnPrev.setOnClickListener(v ->{
+            if (readerService != null && isServiceBound) {
+                highlightOverlay.clearHighlights();
+                showLoading(true);
+                readerService.prev();
+            } else {
+                showPrevPage();
+            }
+            showLoading(false);
+        });
+
         btnTTS.setOnClickListener(v ->{
             if (readerService != null && readerService.getReaderController() != null) {
                 readerService.getReaderController().reattachListener();
@@ -278,11 +297,25 @@ public class ReaderActivity extends AppCompatActivity implements HighlightListen
         ImageScale imageScale = new ImageScale(pdfImage, this, new ImageScale.TapNavigator() {
             @Override
             public void onTapLeft() {
-                showPrevPage();
+                if (readerService != null && isServiceBound) {
+                    highlightOverlay.clearHighlights();
+                    showLoading(true);
+                    readerService.prev();
+                } else {
+                    showPrevPage();
+                }
+                showLoading(false);
             }
             @Override
             public void onTapRight() {
-                showNextPage();
+                if (readerService != null && isServiceBound) {
+                    highlightOverlay.clearHighlights();
+                    showLoading(true);
+                    readerService.next();
+                } else {
+                    showNextPage();
+                }
+                showLoading(false);
             }
         });
         pdfImage.setOnTouchListener((view, motionEvent) -> {

@@ -11,7 +11,8 @@ public enum Prefs {
     SORT_INDEX,
     ANALYTICS_ENABLED,
     CRASHLYTICS_ENABLED,
-    PERMISSIONS_ON_START;
+    PERMISSIONS_ON_START,
+    STEP_LENGTH;
 
     @NonNull
     @Override
@@ -26,6 +27,7 @@ public enum Prefs {
              case ANALYTICS_ENABLED: s = "firebase_analytics_enabled"; break;
              case CRASHLYTICS_ENABLED: s = "firebase_crashlytics_enabled"; break;
              case PERMISSIONS_ON_START: s = "permissions_shown"; break;
+             case STEP_LENGTH: s = "step_length"; break;
         };
          return s;
     }

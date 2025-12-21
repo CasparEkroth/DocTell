@@ -16,6 +16,8 @@ import androidx.appcompat.app.AlertDialog;
 import com.doctell.app.ChapterActivity;
 import com.doctell.app.R;
 import com.doctell.app.model.entity.ChapterItem;
+import com.doctell.app.model.entity.StepLength;
+import com.doctell.app.model.repository.StepPrefs;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -43,16 +45,18 @@ public class OptionsDialog {
         });
 
         content.findViewById(R.id.btnExit).setOnClickListener(v -> {
-            //set step
             dialog.dismiss();
         });
 
         content.findViewById(R.id.btnStepPage).setOnClickListener(v -> {
+            StepPrefs.setStepLength(activity, StepLength.PAGE);
+            Toast.makeText(activity, "Step by page", Toast.LENGTH_SHORT).show();
             dialog.dismiss();
         });
 
         content.findViewById(R.id.btnStepSentences).setOnClickListener(v -> {
-            //set step
+            StepPrefs.setStepLength(activity, StepLength.SENTENCE);
+            Toast.makeText(activity, "Step by page", Toast.LENGTH_SHORT).show();
             dialog.dismiss();
         });
 
@@ -82,4 +86,5 @@ public class OptionsDialog {
 
         activity.startActivityForResult(intent, REQ_SELECT_CHAPTER);
     }
+
 }
