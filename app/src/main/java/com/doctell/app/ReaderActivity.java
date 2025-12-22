@@ -257,23 +257,19 @@ public class ReaderActivity extends AppCompatActivity implements HighlightListen
 
         btnNext.setOnClickListener(v -> {
             if (readerService != null && isServiceBound) {
-                highlightOverlay.clearHighlights();
                 showLoading(true);
                 readerService.next();
             } else {
                 showNextPage();
             }
-            showLoading(false);
         });
         btnPrev.setOnClickListener(v ->{
             if (readerService != null && isServiceBound) {
-                highlightOverlay.clearHighlights();
                 showLoading(true);
                 readerService.prev();
             } else {
                 showPrevPage();
             }
-            showLoading(false);
         });
 
         btnTTS.setOnClickListener(v ->{
@@ -298,24 +294,20 @@ public class ReaderActivity extends AppCompatActivity implements HighlightListen
             @Override
             public void onTapLeft() {
                 if (readerService != null && isServiceBound) {
-                    highlightOverlay.clearHighlights();
                     showLoading(true);
                     readerService.prev();
                 } else {
                     showPrevPage();
                 }
-                showLoading(false);
             }
             @Override
             public void onTapRight() {
                 if (readerService != null && isServiceBound) {
-                    highlightOverlay.clearHighlights();
                     showLoading(true);
                     readerService.next();
                 } else {
                     showNextPage();
                 }
-                showLoading(false);
             }
         });
         pdfImage.setOnTouchListener((view, motionEvent) -> {
