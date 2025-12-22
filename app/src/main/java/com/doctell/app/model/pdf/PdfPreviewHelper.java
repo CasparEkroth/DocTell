@@ -82,8 +82,8 @@ public class PdfPreviewHelper {
 
             String text = stripper.getText(doc);
             return text != null ? text.trim() : "";
-        } catch (IOException e) {
-            DocTellCrashlytics.logNonFatal("PdfPreviewHelper","failed to crate PDFTextStripper",e);
+        } catch (Throwable t) {
+            DocTellCrashlytics.logNonFatal("PdfPreviewHelper","failed to crate PDFTextStripper", t);
             return "";
         }
     }
