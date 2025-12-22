@@ -81,6 +81,7 @@ public final class StepNavigator {
                                 readerController.startReading();
                             } else if (readerController != null) {
                                 Toast.makeText(service, "illegible text", Toast.LENGTH_SHORT).show();
+                                service.next();
                             }
 
                             if (uiMediaNav != null) uiMediaNav.navForward();
@@ -102,7 +103,6 @@ public final class StepNavigator {
                 // Safety: if we somehow went past last sentence, do nothing
                 return;
             }
-
             currentBook.setSentence(newSentence);
             service.onReadingPositionChanged();
 
@@ -116,6 +116,7 @@ public final class StepNavigator {
                             readerController.startReading();
                         } else if (readerController != null) {
                             Toast.makeText(service, "illegible text", Toast.LENGTH_SHORT).show();
+                            service.next();
                         }
                         if (uiMediaNav != null) uiMediaNav.navForward();
                     })

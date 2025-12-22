@@ -84,10 +84,9 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         WindowCompat.setDecorFitsSystemWindows(getWindow(), false);
         setContentView(R.layout.activity_main);
-        //init pdfbox
-        com.tom_roush.pdfbox.android.PDFBoxResourceLoader.init(getApplicationContext());
+        //init pdfbox --> is done in DocTellApp now
+        //com.tom_roush.pdfbox.android.PDFBoxResourceLoader.init(getApplicationContext());
         //load books
-        //BookStorage.booksCache = BookStorage.loadBooks(this);
         BookStorage.loadBooksAsync(this,bookLoadCallback);
 
         pdfGrid = findViewById(R.id.pdfGrid);
