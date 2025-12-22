@@ -32,27 +32,44 @@ public class PdfPreviewHelper {
 
     private PdfPreviewHelper() {}
 
-    public static Bitmap renderOnePage(PdfRenderer renderer, int index, DisplayMetrics dm, int targetWidthPx){
-        try(PdfRenderer.Page page = renderer.openPage(index)){
-            if(targetWidthPx <= 0){
-                targetWidthPx = Math.min(dm.widthPixels,1200);
+    public static Bitmap renderOnePage(PdfRenderer renderer,
+                                       int index,
+                                       DisplayMetrics dm,
+                                       int targetWidthPx) {
+        try {
+            try (PdfRenderer.Page page = renderer.openPage(index)) {
+                if (targetWidthPx <= 0) {
+                    targetWidthPx = Math.min(dm.widthPixels, 1200);
+                }
+
+                int bmpW = targetWidthPx;
+                int bmpH = Math.round(bmpW * page.getHeight() / (float) page.getWidth());
+                Bitmap bmp = Bitmap.createBitmap(bmpW, bmpH, Bitmap.Config.ARGB_8888);
+                bmp.eraseColor(0xFFFFFFFF);
+
+                Matrix m = new Matrix();
+                float sx = bmpW / (float) page.getWidth();
+                float sy = bmpH / (float) page.getHeight();
+                m.setScale(sx, sy);
+
+                Rect dest = new Rect(0, 0, bmpW, bmpH);
+                page.render(bmp, dest, m, PdfRenderer.Page.RENDER_MODE_FOR_DISPLAY);
+                return bmp;
             }
-            int bmpW = targetWidthPx;
-            int bmpH = Math.round(bmpW * page.getHeight() / (float) page.getWidth());
-            Bitmap bmp = Bitmap.createBitmap(bmpW, bmpH, Bitmap.Config.ARGB_8888);
-            bmp.eraseColor(0xFFFFFFFF);
-
-            Matrix m = new Matrix();
-            float sx = bmpW / (float) page.getWidth();
-            float sy = bmpH / (float) page.getHeight();
-            m.setScale(sx, sy);
-
-            Rect dest = new Rect(0, 0, bmpW, bmpH);
-
-            page.render(bmp, dest, m, PdfRenderer.Page.RENDER_MODE_FOR_DISPLAY);
-            return bmp;
+        } catch (Throwable t) {
+            DocTellCrashlytics.logNonFatal(
+                    "PdfPreviewHelper",
+                    "renderOnePage failed",
+                    t
+            );
+            // Fallback: transparent bitmap
+            //TODO add a default
+            Bitmap fallback = Bitmap.createBitmap(1, 1, Bitmap.Config.ARGB_8888);
+            fallback.eraseColor(0x00000000);
+            return fallback;
         }
     }
+
 
     public static String extractOnePageText(PDDocument doc, int index) {
         try {
