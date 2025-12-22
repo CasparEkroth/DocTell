@@ -51,6 +51,7 @@ import com.doctell.app.model.repository.BookStorage;
 import com.doctell.app.model.utils.ChapterLoader;
 import com.doctell.app.model.pdf.PdfLoader;
 import com.doctell.app.model.pdf.PdfPreviewHelper;
+import com.doctell.app.model.utils.OptionsDialog;
 import com.doctell.app.model.utils.PermissionHelper;
 import com.doctell.app.model.voice.HighlightListener;
 import com.doctell.app.model.voice.ReaderController;
@@ -72,7 +73,7 @@ import java.util.concurrent.Executors;
 public class ReaderActivity extends AppCompatActivity implements HighlightListener, ReaderController.MediaNav {
     private ImageView pdfImage;
     private ProgressBar loadingBar;
-    private Button btnNext, btnPrev, btnTTS, btnChapter;
+    private Button btnNext, btnPrev, btnTTS, btnOptions;
     private TextView pageIndicator;
     private ExecutorService exec;
     private Handler main;
@@ -80,7 +81,7 @@ public class ReaderActivity extends AppCompatActivity implements HighlightListen
     private Book currentBook;
     private boolean isSpeaking = false;
     private boolean ttsStartedOnPage = false;
-    private static final int REQ_SELECT_CHAPTER = 1001;
+    public static final int REQ_SELECT_CHAPTER = 1001;
     private List<ChapterItem> chapters;
     private ChapterLoader chapterLoader;
     private HighlightOverlayView highlightOverlay;
@@ -205,7 +206,7 @@ public class ReaderActivity extends AppCompatActivity implements HighlightListen
         btnTTS = findViewById(R.id.btnTTS);
         pageIndicator = findViewById(R.id.pageIndicator);
         loadingBar = findViewById(R.id.loadingBar);
-        btnChapter = findViewById(R.id.chapterBtn);
+        btnOptions = findViewById(R.id.optionsBtn);
 
         highlightOverlay = findViewById(R.id.highlightOverlay);
 
@@ -254,34 +255,67 @@ public class ReaderActivity extends AppCompatActivity implements HighlightListen
         DocTellCrashlytics.setCurrentBookContext(currentBook, currentBook.getLastPage());
         currentBook.setLastOpenedAt();
 
-        btnNext.setOnClickListener(v -> showNextPage());
-        btnPrev.setOnClickListener(v -> showPrevPage());
+        btnNext.setOnClickListener(v -> {
+            if (readerService != null && isServiceBound) {
+                highlightOverlay.clearHighlights();
+                showLoading(true);
+                readerService.next();
+            } else {
+                showNextPage();
+            }
+            showLoading(false);
+        });
+        btnPrev.setOnClickListener(v ->{
+            if (readerService != null && isServiceBound) {
+                highlightOverlay.clearHighlights();
+                showLoading(true);
+                readerService.prev();
+            } else {
+                showPrevPage();
+            }
+            showLoading(false);
+        });
+
         btnTTS.setOnClickListener(v ->{
             if (readerService != null && readerService.getReaderController() != null) {
                 readerService.getReaderController().reattachListener();
             }
             toggleTTS();
         });
-        btnChapter.setOnClickListener(v -> openChapterActivity());
-        btnChapter.setEnabled(false);
+        btnOptions.setOnClickListener(v -> OptionsDialog.openOptionsDialog(this, chapters));
+        btnOptions.setEnabled(false);
 
         chapterLoader = new ChapterLoader();
         chapters = new ArrayList<>();
         chapterLoader.loadChaptersAsync(currentBook.getLocalPath(), loadedChapters -> {
             chapters.clear();
             chapters.addAll(loadedChapters);
-            btnChapter.setEnabled(chapters != null);
+            btnOptions.setEnabled(chapters != null);
             Log.d("ChapterLoader", "Loaded " + chapters.size() + " chapters");
         });
 
         ImageScale imageScale = new ImageScale(pdfImage, this, new ImageScale.TapNavigator() {
             @Override
             public void onTapLeft() {
-                showPrevPage();
+                if (readerService != null && isServiceBound) {
+                    highlightOverlay.clearHighlights();
+                    showLoading(true);
+                    readerService.prev();
+                } else {
+                    showPrevPage();
+                }
+                showLoading(false);
             }
             @Override
             public void onTapRight() {
-                showNextPage();
+                if (readerService != null && isServiceBound) {
+                    highlightOverlay.clearHighlights();
+                    showLoading(true);
+                    readerService.next();
+                } else {
+                    showNextPage();
+                }
+                showLoading(false);
             }
         });
         pdfImage.setOnTouchListener((view, motionEvent) -> {

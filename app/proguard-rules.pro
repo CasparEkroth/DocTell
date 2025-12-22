@@ -21,3 +21,7 @@
 #-renamesourcefileattribute SourceFile
 
 -dontwarn com.gemalto.jp2.**
+-keep class com.tom_roush.pdfbox.pdmodel.PDDocument { *; }
+-keep class com.tom_roush.pdfbox.text.PDFTextStripper { *; }
+-keep class com.tom_roush.pdfbox.io.** { *; }
+-keep class com.doctell.app.model.pdf.PositionAwareStripper { *; }

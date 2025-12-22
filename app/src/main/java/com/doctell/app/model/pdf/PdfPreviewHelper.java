@@ -12,6 +12,7 @@ import android.os.ParcelFileDescriptor;
 import android.util.DisplayMetrics;
 import android.util.Log;
 
+import com.doctell.app.model.analytics.DocTellCrashlytics;
 import com.tom_roush.pdfbox.pdmodel.PDDocument;
 import com.tom_roush.pdfbox.text.PDFTextStripper;
 import java.io.File;
@@ -27,46 +28,62 @@ import java.util.Set;
 
 public class PdfPreviewHelper {
 
-    private static final PDFTextStripper stripper = createStripper();
+    //private static final PDFTextStripper stripper = createStripper();
 
-    private static PDFTextStripper createStripper() {
+    private PdfPreviewHelper() {}
+
+    public static Bitmap renderOnePage(PdfRenderer renderer,
+                                       int index,
+                                       DisplayMetrics dm,
+                                       int targetWidthPx) {
         try {
-            PDFTextStripper s = new PDFTextStripper();
-            s.setSortByPosition(true);
-            s.setAddMoreFormatting(true);
-            return s;
-        } catch (IOException e) { throw new RuntimeException(e); }
-    }
+            try (PdfRenderer.Page page = renderer.openPage(index)) {
+                if (targetWidthPx <= 0) {
+                    targetWidthPx = Math.min(dm.widthPixels, 1200);
+                }
 
-    public static Bitmap renderOnePage(PdfRenderer renderer, int index, DisplayMetrics dm, int targetWidthPx){
-        try(PdfRenderer.Page page = renderer.openPage(index)){
-            if(targetWidthPx <= 0){
-                targetWidthPx = Math.min(dm.widthPixels,1200);
+                int bmpW = targetWidthPx;
+                int bmpH = Math.round(bmpW * page.getHeight() / (float) page.getWidth());
+                Bitmap bmp = Bitmap.createBitmap(bmpW, bmpH, Bitmap.Config.ARGB_8888);
+                bmp.eraseColor(0xFFFFFFFF);
+
+                Matrix m = new Matrix();
+                float sx = bmpW / (float) page.getWidth();
+                float sy = bmpH / (float) page.getHeight();
+                m.setScale(sx, sy);
+
+                Rect dest = new Rect(0, 0, bmpW, bmpH);
+                page.render(bmp, dest, m, PdfRenderer.Page.RENDER_MODE_FOR_DISPLAY);
+                return bmp;
             }
-            int bmpW = targetWidthPx;
-            int bmpH = Math.round(bmpW * page.getHeight() / (float) page.getWidth());
-            Bitmap bmp = Bitmap.createBitmap(bmpW, bmpH, Bitmap.Config.ARGB_8888);
-            bmp.eraseColor(0xFFFFFFFF);
-
-            Matrix m = new Matrix();
-            float sx = bmpW / (float) page.getWidth();
-            float sy = bmpH / (float) page.getHeight();
-            m.setScale(sx, sy);
-
-            Rect dest = new Rect(0, 0, bmpW, bmpH);
-
-            page.render(bmp, dest, m, PdfRenderer.Page.RENDER_MODE_FOR_DISPLAY);
-            return bmp;
+        } catch (Throwable t) {
+            DocTellCrashlytics.logNonFatal(
+                    "PdfPreviewHelper",
+                    "renderOnePage failed",
+                    t
+            );
+            // Fallback: transparent bitmap
+            //TODO add a default
+            Bitmap fallback = Bitmap.createBitmap(1, 1, Bitmap.Config.ARGB_8888);
+            fallback.eraseColor(0x00000000);
+            return fallback;
         }
     }
 
-    public static String extractOnePageText(PDDocument doc, int index){
-        try{
+
+    public static String extractOnePageText(PDDocument doc, int index) {
+        try {
+            PDFTextStripper stripper = new PDFTextStripper();
+            stripper.setSortByPosition(true);
+            stripper.setAddMoreFormatting(true);
+
             stripper.setStartPage(index + 1);
             stripper.setEndPage(index + 1);
+
             String text = stripper.getText(doc);
             return text != null ? text.trim() : "";
         } catch (IOException e) {
+            DocTellCrashlytics.logNonFatal("PdfPreviewHelper","failed to crate PDFTextStripper",e);
             return "";
         }
     }

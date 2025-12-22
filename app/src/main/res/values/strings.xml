@@ -24,6 +24,7 @@
     <string name="pref_read">Read</string>
     <string name="pref_next">Next</string>
     <string name="pref_prev">Prev</string>
+    <string name="btn_options">Options</string>
 
     <!-- Chapters -->
     <string name="close">close</string>
@@ -58,6 +59,10 @@
     <string name="action_save">Save</string>
     <string name="rename_error_empty_title">Please enter a title</string>
 
+    <!-- options -->
+    <string name="step_text">Step length</string>
+    <string name="btn_step_sentences">Sentences</string>
+    <string name="btn_step_page">Page</string>
 
 
 </resources>

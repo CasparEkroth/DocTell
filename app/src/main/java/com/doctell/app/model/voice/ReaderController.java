@@ -77,6 +77,10 @@ public class ReaderController implements TtsEngineListener, PlaybackControl {
         this.currentIndex = startSentence;
     }
 
+    public List<String> getChunks() {
+        return chunks;
+    }
+
     public void  setTitle(String title){
         this.title = title;
     }
