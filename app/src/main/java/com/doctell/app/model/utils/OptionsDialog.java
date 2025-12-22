@@ -56,7 +56,7 @@ public class OptionsDialog {
 
         content.findViewById(R.id.btnStepSentences).setOnClickListener(v -> {
             StepPrefs.setStepLength(activity, StepLength.SENTENCE);
-            Toast.makeText(activity, "Step by page", Toast.LENGTH_SHORT).show();
+            Toast.makeText(activity, "Step by sentence", Toast.LENGTH_SHORT).show();
             dialog.dismiss();
         });
 

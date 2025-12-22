@@ -256,7 +256,7 @@ public class ReaderActivity extends AppCompatActivity implements HighlightListen
         currentBook.setLastOpenedAt();
 
         btnNext.setOnClickListener(v -> {
-            if (readerService != null && isServiceBound) {
+            if (readerService != null && isServiceBound && isSpeaking) {
                 showLoading(true);
                 readerService.next();
             } else {
@@ -264,7 +264,7 @@ public class ReaderActivity extends AppCompatActivity implements HighlightListen
             }
         });
         btnPrev.setOnClickListener(v ->{
-            if (readerService != null && isServiceBound) {
+            if (readerService != null && isServiceBound && isSpeaking) {
                 showLoading(true);
                 readerService.prev();
             } else {
@@ -293,7 +293,7 @@ public class ReaderActivity extends AppCompatActivity implements HighlightListen
         ImageScale imageScale = new ImageScale(pdfImage, this, new ImageScale.TapNavigator() {
             @Override
             public void onTapLeft() {
-                if (readerService != null && isServiceBound) {
+                if (readerService != null && isServiceBound && isSpeaking) {
                     showLoading(true);
                     readerService.prev();
                 } else {
@@ -302,7 +302,7 @@ public class ReaderActivity extends AppCompatActivity implements HighlightListen
             }
             @Override
             public void onTapRight() {
-                if (readerService != null && isServiceBound) {
+                if (readerService != null && isServiceBound && isSpeaking) {
                     showLoading(true);
                     readerService.next();
                 } else {
