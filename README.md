@@ -20,6 +20,10 @@
 
 > Code is Java‑based. PDF parsing and previews are handled in helpers like `PdfPreviewHelper`, while reading happens in `ReaderActivity`. Persistent state is stored via `BookStorage`.
 
+> Note:  
+> This repository intentionally omits `TtsEngineProvider` and `TtsEngineType`,
+> which are planned extension points for a future API-based TTS integration.
+
 ## Privacy
 Your files stay on your device. Speech is generated locally by the system TTS engine.
 
