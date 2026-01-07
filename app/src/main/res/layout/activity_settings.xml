@@ -92,6 +92,23 @@
             android:text="@string/pref_crashlytics_enabled"
             android:layout_marginTop="8dp" />
 
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="@string/pref_url_pdf"
+            android:textStyle="bold"
+            android:textSize="16sp" />
+
+        <!-- link -->
+        <TextView
+            android:id="@+id/txtPdfLink"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="https://oceanofpdf.com/"
+            android:autoLink="web"
+            android:textColor="#2196F3"
+            android:layout_marginTop="8dp"/>
 
     </LinearLayout>
 
