@@ -6,6 +6,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.SharedPreferences;
+import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.speech.tts.TextToSpeech;
@@ -13,6 +14,7 @@ import android.util.Log;
 import android.view.View;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
+import android.widget.Button;
 import android.widget.CompoundButton;
 import android.widget.ProgressBar;
 import android.widget.SeekBar;
@@ -44,6 +46,7 @@ public class SettingsActivity extends AppCompatActivity {
     private TextView txtRateValue;
     private Switch swAnalytics, swCrashlytics;
     private ProgressBar loadingBarSettings;
+    private Button btnOcean;
     private int initIndex = 0;
     private int initVoice = 0;
     private Context app;
@@ -78,6 +81,7 @@ public class SettingsActivity extends AppCompatActivity {
         swAnalytics   = findViewById(R.id.swAnalytics);
         swCrashlytics = findViewById(R.id.swCrashlytics);
         loadingBarSettings = findViewById(R.id.loadingSettings);
+        btnOcean = findViewById(R.id.btnOcean);
 
         ttsHelper = new TtsWrapper(this, () -> {
             Log.d("SettingsActivity", "TTS Helper ready");
@@ -201,6 +205,10 @@ public class SettingsActivity extends AppCompatActivity {
                 DocTellCrashlytics.setEnabled(isChecked);
             }
         });
+
+        btnOcean.setOnClickListener((v)->{
+            onOpenWebURL(getString(R.string.pref_url_ocean_of_pdf));
+        });
     }
 
     private void setSpLangText(String[] values, String value){
@@ -258,6 +266,11 @@ public class SettingsActivity extends AppCompatActivity {
 
     private void showLoading(boolean on) {
         if (loadingBarSettings != null) loadingBarSettings.setVisibility(on ? View.VISIBLE : View.GONE);
+    }
+
+    private void onOpenWebURL(String url){
+        Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse(url));
+        startActivity(intent);
     }
 
     @Override

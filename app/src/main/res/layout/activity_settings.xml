@@ -95,20 +95,21 @@
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
+            android:layout_marginTop="24dp"
             android:text="@string/pref_url_pdf"
             android:textStyle="bold"
             android:textSize="16sp" />
 
         <!-- link -->
-        <TextView
-            android:id="@+id/txtPdfLink"
+        <Button
+            android:id="@+id/btnOcean"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="https://oceanofpdf.com/"
-            android:autoLink="web"
+            style="?android:attr/borderlessButtonStyle"
+            android:text="@string/pref_ocean_of_pdf"
             android:textColor="#2196F3"
-            android:layout_marginTop="8dp"/>
+            android:layout_gravity="start"
+            android:layout_marginTop="4dp"/>
 
     </LinearLayout>
 
