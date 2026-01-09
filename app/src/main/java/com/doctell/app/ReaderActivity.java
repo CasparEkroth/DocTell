@@ -198,6 +198,7 @@ public class ReaderActivity extends AppCompatActivity implements HighlightListen
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        androidx.activity.EdgeToEdge.enable(this);
         setContentView(R.layout.activity_reader);
         //PermissionHelper.ensureBluetoothPermission(this, this);
         pdfImage = findViewById(R.id.pdfImage);

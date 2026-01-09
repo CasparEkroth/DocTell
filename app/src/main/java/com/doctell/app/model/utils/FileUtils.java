@@ -29,9 +29,14 @@ public class FileUtils {
         if (directory.exists() && directory.isDirectory()) {
             File[] files = directory.listFiles();
             if (files != null) {
+                long now = System.currentTimeMillis();
+                long gracePeriod = 5 * 60 * 1000; // 5 minutes in milliseconds
+
                 for (File file : files) {
-                    // If the file path is NOT in the valid set, it's trash.
-                    if (!validPaths.contains(file.getAbsolutePath())) {
+                    boolean isValid = validPaths.contains(file.getAbsolutePath());
+                    boolean isBrandNew = (now - file.lastModified()) < gracePeriod;
+
+                    if (!isValid && !isBrandNew) {
                         boolean deleted = file.delete();
                         if (deleted) {
                             Log.i("BookStorage", "Cleanup: Deleted orphaned file " + file.getName());
@@ -41,4 +46,5 @@ public class FileUtils {
             }
         }
     }
+
 }

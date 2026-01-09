@@ -13,10 +13,14 @@
     <string name="pref_privacy_title">Privacy &amp; data</string>
     <string name="pref_analytics_enabled">Allow anonymous analytics</string>
     <string name="pref_crashlytics_enabled">Allow crash reports</string>
-
+    <string name="pref_url_pdf">PDF resources</string>
+    <string name="pref_ocean_of_pdf">ocean of pdf</string>
 
     <string name="pref_tts_speed_title">TTS speed</string>
     <string name="pref_tts_speed_summary">Voice Speed</string>
+
+    <!-- URL -->
+    <string name="pref_url_ocean_of_pdf">https://oceanofpdf.com/</string>
 
     <!-- ReaderActivity -->
     <string name="pref_pause">Pause</string>

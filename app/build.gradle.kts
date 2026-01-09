@@ -14,8 +14,8 @@ android {
         applicationId = "com.doctell.app"
         minSdk = 24
         targetSdk = 36
-        versionCode = 13
-        versionName = "1.0.13"
+        versionCode = 14
+        versionName = "1.0.14"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
@@ -61,6 +61,8 @@ dependencies {
     implementation(platform("com.google.firebase:firebase-bom:34.6.0"))
     implementation("com.google.firebase:firebase-analytics")
     implementation("com.google.firebase:firebase-crashlytics")
+
+    implementation("androidx.activity:activity:1.8.0")
 
     implementation(libs.google.material)
     testImplementation(libs.junit)
