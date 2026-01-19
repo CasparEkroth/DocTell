@@ -32,7 +32,7 @@ public class ChapterActivity extends AppCompatActivity {
         ArrayList<String> titles = getIntent().getStringArrayListExtra("chapterTitles");
         ArrayList<Integer> pages   = getIntent().getIntegerArrayListExtra("chapterPages");
         ArrayList<Integer> levels  = getIntent().getIntegerArrayListExtra("chapterLevels");
-        //int currentPage            = getIntent().getIntExtra("currentPage", 0);
+        int currentPage            = getIntent().getIntExtra("currentPage", 0);
 
 
         if (titles == null || pages == null || levels == null) {
@@ -52,6 +52,15 @@ public class ChapterActivity extends AppCompatActivity {
             ));
         }
 
+        int targetIndex = -1;
+        for (int i = 0; i < chapterItems.size(); i++) {
+            if (chapterItems.get(i).getPageIndex() <= currentPage) {
+                targetIndex = i;
+            } else {
+                break;
+            }
+        }
+
         closeChap = findViewById(R.id.btnCloseChapters);
         cardView = findViewById(R.id.cardChapters);
         closeChap.setOnClickListener(v -> onClose());
@@ -64,9 +73,13 @@ public class ChapterActivity extends AppCompatActivity {
             onChapterClicked(item);
         }));
 
+        if (targetIndex != -1) {
+            adapter.setSelectedIndex(targetIndex);
+            ((LinearLayoutManager) viewHolder.getLayoutManager())
+                    .scrollToPositionWithOffset(targetIndex, 20);
+        }
+
         viewHolder.setAdapter(adapter);
-
-
     }
 
     private void onChapterClicked(ChapterItem item) {

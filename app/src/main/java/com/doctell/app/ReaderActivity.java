@@ -279,7 +279,8 @@ public class ReaderActivity extends AppCompatActivity implements HighlightListen
             }
             toggleTTS();
         });
-        btnOptions.setOnClickListener(v -> OptionsDialog.openOptionsDialog(this, chapters));
+        btnOptions.setOnClickListener(v -> OptionsDialog.openOptionsDialog(
+                this, chapters, currentBook.getLastPage()));
         btnOptions.setEnabled(false);
 
         chapterLoader = new ChapterLoader();

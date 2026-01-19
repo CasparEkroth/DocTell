@@ -25,7 +25,7 @@ import java.util.List;
 public class OptionsDialog {
     private OptionsDialog(){}
 
-    public static void openOptionsDialog(Activity activity, List<ChapterItem> chapters){
+    public static void openOptionsDialog(Activity activity, List<ChapterItem> chapters, int currentPage){
         LayoutInflater inflater = LayoutInflater.from(activity);
         View content = inflater.inflate(R.layout.dialog_options, null, false);
 
@@ -41,7 +41,7 @@ public class OptionsDialog {
 
         content.findViewById(R.id.btnChapters).setOnClickListener(v ->{
             dialog.dismiss();
-            openChapterActivity(activity,chapters);
+            openChapterActivity(activity,chapters, currentPage);
         });
 
         content.findViewById(R.id.btnExit).setOnClickListener(v -> {
@@ -64,7 +64,7 @@ public class OptionsDialog {
     }
 
 
-    private static void openChapterActivity(Activity activity, List<ChapterItem> chapters){
+    private static void openChapterActivity(Activity activity, List<ChapterItem> chapters, int currentPage){
         if(chapters == null){
             Toast.makeText(activity, "No chapters found.", Toast.LENGTH_SHORT).show();
             return;
@@ -82,7 +82,7 @@ public class OptionsDialog {
         intent.putStringArrayListExtra("chapterTitles", titles);
         intent.putIntegerArrayListExtra("chapterPages", pages);
         intent.putIntegerArrayListExtra("chapterLevels", levels);
-        //intent.putExtra("currentPage", currentPageIndex); // highlight
+        intent.putExtra("currentPage", currentPage); // highlight
 
         activity.startActivityForResult(intent, REQ_SELECT_CHAPTER);
     }
