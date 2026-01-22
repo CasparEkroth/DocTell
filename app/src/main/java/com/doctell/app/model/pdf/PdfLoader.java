@@ -19,7 +19,7 @@ import java.util.concurrent.Executors;
 
 public class PdfLoader {
     private static final String TAG = "PdfLoader";
-
+    private String loadingPath = null;
     public static final class PdfSession {
         public final String path;
         public final PDDocument doc;
@@ -80,81 +80,78 @@ public class PdfLoader {
         return currentSession;
     }
 
-    public void loadIfNeeded(String path, Listener listener) {
+    public void loadIfNeeded(final String path, final Listener listener) {
         synchronized (this) {
-            // Same book already loaded
             if (currentSession != null && path.equals(currentSession.path)) {
-                PdfSession session = currentSession;
-                mainHandler.post(() -> listener.onLoaded(session));
+                mainHandler.post(() -> listener.onLoaded(currentSession));
                 return;
             }
+            if (loading && path.equals(loadingPath)) {
+                waitingListeners.add(listener);
+                return;
+            }
+            waitingListeners.clear();
 
-            // New book, close old one if any
             if (currentSession != null && !path.equals(currentSession.path)) {
                 closeCurrentSessionLocked();
             }
-
             waitingListeners.add(listener);
 
-            if (loading) {
-                // Already loading this path; just wait.
-                return;
-            }
-
             loading = true;
+            loadingPath = path;
+
+            executor.execute(() -> {
+                final String targetPath = path;
+
+                Log.d(TAG, "Loading PDF on background thread: " + targetPath);
+                PdfSession newSession = null;
+                Throwable error = null;
+
+                try {
+                    File file = new File(targetPath);
+                    ParcelFileDescriptor pfd = ParcelFileDescriptor.open(file, ParcelFileDescriptor.MODE_READ_ONLY);
+                    PdfRenderer renderer = new PdfRenderer(pfd);
+                    PDDocument doc = PDDocument.load(file, MemoryUsageSetting.setupTempFileOnly());
+                    int pageCount = renderer.getPageCount();
+                    newSession = new PdfSession(targetPath, doc, pfd, renderer, pageCount);
+                } catch (Throwable t) {
+                    error = t;
+                }
+
+                final PdfSession finalSession = newSession;
+                final Throwable finalError = error;
+
+                mainHandler.post(() -> {
+                    synchronized (PdfLoader.this) {
+                        if (!targetPath.equals(loadingPath)) {
+                            Log.d(TAG, "Ignoring result for " + targetPath + " as loader is now interested in " + loadingPath);
+                            if (finalSession != null) {
+                                try { finalSession.renderer.close(); } catch (Exception e) {}
+                                try { finalSession.pfd.close(); } catch (Exception e) {}
+                                try { finalSession.doc.close(); } catch (Exception e) {}
+                            }
+                            return;
+                        }
+                        loading = false;
+                        loadingPath = null;
+
+                        if (finalError == null && finalSession != null) {
+                            currentSession = finalSession;
+                            for (Listener l : waitingListeners) {
+                                l.onLoaded(finalSession);
+                            }
+                        } else {
+                            for (Listener l : waitingListeners) {
+                                l.onError(finalError);
+                            }
+                        }
+                        waitingListeners.clear();
+                    }
+                });
+            });
         }
-
-        executor.execute(() -> {
-            Log.d(TAG, "Loading PDF on background thread: " + path);
-            PdfSession newSession = null;
-            Throwable error = null;
-
-            try {
-                File file = new File(path);
-                ParcelFileDescriptor pfd = ParcelFileDescriptor.open(
-                        file, ParcelFileDescriptor.MODE_READ_ONLY);
-                PdfRenderer renderer = new PdfRenderer(pfd);
-                PDDocument doc = PDDocument.load(
-                        file, MemoryUsageSetting.setupTempFileOnly());
-                int pageCount = renderer.getPageCount();
-
-                newSession = new PdfSession(path, doc, pfd, renderer, pageCount);
-
-            } catch (OutOfMemoryError oom) {
-                Log.e(TAG, "Out of memory while loading PDF", oom);
-                error = oom;
-            } catch (IOException io) {
-                Log.e(TAG, "IO error while loading PDF", io);
-                error = io;
-            } catch (Throwable t) {
-                Log.e(TAG, "Unexpected error while loading PDF", t);
-                error = t;
-            }
-
-            List<Listener> toNotify;
-            synchronized (PdfLoader.this) {
-                loading = false;
-                toNotify = new ArrayList<>(waitingListeners);
-                waitingListeners.clear();
-
-                if (error == null && newSession != null) {
-                    currentSession = newSession;
-                }
-            }
-
-            if (error == null && newSession != null) {
-                for (Listener l : toNotify) {
-                    PdfSession finalSession = newSession;
-                    mainHandler.post(() -> l.onLoaded(finalSession));
-                }
-            } else {
-                for (Listener l : toNotify) {
-                    Throwable finalError = error;
-                    mainHandler.post(() -> l.onError(finalError));
-                }
-            }
-        });
     }
+
 
     /** Close and clear current session (e.g. when user closes the book). **/
     public synchronized void closeCurrent() {
@@ -168,19 +165,19 @@ public class PdfLoader {
             if (currentSession.renderer != null) {
                 currentSession.renderer.close();
             }
-        } catch (Exception ignore) {}
+        } catch (Exception ignored) {}
 
         try {
             if (currentSession.pfd != null) {
                 currentSession.pfd.close();
             }
-        } catch (Exception ignore) {}
+        } catch (Exception ignored) {}
 
         try {
             if (currentSession.doc != null) {
                 currentSession.doc.close();
             }
-        } catch (Exception ignore) {}
+        } catch (Exception ignored) {}
 
         currentSession = null;
     }

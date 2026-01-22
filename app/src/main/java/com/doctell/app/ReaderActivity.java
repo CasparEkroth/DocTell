@@ -385,18 +385,14 @@ public class ReaderActivity extends AppCompatActivity implements HighlightListen
         }
     }
 
-
     private void loadPdfAsync() {
         showLoading(true);
-        if(readerService != null){
+        if (readerService != null) {
             readerService.pause();
             readerService.setTitleInReaderController(currentBook.getTitle());
         }
-
         String path = currentBook.getLocalPath();
         PdfLoader loader = PdfLoader.getInstance(getApplicationContext());
-
-        //Fast path: already loaded
         if (loader.isReady(path)) {
             PdfLoader.PdfSession session = loader.getCurrentSession();
             if (session != null) {
@@ -407,28 +403,35 @@ public class ReaderActivity extends AppCompatActivity implements HighlightListen
         loader.loadIfNeeded(path, new PdfLoader.Listener() {
             @Override
             public void onLoaded(PdfLoader.PdfSession session) {
+                if (isFinishing() || isDestroyed()) {
+                    return;
+                }
+                if (!session.path.equals(currentBook.getLocalPath())) {
+                    return;
+                }
+                if (session.pfd == null || session.renderer == null) {
+                    return;
+                }
                 useLoadedSession(session);
             }
+
             @Override
             public void onError(Throwable error) {
+                if (isFinishing() || isDestroyed()) {
+                    return;
+                }
                 Log.e("ReaderActivity", "Failed to load PDF", error);
                 showLoading(false);
-
                 if (error instanceof OutOfMemoryError) {
-                    Toast.makeText(ReaderActivity.this,
-                            "This PDF is too large to open on this device.",
-                            Toast.LENGTH_LONG
-                    ).show();
+                    Toast.makeText(ReaderActivity.this, "This PDF is too large to open on this device.", Toast.LENGTH_LONG).show();
                 } else {
-                    Toast.makeText(ReaderActivity.this,
-                            "Could not open this PDF.",
-                            Toast.LENGTH_LONG
-                    ).show();
+                    Toast.makeText(ReaderActivity.this, "Could not open this PDF.", Toast.LENGTH_LONG).show();
                 }
                 finish();
             }
         });
     }
+
 
     private void syncTtsUiWithPlayback(boolean playing) {
         isSpeaking = playing;
@@ -769,7 +772,7 @@ public class ReaderActivity extends AppCompatActivity implements HighlightListen
         if (exec != null) exec.shutdownNow();
         if (chapterLoader != null) chapterLoader.shutdown();
 
-        PdfLoader.getInstance(this).closeCurrent();
+        //PdfLoader.getInstance(this).closeCurrent();
         super.onDestroy();
     }
 }
