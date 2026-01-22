@@ -256,20 +256,34 @@ public class ReaderActivity extends AppCompatActivity implements HighlightListen
         DocTellCrashlytics.setCurrentBookContext(currentBook, currentBook.getLastPage());
         currentBook.setLastOpenedAt();
 
-        btnNext.setOnClickListener(v -> {
-            if (readerService != null && isServiceBound && isSpeaking) {
-                showLoading(true);
-                readerService.next();
-            } else {
-                showNextPage();
+        showLoading(true);
+
+        BookStorage.loadBooksAsync(this, new BookStorage.BookLoadCallback() {
+            @Override
+            public void onBooksLoaded(List<Book> books) {
+                Book found = null;
+                for (Book b : books) {
+                    if (b.getUri().equals(uri)) {
+                        found = b;
+                        break;
+                    }
+                }
+                final Book finalBook = found;
+                runOnUiThread(() -> {
+                    if (finalBook != null) {
+                        onBookLoaded(finalBook);
+                    } else {
+                        Toast.makeText(ReaderActivity.this, "Book not found", Toast.LENGTH_SHORT).show();
+                        finish();
+                    }
+                });
             }
-        });
-        btnPrev.setOnClickListener(v ->{
-            if (readerService != null && isServiceBound && isSpeaking) {
-                showLoading(true);
-                readerService.prev();
-            } else {
-                showPrevPage();
+            @Override
+            public void onLoadFailed(Exception e) {
+                runOnUiThread(() -> {
+                    Toast.makeText(ReaderActivity.this, "Error loading library", Toast.LENGTH_SHORT).show();
+                    finish();
+                });
             }
         });
 
@@ -343,6 +357,34 @@ public class ReaderActivity extends AppCompatActivity implements HighlightListen
                 showLoading(false);
             }, 2000);
         }
+    }
+
+    private void onBookLoaded(Book book) {
+        this.currentBook = book;
+        DocTellAnalytics.bookOpened(this, currentBook);
+        DocTellCrashlytics.setCurrentBookContext(currentBook, currentBook.getLastPage());
+
+        currentBook.setLastOpenedAt();
+        btnNext.setOnClickListener(v -> {
+            if (readerService != null && isServiceBound && isSpeaking) {
+            showLoading(true);
+            readerService.next();
+        } else {
+            showNextPage();
+        }});
+        btnPrev.setOnClickListener(v -> {
+            if (readerService != null && isServiceBound && isSpeaking) {
+            showLoading(true);
+            readerService.prev();
+        } else {
+            showPrevPage();
+        } });
+        ensureServiceBound();
+        if (isServiceBound && readerService != null) {
+            readerService.initBook(currentBook, doc, pfd, renderer);
+        }
+
+        showLoading(false);
     }
 
 
@@ -588,29 +630,6 @@ public class ReaderActivity extends AppCompatActivity implements HighlightListen
         showLoading(false);
     }
 
-
-    private void openChapterActivity() {
-        if(chapters == null){
-            Toast.makeText(this, "No chapters found.", Toast.LENGTH_SHORT).show();
-            return;
-        }
-        ArrayList<String> titles = new ArrayList<>();
-        ArrayList<Integer> pages = new ArrayList<>();
-        ArrayList<Integer> levels = new ArrayList<>();
-
-        for (ChapterItem c : chapters) {
-            titles.add(c.getTitle());
-            pages.add(c.getPageIndex());
-            levels.add(c.getLevel());
-        }
-        Intent intent = new Intent(this, ChapterActivity.class);
-        intent.putStringArrayListExtra("chapterTitles", titles);
-        intent.putIntegerArrayListExtra("chapterPages", pages);
-        intent.putIntegerArrayListExtra("chapterLevels", levels);
-        //intent.putExtra("currentPage", currentPageIndex); // highlight
-
-        startActivityForResult(intent, REQ_SELECT_CHAPTER);
-    }
 
     @Override
     protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
