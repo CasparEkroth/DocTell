@@ -69,6 +69,7 @@ public class MainActivity extends AppCompatActivity {
                     BookSorter.sortBooksOnDefault(BookStorage.booksCache);
                     selectedSortIndex = BookSorter.getIndex();
                     refreshGrid();
+                    showLoading(false);
                 }
             });
         }
@@ -76,6 +77,7 @@ public class MainActivity extends AppCompatActivity {
         @Override
         public void onLoadFailed(Exception e) {
             Log.e("BookStorage", "Load failed: " + e.getMessage());
+            main.post(() -> showLoading(false));
         }
     };
 
@@ -88,11 +90,13 @@ public class MainActivity extends AppCompatActivity {
         //init pdfbox --> is done in DocTellApp now
         //com.tom_roush.pdfbox.android.PDFBoxResourceLoader.init(getApplicationContext());
         //load books
+        loadingBar = findViewById(R.id.loadingMain);
+        showLoading(true);
         BookStorage.loadBooksAsync(this,bookLoadCallback);
 
         pdfGrid = findViewById(R.id.pdfGrid);
         setupGridColumns();
-        loadingBar = findViewById(R.id.loadingMain);
+
 
 
         BookSorter.getSavedSort(getApplicationContext());
@@ -278,10 +282,11 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onResume() {
         super.onResume();
-        //BookStorage.loadBooks(this);
+
+        showLoading(true);
         BookStorage.loadBooksAsync(this,bookLoadCallback);
-        BookSorter.sortBooksOnDefault(BookStorage.booksCache);
-        refreshGrid();
+        //BookSorter.sortBooksOnDefault(BookStorage.booksCache);
+        //refreshGrid();
     }
 
     private String safeTitleFromPdfOrName(Uri uri) {

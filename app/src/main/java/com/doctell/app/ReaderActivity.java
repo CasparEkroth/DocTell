@@ -383,8 +383,6 @@ public class ReaderActivity extends AppCompatActivity implements HighlightListen
         if (isServiceBound && readerService != null) {
             readerService.initBook(currentBook, doc, pfd, renderer);
         }
-
-        showLoading(false);
     }
 
 
