@@ -2,9 +2,13 @@ package com.doctell.app;
 
 import android.content.Intent;
 import android.os.Bundle;
+import android.view.View;
 import android.widget.ImageButton;
 
+import androidx.activity.EdgeToEdge;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.view.ViewCompat;
+import androidx.core.view.WindowInsetsCompat;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
@@ -27,6 +31,7 @@ public class ChapterActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState){
         super.onCreate(savedInstanceState);
+        EdgeToEdge.enable(this);
         setContentView(R.layout.activity_chapter_list);
 
         ArrayList<String> titles = getIntent().getStringArrayListExtra("chapterTitles");
@@ -78,6 +83,20 @@ public class ChapterActivity extends AppCompatActivity {
             ((LinearLayoutManager) viewHolder.getLayoutManager())
                     .scrollToPositionWithOffset(targetIndex, 20);
         }
+
+        View root = findViewById(R.id.chapterRoot);
+        ViewCompat.setOnApplyWindowInsetsListener(root, (v, insets) -> {
+            androidx.core.graphics.Insets systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
+            int originalPadding = v.getPaddingLeft();
+            v.setPadding(
+                    originalPadding + systemBars.left,
+                    originalPadding + systemBars.top,
+                    originalPadding + systemBars.right,
+                    originalPadding + systemBars.bottom
+            );
+            return insets;
+        });
+
 
         viewHolder.setAdapter(adapter);
     }
