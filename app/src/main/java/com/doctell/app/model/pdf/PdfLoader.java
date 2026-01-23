@@ -129,7 +129,7 @@ public class PdfLoader {
                                 try { finalSession.renderer.close(); } catch (Exception e) {}
                                 try { finalSession.pfd.close(); } catch (Exception e) {}
                                 try { finalSession.doc.close(); } catch (Exception e) {}
-                                System.gc();
+                                //System.gc();
                             }
                             return;
                         }
