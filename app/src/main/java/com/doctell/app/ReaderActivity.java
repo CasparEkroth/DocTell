@@ -648,9 +648,9 @@ public class ReaderActivity extends AppCompatActivity implements HighlightListen
     // ---- HighlightListener callbacks ----
     @Override
     public void onChunkStart(int index, String text) {
-        if (!isServiceBound || readerService == null) {
-            return;
-        }
+        if (!isServiceBound || readerService == null) return;
+        if (isFinishing() || isDestroyed()) return;
+
         exec.execute(() -> {
             PageLifecycleManager pageManager = readerService.getPageLifecycleManager();
             int currentPage = currentBook.getLastPage();
@@ -688,14 +688,18 @@ public class ReaderActivity extends AppCompatActivity implements HighlightListen
                 r.offset(0, -r.height());
             }
             main.post(()->{
-                currentBook.setSentence(index);
-                highlightOverlay.setHighlights(rects);
+                if (isFinishing() || isDestroyed()) return;
+                if (highlightOverlay != null) {
+                    currentBook.setSentence(index);
+                    highlightOverlay.setHighlights(rects);
+                }
             });
         });
     }
 
     @Override
     public void onChunkDone(int index, String text) {
+        if (isFinishing() || isDestroyed()) return;
         if (isServiceBound && readerService != null) {
             PageLifecycleManager pageManager = readerService.getPageLifecycleManager();
             pageManager.finishSpeakingChunk(currentBook.getLastPage(), index);
@@ -707,6 +711,7 @@ public class ReaderActivity extends AppCompatActivity implements HighlightListen
 
     @Override
     public void onPageFinished() {
+        if (isFinishing() || isDestroyed()) return;
         if (isServiceBound && readerService != null) {
             PageLifecycleManager pageManager = readerService.getPageLifecycleManager();
             pageManager.finishPage(currentBook.getLastPage());
@@ -751,6 +756,16 @@ public class ReaderActivity extends AppCompatActivity implements HighlightListen
             BookStorage.updateBook(currentBook, this);
         }
         super.onStop();
+    }
+
+    @Override
+    public void onTrimMemory(int level) {
+        super.onTrimMemory(level);
+        if (level >= TRIM_MEMORY_MODERATE) {
+            if (pdfImage != null) {
+                pdfImage.setImageBitmap(null);
+            }
+        }
     }
 
     @Override

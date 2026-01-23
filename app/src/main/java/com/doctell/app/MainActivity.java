@@ -58,6 +58,7 @@ public class MainActivity extends AppCompatActivity {
     private ProgressBar loadingBar;
     private TtsEngineStrategy engine;
     private int selectedSortIndex = 0;
+    private boolean lodingPDF = false;
     private static final String READER_CHANNEL_ID = "reader_channel";
 
     private BookStorage.BookLoadCallback bookLoadCallback = new BookStorage.BookLoadCallback() {
@@ -69,7 +70,8 @@ public class MainActivity extends AppCompatActivity {
                     BookSorter.sortBooksOnDefault(BookStorage.booksCache);
                     selectedSortIndex = BookSorter.getIndex();
                     refreshGrid();
-                    showLoading(false);
+                    if(!lodingPDF)
+                        showLoading(false);
                 }
             });
         }
@@ -77,7 +79,9 @@ public class MainActivity extends AppCompatActivity {
         @Override
         public void onLoadFailed(Exception e) {
             Log.e("BookStorage", "Load failed: " + e.getMessage());
-            main.post(() -> showLoading(false));
+            main.post(() -> {
+                if(!lodingPDF) showLoading(false);
+            });
         }
     };
 
@@ -136,6 +140,10 @@ public class MainActivity extends AppCompatActivity {
     }
 
     public void addBook(View v){
+        if(lodingPDF){
+            Toast.makeText(this, "Already loading a pdf",Toast.LENGTH_SHORT).show();
+            return;
+        }
         Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
         intent.addCategory(Intent.CATEGORY_OPENABLE);
         intent.setType("application/pdf");
@@ -221,6 +229,7 @@ public class MainActivity extends AppCompatActivity {
             Uri uri = data.getData();
             if (uri == null) return;
             showLoading(true);
+            lodingPDF = true;
             // persist permission
             final int takeFlags = data.getFlags() &
                     (Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_GRANT_WRITE_URI_PERMISSION);
@@ -236,6 +245,7 @@ public class MainActivity extends AppCompatActivity {
                         if(b.getUri().equals(uri)){
                             main.post(() -> {
                                 Toast.makeText(this, "Book already in library!", Toast.LENGTH_SHORT).show();
+                                lodingPDF = false;
                                 showLoading(false);
                             });
                             return;
@@ -257,15 +267,16 @@ public class MainActivity extends AppCompatActivity {
                     main.post(() ->{
                         BookSorter.sortBooksOnDefault(BookStorage.booksCache);
                         this.refreshGrid();
+                        lodingPDF = false;
                         showLoading(false);
                     });
 
                 } catch (Exception e) {
                     Log.e("PDF", "Import failed", e);
-                    // show a toast on main
                     main.post(() -> {
-                        // findViewById(R.id.importOverlay).setVisibility(View.GONE);
+                        lodingPDF = false;
                         Toast.makeText(this, "Import failed: " + e.getMessage(), Toast.LENGTH_LONG).show();
+                        showLoading(false);
                     });
                 }
             });
@@ -283,8 +294,10 @@ public class MainActivity extends AppCompatActivity {
     protected void onResume() {
         super.onResume();
 
-        showLoading(true);
-        BookStorage.loadBooksAsync(this,bookLoadCallback);
+        if (!lodingPDF) {
+            showLoading(true);
+            BookStorage.loadBooksAsync(this, bookLoadCallback);
+        }
         //BookSorter.sortBooksOnDefault(BookStorage.booksCache);
         //refreshGrid();
     }
