@@ -2,9 +2,13 @@ package com.doctell.app;
 
 import android.content.Intent;
 import android.os.Bundle;
+import android.view.View;
 import android.widget.ImageButton;
 
+import androidx.activity.EdgeToEdge;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.view.ViewCompat;
+import androidx.core.view.WindowInsetsCompat;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
@@ -27,12 +31,13 @@ public class ChapterActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState){
         super.onCreate(savedInstanceState);
+        EdgeToEdge.enable(this);
         setContentView(R.layout.activity_chapter_list);
 
         ArrayList<String> titles = getIntent().getStringArrayListExtra("chapterTitles");
         ArrayList<Integer> pages   = getIntent().getIntegerArrayListExtra("chapterPages");
         ArrayList<Integer> levels  = getIntent().getIntegerArrayListExtra("chapterLevels");
-        //int currentPage            = getIntent().getIntExtra("currentPage", 0);
+        int currentPage            = getIntent().getIntExtra("currentPage", 0);
 
 
         if (titles == null || pages == null || levels == null) {
@@ -52,6 +57,15 @@ public class ChapterActivity extends AppCompatActivity {
             ));
         }
 
+        int targetIndex = -1;
+        for (int i = 0; i < chapterItems.size(); i++) {
+            if (chapterItems.get(i).getPageIndex() <= currentPage) {
+                targetIndex = i;
+            } else {
+                break;
+            }
+        }
+
         closeChap = findViewById(R.id.btnCloseChapters);
         cardView = findViewById(R.id.cardChapters);
         closeChap.setOnClickListener(v -> onClose());
@@ -64,9 +78,27 @@ public class ChapterActivity extends AppCompatActivity {
             onChapterClicked(item);
         }));
 
+        if (targetIndex != -1) {
+            adapter.setSelectedIndex(targetIndex);
+            ((LinearLayoutManager) viewHolder.getLayoutManager())
+                    .scrollToPositionWithOffset(targetIndex, 20);
+        }
+
+        View root = findViewById(R.id.chapterRoot);
+        ViewCompat.setOnApplyWindowInsetsListener(root, (v, insets) -> {
+            androidx.core.graphics.Insets systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
+            int originalPadding = v.getPaddingLeft();
+            v.setPadding(
+                    originalPadding + systemBars.left,
+                    originalPadding + systemBars.top,
+                    originalPadding + systemBars.right,
+                    originalPadding + systemBars.bottom
+            );
+            return insets;
+        });
+
+
         viewHolder.setAdapter(adapter);
-
-
     }
 
     private void onChapterClicked(ChapterItem item) {

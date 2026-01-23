@@ -100,8 +100,9 @@ public class PdfPreviewHelper {
         File f = new File(path);
         Log.d("TEST_THUMB", "Thumb exists = " + f.exists() + " | size = " + f.length());
         if (f.exists() && f.length() > 0) return path;
-
-        try (ParcelFileDescriptor pfd = ctx.getContentResolver().openFileDescriptor(uri, "r")) {
+        ParcelFileDescriptor pfd = null;
+        try {
+            pfd = ctx.getContentResolver().openFileDescriptor(uri, "r");
             assert pfd != null;
             try (PdfRenderer renderer = new PdfRenderer(pfd);
                  PdfRenderer.Page page = renderer.openPage(0)) {
@@ -115,6 +116,10 @@ public class PdfPreviewHelper {
                     bmp.compress(Bitmap.CompressFormat.PNG, 100, out);
                 }
                 bmp.recycle();
+            }
+        }finally {
+            if (pfd != null) {
+                try { pfd.close(); } catch (IOException ignored) {}
             }
         }
         return path;

@@ -23,7 +23,10 @@ import android.widget.Switch;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import androidx.activity.EdgeToEdge;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.view.ViewCompat;
+import androidx.core.view.WindowInsetsCompat;
 
 import com.doctell.app.model.entity.Prefs;
 import com.doctell.app.model.analytics.DocTellAnalytics;
@@ -72,6 +75,7 @@ public class SettingsActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        EdgeToEdge.enable(this);
         setContentView(R.layout.activity_settings);
         app = this;
         spLang = findViewById(R.id.spLang);
@@ -85,6 +89,19 @@ public class SettingsActivity extends AppCompatActivity {
 
         ttsHelper = new TtsWrapper(this, () -> {
             Log.d("SettingsActivity", "TTS Helper ready");
+        });
+
+        View root = findViewById(R.id.settingsRoot);
+        ViewCompat.setOnApplyWindowInsetsListener(root, (v, insets) -> {
+            androidx.core.graphics.Insets systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
+            int originalPadding = v.getPaddingLeft();
+            v.setPadding(
+                    originalPadding + systemBars.left,
+                    originalPadding + systemBars.top,
+                    originalPadding + systemBars.right,
+                    originalPadding + systemBars.bottom
+            );
+            return insets;
         });
 
         ArrayAdapter<CharSequence> adapter = ArrayAdapter.createFromResource(

@@ -1,5 +1,7 @@
 package com.doctell.app.view;
 
+import android.annotation.SuppressLint;
+import android.graphics.Color;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -17,6 +19,13 @@ public class ChapterAdapter extends RecyclerView.Adapter<ChapterAdapter.ChapterV
 
     private final List<ChapterItem> items;
     private final OnItemClickListener listener;
+    private int selectedIndex = -1;
+
+    @SuppressLint("NotifyDataSetChanged")//refresh
+    public void setSelectedIndex(int targetIndex) {
+        selectedIndex = targetIndex;
+        notifyDataSetChanged();
+    }
 
     public interface OnItemClickListener{
         void onItemClick(ChapterItem item, int pos);
@@ -35,10 +44,17 @@ public class ChapterAdapter extends RecyclerView.Adapter<ChapterAdapter.ChapterV
         return new ChapterViewHolder(view);
     }
 
+    @SuppressLint("ResourceAsColor")
     @Override
     public void onBindViewHolder(@NonNull ChapterViewHolder holder, int position) {
         ChapterItem item = items.get(position);
         holder.bind(item,listener);
+        if (position == selectedIndex) {
+            int color = holder.itemView.getContext().getColor(R.color.dt_surface);
+            holder.itemView.setBackgroundColor(color);
+        } else {
+            holder.itemView.setBackgroundColor(Color.TRANSPARENT);
+        }
     }
 
     @Override

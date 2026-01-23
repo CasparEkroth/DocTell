@@ -279,6 +279,7 @@ public class ReaderController implements TtsEngineListener, PlaybackControl {
         sendLoadingBroadcast(true);
         if (this.engine != null) {
             this.engine.stop();
+            engine.setListener(null);
             this.engine.shutdown();
         }
         this.pendingResume = wasPlaying;
@@ -293,13 +294,15 @@ public class ReaderController implements TtsEngineListener, PlaybackControl {
     public void shutdown() {
         if (engine != null) {
             engine.stop();
+            engine.setListener(null);
             engine.shutdown();
         }
-        mediaController.stop();
+        if(mediaController != null){
+            mediaController.stop();
+        }
     }
 
     // PlaybackControl implementation -------------------------
-
     @Override
     public void play() {
         Log.d("ReaderController", "play - isPaused=" + isPaused);

@@ -131,8 +131,11 @@ public abstract class BaseTtsEngine implements TtsEngineStrategy {
             public void onDone(String id) {
                 Log.d("BaseTtsEngine", "onDone id=" + id);
                 speaking = false;
-                if (engineListener != null) {
-                    main.post(() -> engineListener.onEngineChunkDone(id));
+                TtsEngineListener currentListener = engineListener;
+                if (currentListener != null) {
+                    currentListener.onEngineChunkDone(id);
+                } else {
+                    Log.w("BaseTtsEngine", "Ignored onEngineChunkDone for " + id + " because listener is null");
                 }
             }
 

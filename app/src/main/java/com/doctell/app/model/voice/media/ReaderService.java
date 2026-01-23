@@ -314,35 +314,39 @@ public class ReaderService extends Service implements PlaybackControl, Highlight
 
     @Override
     public void onDestroy() {
-        try {
-            unregisterReceiver(headsetMonitor);
-        }catch (Exception ignored){/*Receiver might not be registered*/}
-        abandonAudioFocus();
         SilentPlayer.stopSilentAudio();
         SilentPlayer.getWatchdogHandler().removeCallbacksAndMessages(null);
         onReadingPositionChanged();
-        unregisterReceiver(settingsReceiver);
-        super.onDestroy();
-        Log.d("ReaderService", "onDestroy");
+        abandonAudioFocus();
         if (readerController != null) {
             readerController.stop();
             readerController.shutdown();
+            readerController = null;
         }
-
+        if (mediaController != null) {
+            mediaController.release();
+            mediaController = null;
+        }
+        try {
+            unregisterReceiver(headsetMonitor);
+        } catch (IllegalArgumentException e) {/*ignore*/}
+        try {
+            unregisterReceiver(settingsReceiver);
+        } catch (IllegalArgumentException e) {/*ignore*/}
         if (pdfManager != null) {
             pdfManager.close();
             pdfManager = null;
         }
-
         if (executor != null) {
             executor.shutdownNow();
             executor = null;
         }
 
-        if (mediaController != null) {
-            mediaController.release();
-        }
+        super.onDestroy();
+        Log.d("ReaderService", "onDestroy: Service destroyed");
     }
+
+
 
     @Override
     public void onTaskRemoved(Intent rootIntent) {
