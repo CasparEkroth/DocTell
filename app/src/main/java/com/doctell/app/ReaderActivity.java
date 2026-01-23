@@ -92,6 +92,7 @@ public class ReaderActivity extends AppCompatActivity implements HighlightListen
     private PDDocument doc;
     private TtsEngineStrategy ttsEngine;
     private MediaControllerCompat mediaController;
+    private volatile boolean isPaused = false;
 
     private final MediaControllerCompat.Callback mediaCallback =
             new MediaControllerCompat.Callback() {
@@ -648,6 +649,7 @@ public class ReaderActivity extends AppCompatActivity implements HighlightListen
     // ---- HighlightListener callbacks ----
     @Override
     public void onChunkStart(int index, String text) {
+        if (isPaused) return;
         if (!isServiceBound || readerService == null) return;
         if (isFinishing() || isDestroyed()) return;
 
@@ -721,6 +723,7 @@ public class ReaderActivity extends AppCompatActivity implements HighlightListen
 
     @Override
     protected void onResume(){
+        isPaused = false;
         super.onResume();
         IntentFilter filter = new IntentFilter();
         filter.addAction(ReaderService.ACTION_TTS_LOADING);
@@ -733,12 +736,20 @@ public class ReaderActivity extends AppCompatActivity implements HighlightListen
 
         if (readerService != null && readerService.getReaderController() != null) {
             readerService.getReaderController().checkHealth();
+            readerService.registerUiHighlightListener(this);
             readerService.getReaderController().reattachListener();
         }
     }
 
     @Override
     protected void onPause() {
+        isPaused = false;
+        if (readerService != null) {
+            readerService.unregisterUiHighlightListener(this);
+        }
+        if (highlightOverlay != null) {
+            highlightOverlay.clearHighlights();
+        }
         try {
             unregisterReceiver(ttsStateReceiver);
         } catch (IllegalArgumentException e) {
