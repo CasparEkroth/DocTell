@@ -1,13 +1,10 @@
 package com.doctell.app;
 
-import android.Manifest;
 import android.annotation.SuppressLint;
-import android.app.Activity;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
-import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.graphics.RectF;
 import android.graphics.drawable.BitmapDrawable;
@@ -37,8 +34,6 @@ import android.widget.Toast;
 
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.core.app.ActivityCompat;
-import androidx.core.content.ContextCompat;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
 
@@ -61,7 +56,6 @@ import com.doctell.app.model.voice.media.ReaderService;
 import com.doctell.app.model.voice.notPublic.TtsEngineProvider;
 import com.doctell.app.view.HighlightOverlayView;
 import com.doctell.app.view.ImageScale;
-import com.google.firebase.analytics.FirebaseAnalytics;
 import com.tom_roush.pdfbox.pdmodel.PDDocument;
 
 import java.io.IOException;
@@ -92,7 +86,6 @@ public class ReaderActivity extends AppCompatActivity implements HighlightListen
     private PDDocument doc;
     private TtsEngineStrategy ttsEngine;
     private MediaControllerCompat mediaController;
-    private volatile boolean isPaused = false;
 
     private final MediaControllerCompat.Callback mediaCallback =
             new MediaControllerCompat.Callback() {
@@ -103,6 +96,7 @@ public class ReaderActivity extends AppCompatActivity implements HighlightListen
                     runOnUiThread(() -> syncTtsUiWithPlayback(playing));
                 }
             };
+    
     private final ServiceConnection serviceConnection = new ServiceConnection() {
         @Override
         public void onServiceConnected(ComponentName name, IBinder service) {
@@ -201,7 +195,7 @@ public class ReaderActivity extends AppCompatActivity implements HighlightListen
         super.onCreate(savedInstanceState);
         androidx.activity.EdgeToEdge.enable(this);
         setContentView(R.layout.activity_reader);
-        //PermissionHelper.ensureBluetoothPermission(this, this);
+        setContentView(R.layout.activity_reader);
         pdfImage = findViewById(R.id.pdfImage);
         btnPrev = findViewById(R.id.btnPrev);
         btnNext = findViewById(R.id.btnNext);
@@ -450,9 +444,8 @@ public class ReaderActivity extends AppCompatActivity implements HighlightListen
         doc = session.doc;
         pfd = session.pfd;
         totalPages = session.pageCount;
-        // Start + bind service
         Intent intent = new Intent(ReaderActivity.this, ReaderService.class);
-        startService(intent); // idempotent
+        startService(intent);
         bindService(intent, serviceConnection, BIND_AUTO_CREATE);
 
         showLoading(false);
@@ -479,7 +472,7 @@ public class ReaderActivity extends AppCompatActivity implements HighlightListen
             return;
         }
         Intent intent = new Intent(this, ReaderService.class);
-        startService(intent);//idempotent
+        startService(intent);
         bindService(intent, serviceConnection, BIND_AUTO_CREATE);
     }
 
@@ -649,7 +642,6 @@ public class ReaderActivity extends AppCompatActivity implements HighlightListen
     // ---- HighlightListener callbacks ----
     @Override
     public void onChunkStart(int index, String text) {
-        if (isPaused) return;
         if (!isServiceBound || readerService == null) return;
         if (isFinishing() || isDestroyed()) return;
 
@@ -723,7 +715,6 @@ public class ReaderActivity extends AppCompatActivity implements HighlightListen
 
     @Override
     protected void onResume(){
-        isPaused = false;
         super.onResume();
         IntentFilter filter = new IntentFilter();
         filter.addAction(ReaderService.ACTION_TTS_LOADING);
@@ -736,25 +727,15 @@ public class ReaderActivity extends AppCompatActivity implements HighlightListen
 
         if (readerService != null && readerService.getReaderController() != null) {
             readerService.getReaderController().checkHealth();
-            readerService.registerUiHighlightListener(this);
             readerService.getReaderController().reattachListener();
         }
     }
 
     @Override
     protected void onPause() {
-        isPaused = false;
-        if (readerService != null) {
-            readerService.unregisterUiHighlightListener(this);
-        }
-        if (highlightOverlay != null) {
-            highlightOverlay.clearHighlights();
-        }
         try {
             unregisterReceiver(ttsStateReceiver);
-        } catch (IllegalArgumentException e) {
-            // Receiver not registered, ignore
-        }
+        } catch (IllegalArgumentException e) {/* ignore */}
         if (currentBook != null) {
             BookStorage.updateBook(currentBook, this);
         }
@@ -797,8 +778,6 @@ public class ReaderActivity extends AppCompatActivity implements HighlightListen
         }
         if (exec != null) exec.shutdownNow();
         if (chapterLoader != null) chapterLoader.shutdown();
-
-        //PdfLoader.getInstance(this).closeCurrent();
         super.onDestroy();
     }
 }

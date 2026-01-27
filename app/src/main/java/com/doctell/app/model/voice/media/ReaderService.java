@@ -14,7 +14,6 @@ import android.graphics.pdf.PdfRenderer;
 import android.media.AudioAttributes;
 import android.media.AudioFocusRequest;
 import android.media.AudioManager;
-import android.media.MediaPlayer;
 import android.net.Uri;
 import android.os.Binder;
 import android.os.Build;
@@ -31,15 +30,12 @@ import androidx.annotation.Nullable;
 import androidx.annotation.RequiresApi;
 import androidx.media.session.MediaButtonReceiver;
 
-import com.doctell.app.R;
 import com.doctell.app.model.analytics.DocTellCrashlytics;
 import com.doctell.app.model.entity.Book;
-import com.doctell.app.model.entity.StepLength;
 import com.doctell.app.model.pdf.PageLifecycleManager;
 import com.doctell.app.model.repository.BookStorage;
 import com.doctell.app.model.pdf.PdfManager;
 import com.doctell.app.model.pdf.PdfPreviewHelper;
-import com.doctell.app.model.repository.StepPrefs;
 import com.doctell.app.model.utils.PermissionHelper;
 import com.doctell.app.model.voice.HighlightListener;
 import com.doctell.app.model.voice.ReaderController;
@@ -80,13 +76,12 @@ public class ReaderService extends Service implements PlaybackControl, Highlight
                 switch (focusChange) {
                     case AudioManager.AUDIOFOCUS_LOSS:
                         Log.d("ReaderService", "AUDIOFOCUS_LOSS → pause/stop");
-                        resumeAfterFocusGain = false;   // full loss, don’t auto-resume
+                        resumeAfterFocusGain = false;   // full loss
                         pause();
                         break;
 
                     case AudioManager.AUDIOFOCUS_LOSS_TRANSIENT:
                         Log.d("ReaderService", "AUDIOFOCUS_LOSS_TRANSIENT → pause (remember to resume)");
-                        // Only remember to resume if we were actually reading
                         if (autoReading) {
                             resumeAfterFocusGain = true;
                             pause();
@@ -95,7 +90,6 @@ public class ReaderService extends Service implements PlaybackControl, Highlight
 
                     case AudioManager.AUDIOFOCUS_LOSS_TRANSIENT_CAN_DUCK:
                         Log.d("ReaderService", "AUDIOFOCUS_LOSS_TRANSIENT_CAN_DUCK");
-                        // For now just treat like transient loss, or implement real ducking if you want
                         if (autoReading) {
                             resumeAfterFocusGain = true;
                             pause();
@@ -202,7 +196,6 @@ public class ReaderService extends Service implements PlaybackControl, Highlight
 
     public void setPage(int pageIndex) {
         currentBook.setLastPage(pageIndex);
-        //currentBook.setSentence(0);
         onReadingPositionChanged();
     }
 
@@ -243,10 +236,6 @@ public class ReaderService extends Service implements PlaybackControl, Highlight
             //NOT_EXPORTED for security on Android 14+
             registerReceiver(settingsReceiver, settingsFilter, Context.RECEIVER_NOT_EXPORTED);
         }
-
-        //Restriction Violation: On Android 12+ (API 31+)
-        //Notification notification = mediaController.buildInitialNotification();
-        //startForeground(ReaderMediaController.NOTIFICATION_ID, notification);
 
         if (PermissionHelper.cheekBluetoothPermission(getApplicationContext())) {
             IntentFilter filter = new IntentFilter();
@@ -294,7 +283,6 @@ public class ReaderService extends Service implements PlaybackControl, Highlight
 
     private void abandonAudioFocus() {
         if (audioManager == null) return;
-
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             if (audioFocusRequest != null) {
                 audioManager.abandonAudioFocusRequest(audioFocusRequest);
@@ -503,9 +491,6 @@ public class ReaderService extends Service implements PlaybackControl, Highlight
             if (mediaController != null && mediaController.getMediaSession() != null) {
                 MediaButtonReceiver.handleIntent(mediaController.getMediaSession(), intent);
             } else {
-                // Edge Case: Service started by button, but controller not ready.
-                // You might need to re-initialize from storage here if you want
-                // "Play" to work from a cold dead state.
                 Log.w("ReaderService", "MediaButton received but Controller is null");
             }
         }
@@ -526,7 +511,6 @@ public class ReaderService extends Service implements PlaybackControl, Highlight
                 if (currentBook != null && currentBook.getUri().toString().equals(conditionUri)) {
                     Log.d("ReaderService", "Stopping playback for deleted book");
                     pause();
-                    //stopSelf();
                 }
             }
         }else {
@@ -630,7 +614,6 @@ public class ReaderService extends Service implements PlaybackControl, Highlight
                 int startSentence = currentBook.getSentence();
 
                 mainHandler.post(() -> {
-                    // Initialize controller if needed
                     if (readerController == null) {
                         readerController = new ReaderController(
                                 engine,

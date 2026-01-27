@@ -135,20 +135,18 @@ public class SettingsActivity extends AppCompatActivity {
                 showLoading(true);
                 ttsHelper.checkVoiceData(selectedCode,
                         () -> {
-                            // SUCCESS: Data is present
                             showLoading(false);
                             Log.d("SettingsActivity", "Language verified: " + selectedCode);
 
                             onLanguageSelected(selectedCode);
-                            setSpLangText(values, selectedCode); // Update UI text if needed
-                            initIndex = position; // Update current index
-                            // Notify Service
+                            setSpLangText(values, selectedCode);
+                            initIndex = position;
                             Intent intent = new Intent(ReaderService.ACTION_UPDATE_TTS_ENGINE);
                             intent.setPackage(getPackageName());
                             sendBroadcast(intent);
                         },
                         () -> {
-                            // FAILURE: Data is missing (-4 error caught)
+                            // FAILURE: Data is missing (-4 error)
                             showLoading(false);
                             Log.w("SettingsActivity", "Verification failed for: " + selectedCode);
                             spLang.setSelection(initIndex);
@@ -271,13 +269,11 @@ public class SettingsActivity extends AppCompatActivity {
         return getEngine().getLanguage();
     }
     private void onRateChanged(float rate) {
-        //getEngine().setRate(rate);
         SharedPreferences prefs = getSharedPreferences(Prefs.DOCTELL_PREFS.toString(), MODE_PRIVATE);
         prefs.edit().putFloat(Prefs.TTS_SPEED.toString(), rate).apply();
     }
 
     private TtsEngineStrategy getEngine(){
-        //return LocalTtsEngine.getInstance(getApplicationContext());
         return TtsEngineProvider.getEngine(getApplicationContext());
     }
 

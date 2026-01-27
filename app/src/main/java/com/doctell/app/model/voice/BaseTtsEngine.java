@@ -37,7 +37,6 @@ public abstract class BaseTtsEngine implements TtsEngineStrategy {
     protected float currentRate;
     private static final int ERROR_CODE_GENERIC = 0;
     private static final int ERROR_NOT_INSTALLED_YET = -4;
-    private boolean isFallbackAttempted = false;
     Bundle params = new Bundle();
 
     protected abstract boolean acceptVoice(Voice v, Locale engineLanguage);

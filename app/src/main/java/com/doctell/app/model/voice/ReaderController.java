@@ -1,11 +1,7 @@
 package com.doctell.app.model.voice;
 
-import android.app.Activity;
-import android.app.AlertDialog;
 import android.content.Context;
 import android.content.Intent;
-import android.graphics.Bitmap;
-import android.media.AudioManager;
 import android.os.Handler;
 import android.os.Looper;
 import android.util.Log;
@@ -17,7 +13,6 @@ import com.doctell.app.model.voice.media.ReaderMediaController;
 import com.doctell.app.model.voice.media.ReaderService;
 
 import java.util.List;
-import java.util.Locale;
 
 public class ReaderController implements TtsEngineListener, PlaybackControl {
     private List<String> chunks;
